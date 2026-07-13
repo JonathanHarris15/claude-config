@@ -7,6 +7,12 @@ specific rules belong in that project's own `CLAUDE.md`, not here.
 <!-- Seeded from conventions already implied by the skills in this repo. Edit
      freely; delete anything you don't actually want. -->
 
+## Conversation Style
+
+- Be breif without losing needed information, I don't need to know every tiny little
+  detail of what you are doing, but I do need the essence.
+- Do not get bogged now in jargon or technical language. Keep things simple, human, and concise.
+
 ## Conventions I use across projects
 
 - Architecture decisions live in `docs/adr/`, numbered, one decision per file.
