@@ -1,0 +1,34 @@
+# Allowlist, not denylist. Claude Code writes credentials, session transcripts,
+# and new state directories into this folder as it updates. Ignoring everything
+# by default means a new state dir fails closed (unsynced) rather than open
+# (published). Add new config here deliberately.
+
+*
+
+# --- Portable config: the stuff worth having on every machine ---
+!.gitignore
+!README.md
+!CLAUDE.md
+!settings.json
+
+!skills/
+!skills/**
+!commands/
+!commands/**
+!agents/
+!agents/**
+!workflows/
+!workflows/**
+!hooks/
+!hooks/**
+
+# --- Deliberately NOT synced, even though they sit next to the above ---
+# .credentials.json   OAuth token
+# .claude.json        (parent dir) user id, machine id, prompt history, MCP keys
+# settings.local.json machine-local permission grants
+# projects/           full session transcripts (~276MB)
+# file-history/       snapshots of every file edited (~102MB)
+# plugins/            cloned marketplaces; re-fetched on demand
+# history.jsonl       your prompt history
+# backups/ cache/ sessions/ shell-snapshots/ session-env/ paste-cache/
+# tasks/ plans/ jobs/ daemon/ ide/ chrome/ downloads/ statsig/

@@ -1,0 +1,28 @@
+# Global instructions
+
+Applies to every project on every machine. Keep it short — this is prepended to
+every session, so anything here costs context on every single turn. Project-
+specific rules belong in that project's own `CLAUDE.md`, not here.
+
+<!-- Seeded from conventions already implied by the skills in this repo. Edit
+     freely; delete anything you don't actually want. -->
+
+## Conventions I use across projects
+
+- Architecture decisions live in `docs/adr/`, numbered, one decision per file.
+- Domain language and the current model live in `CONTEXT.md` at the repo root.
+  When code and `CONTEXT.md` disagree about what a thing is called, that's a bug
+  in one of them — say so rather than silently picking one.
+- Prefer test-first at real seams. Don't test-drive through mocks of code I own.
+
+## How I want you to work
+
+- Tell me when you think I'm wrong. A plan I haven't stress-tested is worth less
+  to me than a disagreement I have to answer.
+- If a task is underspecified, ask before building. Don't guess and hand me
+  something plausible.
+
+## Environment
+
+- Primary machine is Windows; shell is PowerShell. Bash is available but takes
+  POSIX syntax — don't mix the two.
