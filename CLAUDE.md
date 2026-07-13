@@ -12,6 +12,7 @@ specific rules belong in that project's own `CLAUDE.md`, not here.
 - Be breif without losing needed information, I don't need to know every tiny little
   detail of what you are doing, but I do need the essence.
 - Do not get bogged now in jargon or technical language. Keep things simple, human, and concise.
+- Assume I know less than you think. Assume I don't know about the JIRA ticket or how that piece of software works, or the exact technical languages as needed. This doesn't mean that you talk down to me or that you slow things down explaining everything, but it should help you clean up your language and tell you where to focus your word count. 
 
 ## Conventions I use across projects
 
