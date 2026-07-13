@@ -36,7 +36,7 @@ To Plan  →  To Do  →  On Deck  →  Night Work  →  In Progress  →  In Re
 | **To Plan** | **The inbox.** Anything, at any stage of formulation — a title you scratched down mid-feature, a Feature `create-epic` emitted, a long ticket you wrote by hand, an untriaged bug. Nothing here is specced. | You, `create-epic`, `jira-doctor`, `improve-codebase-architecture` |
 | **To Do** | Specced and ready. Has a PRD and sub-tasks. Not yet claimed by anyone or anything. | `plan-ticket` |
 | **On Deck** | Ready, **and there is judgment left in it.** A design call, a taste call, something needing your eyes. **Yours to do.** | `plan-ticket` |
-| **Night Work** | Ready, **and AFK-safe.** Zero open decisions. An agent can grind it unattended while you sleep. | `plan-ticket` |
+| **Night Work** | Ready, **and AFK-safe.** Zero open decisions. An agent can grind it unattended while you sleep — this is the queue `night-work` drains. | `plan-ticket` |
 | **In Progress** | Being built right now. | `implement` |
 | **In Review** | PR open. | `implement` |
 | **Done** | Merged. | `implement` |
@@ -78,6 +78,10 @@ only when **all** of these hold:
 Anything that is ready but fails AFK-safety goes to **`On Deck`**, not `Night Work`.
 When in doubt, `On Deck`. The cost of a wrong `On Deck` is that you did it yourself.
 The cost of a wrong `Night Work` is waking up to confident nonsense built on a guess.
+
+`night-work` re-checks all of this before it touches a ticket, and pushes anything that has
+gone stale back to `On Deck` rather than building it. That is a backstop, not a substitute —
+the judgment belongs to `plan-ticket`, at the moment it lands the ticket.
 
 ## The lifecycle
 

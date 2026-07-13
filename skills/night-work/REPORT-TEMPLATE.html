@@ -1,0 +1,398 @@
+<title>Night run — 12 July</title>
+
+<!--
+  NIGHT-WORK REPORT TEMPLATE
+  ==========================
+  Fill this in. The styling is done; don't redesign it, and don't add libraries.
+
+  Structure is deliberate and ordered by what the reader needs, not by what happened:
+      1. The verdict          — one human sentence
+      2. Needs you            — the blockers. THE most important section. Put it first even if empty.
+      3. Ready to review      — the PRs
+      4. The run              — the narrative, ticket by ticket
+      5. Noticed              — things seen but not acted on
+
+  Delete any section that has no content (except "Needs you" — if nothing is blocked, keep it
+  and say so plainly; the absence is itself the news).
+
+  Repeat the marked blocks per ticket. Everything below is a REAL EXAMPLE, not lorem —
+  replace it wholesale.
+-->
+
+<style>
+  :root {
+    --ground:    #FBFBFD;
+    --raised:    #F3F4F8;
+    --ink:       #16181D;
+    --muted:     #6B7080;
+    --rule:      #E4E5EB;
+    --accent:    #3B5BDB;
+    --ok:        #1F7A4C;
+    --attention: #9C5A0B;
+    --stopped:   #B3261E;
+    --ok-bg:        #E8F4ED;
+    --attention-bg: #FBF0DF;
+    --stopped-bg:   #FBEAE8;
+
+    --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    --serif: ui-serif, Georgia, "Iowan Old Style", "Times New Roman", serif;
+    --mono: ui-monospace, "SF Mono", "Cascadia Code", "Roboto Mono", Menlo, Consolas, monospace;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --ground:    #0F1116;
+      --raised:    #171A22;
+      --ink:       #E6E8EE;
+      --muted:     #8A90A0;
+      --rule:      #262A35;
+      --accent:    #7C93F5;
+      --ok:        #4FBF87;
+      --attention: #E0A33E;
+      --stopped:   #F2857A;
+      --ok-bg:        #12281E;
+      --attention-bg: #2C2314;
+      --stopped-bg:   #2E1917;
+    }
+  }
+  /* The viewer's theme toggle stamps data-theme on :root — it must win over the media query,
+     in BOTH directions, so each theme is declared explicitly. */
+  :root[data-theme="light"] {
+    --ground: #FBFBFD; --raised: #F3F4F8; --ink: #16181D; --muted: #6B7080; --rule: #E4E5EB;
+    --accent: #3B5BDB; --ok: #1F7A4C; --attention: #9C5A0B; --stopped: #B3261E;
+    --ok-bg: #E8F4ED; --attention-bg: #FBF0DF; --stopped-bg: #FBEAE8;
+  }
+  :root[data-theme="dark"] {
+    --ground: #0F1116; --raised: #171A22; --ink: #E6E8EE; --muted: #8A90A0; --rule: #262A35;
+    --accent: #7C93F5; --ok: #4FBF87; --attention: #E0A33E; --stopped: #F2857A;
+    --ok-bg: #12281E; --attention-bg: #2C2314; --stopped-bg: #2E1917;
+  }
+
+  body {
+    background: var(--ground);
+    color: var(--ink);
+    font-family: var(--sans);
+    font-size: 16px;
+    line-height: 1.6;
+    -webkit-font-smoothing: antialiased;
+  }
+  .page {
+    max-width: 54rem;
+    margin: 0 auto;
+    padding: 4rem 1.5rem 6rem;
+    display: flex;
+    flex-direction: column;
+    gap: 3.5rem;
+  }
+
+  /* ── Masthead ─────────────────────────────────────────────── */
+  .masthead { display: flex; flex-direction: column; gap: 1.25rem; }
+  .eyebrow {
+    font-family: var(--mono);
+    font-size: 0.75rem;
+    letter-spacing: 0.11em;
+    text-transform: uppercase;
+    color: var(--muted);
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem 1.25rem;
+  }
+  .verdict {
+    font-family: var(--serif);
+    font-size: clamp(1.6rem, 4vw, 2.3rem);
+    line-height: 1.28;
+    font-weight: 400;
+    text-wrap: balance;
+    margin: 0;
+    letter-spacing: -0.01em;
+  }
+  .verdict em { font-style: normal; color: var(--attention); }
+
+  /* ── Sections ─────────────────────────────────────────────── */
+  section { display: flex; flex-direction: column; gap: 1.5rem; }
+  h2 {
+    font-size: 0.78rem;
+    font-family: var(--mono);
+    font-weight: 600;
+    letter-spacing: 0.11em;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin: 0;
+    padding-bottom: 0.75rem;
+    border-bottom: 1px solid var(--rule);
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    gap: 1rem;
+  }
+  h2 .count { font-weight: 400; font-variant-numeric: tabular-nums; }
+
+  /* ── Entries: a ruled ledger, not cards ───────────────────── */
+  .entry {
+    display: grid;
+    grid-template-columns: 8.5rem 1fr;
+    gap: 0.35rem 1.5rem;
+    padding-bottom: 1.75rem;
+    border-bottom: 1px solid var(--rule);
+  }
+  .entry:last-child { border-bottom: 0; padding-bottom: 0; }
+  .entry > .gutter { display: flex; flex-direction: column; gap: 0.5rem; align-items: flex-start; }
+  .entry > .body   { display: flex; flex-direction: column; gap: 0.9rem; min-width: 0; }
+
+  .key {
+    font-family: var(--mono);
+    font-size: 0.9rem;
+    font-weight: 600;
+    letter-spacing: -0.01em;
+  }
+  .key a { color: inherit; }
+  .chip {
+    font-family: var(--mono);
+    font-size: 0.67rem;
+    font-weight: 600;
+    letter-spacing: 0.07em;
+    text-transform: uppercase;
+    padding: 0.2rem 0.45rem;
+    border-radius: 2px;
+    white-space: nowrap;
+  }
+  .chip.ok       { color: var(--ok);        background: var(--ok-bg); }
+  .chip.attention{ color: var(--attention); background: var(--attention-bg); }
+  .chip.stopped  { color: var(--stopped);   background: var(--stopped-bg); }
+
+  .entry h3 {
+    font-size: 1.12rem;
+    font-weight: 600;
+    margin: 0;
+    line-height: 1.35;
+    text-wrap: balance;
+  }
+  .entry p { margin: 0; max-width: 62ch; }
+  .entry p + p { margin-top: -0.15rem; }
+  .lede { color: var(--ink); }
+  .aside { color: var(--muted); font-size: 0.94rem; }
+
+  /* A labelled fact — "Stopped at:", "What I need:" */
+  dl { margin: 0; display: flex; flex-direction: column; gap: 0.6rem; }
+  dl div { display: flex; flex-direction: column; gap: 0.1rem; }
+  dt {
+    font-family: var(--mono);
+    font-size: 0.7rem;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--muted);
+  }
+  dd { margin: 0; max-width: 62ch; }
+
+  /* Evidence strip — the machine facts, mono, tabular */
+  .evidence {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.35rem 1.25rem;
+    font-family: var(--mono);
+    font-size: 0.79rem;
+    color: var(--muted);
+    font-variant-numeric: tabular-nums;
+    padding-top: 0.15rem;
+  }
+  .evidence b { font-weight: 600; color: var(--ink); }
+
+  a { color: var(--accent); text-decoration-thickness: 1px; text-underline-offset: 2px; }
+  a:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 2px; }
+
+  code {
+    font-family: var(--mono);
+    font-size: 0.86em;
+    background: var(--raised);
+    padding: 0.1em 0.34em;
+    border-radius: 2px;
+  }
+
+  .empty {
+    font-family: var(--serif);
+    font-size: 1.05rem;
+    color: var(--muted);
+    margin: 0;
+  }
+  ul.noticed { margin: 0; padding-left: 1.1rem; display: flex; flex-direction: column; gap: 0.6rem; }
+  ul.noticed li { max-width: 62ch; padding-left: 0.25rem; }
+
+  @media (max-width: 34rem) {
+    .entry { grid-template-columns: 1fr; gap: 0.85rem; }
+    .entry > .gutter { flex-direction: row; align-items: center; gap: 0.65rem; }
+    .page { padding-top: 2.5rem; gap: 2.75rem; }
+  }
+</style>
+
+<div class="page">
+
+  <!-- ── 1. MASTHEAD + VERDICT ───────────────────────────────────
+       One human sentence. Wrap the part that needs them in <em>. -->
+  <header class="masthead">
+    <div class="eyebrow">
+      <span>Night run</span>
+      <span>Sat 12 July · 23:41 → 03:08</span>
+      <span>METH</span>
+    </div>
+    <h1 class="verdict">
+      Three tickets attempted, two landed and are waiting for review —
+      <em>one stopped and needs a decision from you.</em>
+    </h1>
+  </header>
+
+  <!-- ── 2. NEEDS YOU ────────────────────────────────────────────
+       The most valuable section. Keep it first, keep it even when empty.
+       Write it so the ticket can be unblocked in two minutes without
+       reconstructing the night. -->
+  <section>
+    <h2>Needs you <span class="count">1</span></h2>
+
+    <div class="entry">
+      <div class="gutter">
+        <span class="key"><a href="#">METH-48</a></span>
+        <span class="chip attention">Stopped</span>
+      </div>
+      <div class="body">
+        <h3>Surface signup verification errors inline</h3>
+        <dl>
+          <div>
+            <dt>Stopped at</dt>
+            <dd>Sub-task 3 of 5 — “show the verification failure without leaving the form.”</dd>
+          </div>
+          <div>
+            <dt>Why</dt>
+            <dd>The PRD says the error must appear “inline,” but there are three places in the
+              signup flow that could reasonably mean: under the email field, above the submit
+              button, or in the existing toast rail. They look different and they behave
+              differently on mobile. Any choice I made would have been a design decision you
+              didn’t make, so I stopped.</dd>
+          </div>
+          <div>
+            <dt>What I need</dt>
+            <dd>Just tell me which of the three. Everything after that is mechanical — the
+              validation and the error plumbing are already done and committed.</dd>
+          </div>
+        </dl>
+        <div class="evidence">
+          <span>Branch <b>METH-48-inline-errors</b></span>
+          <span>Sub-tasks <b>2/5</b></span>
+          <span>Suite <b>green</b></span>
+          <span>No PR</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- If nothing is blocked, replace the entries above with just this:
+    <p class="empty">Nothing is blocked. Everything I attempted either landed or is listed below.</p>
+    -->
+  </section>
+
+  <!-- ── 3. READY TO REVIEW ──────────────────────────────────────
+       Be honest about the shaky parts. You're the only one who knows
+       where they are, and a PR that hides them costs you their trust. -->
+  <section>
+    <h2>Ready to review <span class="count">2</span></h2>
+
+    <div class="entry">
+      <div class="gutter">
+        <span class="key"><a href="#">METH-50</a></span>
+        <span class="chip ok">PR open</span>
+      </div>
+      <div class="body">
+        <h3>Add <code>--json</code> output to the CLI</h3>
+        <p class="lede">Every command now takes <code>--json</code> and prints a machine-readable
+          result instead of the formatted table. The formatting layer was already separate from
+          the command logic, so this slotted into the existing seam rather than adding one.</p>
+        <p class="aside">Worth a look: I had to decide what <code>--json</code> does when a command
+          has nothing to return. I made it print <code>[]</code> rather than nothing at all, so a
+          caller can always parse the output. That’s inside the PRD’s boundaries but it is a real
+          choice, and if you disagree it’s a one-line change.</p>
+        <div class="evidence">
+          <span><a href="#">PR #142</a></span>
+          <span>Sub-tasks <b>5/5</b></span>
+          <span>Tests <b>+14</b></span>
+          <span>Suite <b>226 passing</b></span>
+          <span>Files <b>7</b></span>
+        </div>
+      </div>
+    </div>
+
+    <div class="entry">
+      <div class="gutter">
+        <span class="key"><a href="#">METH-52</a></span>
+        <span class="chip ok">PR open</span>
+      </div>
+      <div class="body">
+        <h3>Retry failed webhook deliveries</h3>
+        <p class="lede">Failed deliveries now retry on a backoff and give up after five attempts,
+          at which point the delivery is marked dead and surfaced on the webhook’s page. The
+          backoff schedule came straight from the PRD.</p>
+        <p class="aside">One thing I’d check: the retry worker holds the delivery row while it
+          works, and I could not find an existing test that exercises two workers racing for the
+          same row. I didn’t add one — that felt like a bigger question than this ticket — but
+          it’s the part of this PR I’m least sure about.</p>
+        <div class="evidence">
+          <span><a href="#">PR #143</a></span>
+          <span>Sub-tasks <b>4/4</b></span>
+          <span>Tests <b>+9</b></span>
+          <span>Suite <b>235 passing</b></span>
+          <span>Files <b>5</b></span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── 4. THE RUN ──────────────────────────────────────────────
+       The narrative, in order. Short. This is context, not the point. -->
+  <section>
+    <h2>The run</h2>
+    <div class="entry">
+      <div class="gutter"><span class="key">23:41</span></div>
+      <div class="body">
+        <p class="aside">Started on <code>main</code>, tree clean, baseline suite green at 212
+          passing. Four tickets in Night Work; cap was 3, so METH-55 was left for tomorrow.</p>
+      </div>
+    </div>
+    <div class="entry">
+      <div class="gutter"><span class="key">23:44</span></div>
+      <div class="body">
+        <p class="aside"><b>METH-50</b> — built and merged-ready in 51 minutes. Nothing surprising.</p>
+      </div>
+    </div>
+    <div class="entry">
+      <div class="gutter"><span class="key">00:35</span></div>
+      <div class="body">
+        <p class="aside"><b>METH-52</b> — built in 1h 20m. Slower than it looks: the existing
+          delivery tests were coupled to a fake clock I had to understand before I could add to them.</p>
+      </div>
+    </div>
+    <div class="entry">
+      <div class="gutter"><span class="key">01:55</span></div>
+      <div class="body">
+        <p class="aside"><b>METH-48</b> — stopped after 1h 13m, at the point described above. Moved
+          it to On Deck and left the branch in place.</p>
+      </div>
+    </div>
+    <div class="entry">
+      <div class="gutter"><span class="key">03:08</span></div>
+      <div class="body">
+        <p class="aside">Queue exhausted against the cap. Finished on <code>main</code>, tree clean.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── 5. NOTICED ──────────────────────────────────────────────
+       Things seen in passing. DON'T file these as tickets — surfacing
+       them is the job; filing work nobody asked for is its own guessing. -->
+  <section>
+    <h2>Noticed, didn’t act on</h2>
+    <ul class="noticed">
+      <li>The webhook delivery table has no index on <code>status</code>, and the retry worker
+        scans it every 30 seconds. It’s fine at your row count and it won’t be at 100×.</li>
+      <li><code>CONTEXT.md</code> defines a <em>delivery</em> as “an attempt to call a webhook,”
+        but the code uses it to mean the durable row that survives many attempts. One of those
+        is wrong and I didn’t want to pick which while you were asleep.</li>
+    </ul>
+  </section>
+
+</div>
