@@ -12,6 +12,16 @@ Interview me relentlessly, but structured in phases: **Discover → Shape → Ch
 
 **`create-epic` stops at Features; it does not pre-build their sub-task breakdown** — each Feature's sub-tasks are created later, per-Feature, by `to-issues` after that Feature has been sharpened with `grill-with-docs` and `to-prd`.
 
+**This skill sits inside a board-driven workflow.** Read [BOARD.md](../jira-doctor/BOARD.md)
+first — the Epic you create is a **grouping and never appears on the board**; the **Features**
+you create are level-0 tickets that land in the **`To Plan`** column, where each is later
+picked up by `/plan-ticket` on its own. You are *filling the inbox*, not filling the board.
+
+`create-epic` is also where `/plan-ticket` sends a ticket that turns out to be a whole project
+rather than one deliverable. The size-and-fog judgment both skills make lives in one shared
+place — [ROUTING.md](../plan-ticket/ROUTING.md). Phase 3's Construction/Investigation fork is
+the same call; keep them in step.
+
 Rules that carry over from `grill-with-docs`:
 
 - Ask questions **one at a time**, waiting for my answer before continuing.
@@ -82,7 +92,7 @@ Break the epic into its **Features** — and **stop there** (don't pre-decompose
 - **Features** — the demoable deliverables inside the epic. Each Feature is a **checkpoint**: a coherent, vertical slice (a thin path through every layer, demoable on its own) that visibly moves the epic forward. Aim for several thin Features over a few thick ones; they become the milestones you sequence and date in Phase 5C.
 - **Keep the description high-level, but write it well.** A Feature carries *what it delivers* and its *acceptance criteria* (the checkable "done" conditions) — the loose brief a developer will later sharpen into a PRD via `grill-with-docs` → `to-prd`. Write it in the **`<feature-writeup-style>`**: a plain-language *What & why* that defines its jargon, plus specific, measurable acceptance criteria. Resist writing the implementation breakdown now; the sub-tasks belong to `to-issues`.
 - **When a would-be Feature is still too vague to name as a buildable slice, emit a Task, not a Feature.** If you catch yourself hand-waving what the Feature even *is*, don't fake it — file it as an investigation **Task**: a level-0 item with the `investigation` label and a `[research]` / `[grill]` / `[prototype]` prefix, whose deliverable is *the research that turns it into a Feature*. It **blocks** the Feature it will become. Resolve it for clarity **first** (research/grill), and only then does the resulting Feature enter the normal `grill-with-docs` → `to-prd` → `to-issues` chain. This is the Investigation lane's tool used inline inside an otherwise-buildable epic (see Phase 3 and `<scope>`) — so a Construction-lane epic is really a mix of build Features and a few research Tasks that graduate into Features.
-- Bugs are **not** part of this tree — they're reactive work handled by `triage`, filed standalone with no epic (see `<scope>`).
+- Bugs are **not** part of this tree — they're reactive work, filed standalone with no epic, landing in `To Plan` like anything else (see `<scope>`).
 
 Present the Features as a numbered outline and iterate with me before anything is published. For each Feature, get rough agreement on what it delivers and its acceptance criteria.
 
@@ -109,7 +119,9 @@ Turn the agreed epic and Features into real JIRA issues. See `<jira-mechanics>` 
 6. Record **epic-level ADRs** (see `<adrs>`) for the hard-to-reverse decisions made along the way.
 7. Explain **GitHub linkage** so code ties back to these issues (see `<jira-mechanics>`).
 
-**Hand off.** Report back the Epic key and a link, plus the created Features. From here, each Feature is picked up **one at a time**: `grill-with-docs` (interrogate the high-level Feature to get the detail) → `to-prd` (write the PRD onto the Feature block) → `to-issues` (slice it into sub-tasks) → `implement` (build each and drive its JIRA states). Investigation tickets follow the Investigation lane instead — resolve them for clarity *first*, and once a resolved decision turns a foggy area into a buildable Feature, that Feature enters the same grill → prd → issues chain.
+8. **Put every Feature in `To Plan`.** They are unspecced by definition — a Feature carries a high-level brief, not a PRD, and the board's integrity rule (see `<board>`) forbids an unspecced ticket sitting right of `To Plan`. Transition each one there (`getTransitionsForJiraIssue` → `transitionJiraIssue`); if a project creates tickets in `To Plan` by default, just verify it.
+
+**Hand off.** Report back the Epic key and a link, plus the created Features — all sitting in `To Plan`. From here each Feature is picked up **one at a time by `/plan-ticket <KEY>`**, which routes it (usually `grill-with-docs` → `to-prd` → `to-issues`), lands it on the board, and hands it to `implement`. Tell the user they can run `/plan-ticket ALL` to work the whole column. Investigation tickets follow the Investigation lane instead — resolve them for clarity *first*, and once a resolved decision turns a foggy area into a buildable Feature, that Feature goes into `To Plan` and enters the same chain.
 
 ---
 
@@ -157,6 +169,17 @@ Each working session (this can be a fresh `create-epic` invocation on an existin
 </phases>
 
 <supporting-info>
+
+<board>
+
+The full contract is in [BOARD.md](../jira-doctor/BOARD.md). What binds `create-epic`:
+
+- **The Epic never appears on the board.** It's a grouping — the answer to "what project is this part of." Don't try to give it a column.
+- **Features are level-0 tickets and go to `To Plan`.** They carry a high-level brief, not a PRD. `To Do` / `On Deck` / `Night Work` promise the thinking is finished; a fresh Feature has not had its thinking finished, so it may not sit there. `/plan-ticket` is what earns it a place further right.
+- **Investigation tickets are also level-0, also `To Plan`.** They're the one exception to the PRD rule — their output is a decision comment, never a PRD, and they never enter `Night Work` (deciding is not AFK work).
+- **Sub-tasks are not yours to create.** `to-issues` does that, later, per-Feature, after `to-prd`.
+
+</board>
 
 <investigation-vs-construction>
 
@@ -240,7 +263,7 @@ Epic-scale ADRs tend to be the big bets: build-vs-buy, the sequencing strategy, 
 
 1. **Build work** — Epic → Feature → sub-task. `create-epic` creates the Epic and its high-level **Features** (dated, deadline-driven); each Feature's **sub-tasks** are created later by `to-issues` after `to-prd`. The Construction lane.
 2. **Investigation work** — investigation tickets under an epic (label `investigation`). Resolve *decisions*, no deliverable, no due date. The Investigation lane. These convert a foggy epic into a buildable one.
-3. **Reactive work** — **Bugs.** Defects handled as they arise, filed **standalone with no epic and no objective due date**, moved through the `triage` workflow. `create-epic` does **not** create Bugs. If bugs surface during grilling, note them for `triage` rather than folding them into the epic tree.
+3. **Reactive work** — **Bugs.** Defects handled as they arise, filed **standalone with no epic and no objective due date**. They land in `To Plan` like everything else and are routed by `plan-ticket` to `/diagnose` — reproduce first, then spec. `create-epic` does **not** create Bugs. If bugs surface during grilling, file them into `To Plan` rather than folding them into the epic tree.
 
 </scope>
 

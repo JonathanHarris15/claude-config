@@ -1,12 +1,14 @@
 ---
 name: implement
-description: Implement a ready JIRA issue end-to-end while driving it through its JIRA states — claim the ticket and move it In Progress, build test-first at agreed seams, guard against regressions, review, grow the docs, then commit/PR with the issue key and transition to In Review / Done. Use when you're ready to build a specific JIRA Task or Feature (the micro executor that follows to-issues). Respects the project's real JIRA workflow.
-argument-hint: "The JIRA issue key to implement (e.g. PROJ-124), or 'next' to pick from the ready-for-agent queue"
+description: Build a planned JIRA ticket end-to-end while driving it across the board — claim it and move it In Progress, work its sub-tasks test-first at agreed seams, guard against regressions, review, grow the docs, then commit/PR with the ticket key and transition to In Review / Done. Use when you're ready to build a specific ticket from To Do / On Deck / Night Work (the executor that follows plan-ticket), or 'next' to take the oldest ready one. Refuses tickets with no PRD.
+argument-hint: "The JIRA ticket key to implement (e.g. PROJ-124), or 'next' to pick from the On Deck / Night Work queue"
 ---
 
 <what-to-do>
 
-You are the **executor**. `create-epic` maps the project, `to-prd` specifies a Feature, `to-issues` slices it into Tasks — and `implement` builds one issue and **moves it along the JIRA track as it goes**. This is the micro counterpart to `create-epic`'s macro: the epic and its tree guide the whole; the single issue guides this session.
+You are the **executor**. `create-epic` maps the project, `plan-ticket` takes a ticket from `To Plan` and specs it (`to-prd`) and slices it (`to-issues`) — and `implement` **builds one ticket and moves it along the board as it goes**.
+
+Read [BOARD.md](../jira-doctor/BOARD.md) first. What binds you: you build **level-0 tickets** — the cards. Their **sub-tasks** are your checklist inside the card, not separate cards. You take work from **`On Deck`** (yours, has judgment in it), **`Night Work`** (AFK-safe, an agent can be trusted with it unattended), or **`To Do`** (ready but unscheduled), and you drive it `In Progress → In Review → Done`.
 
 Two responsibilities, always both:
 1. **Build the thing** — test-first at pre-agreed seams, small changesets, no regressions, docs grown. (This is the old `feature` discipline; `implement` absorbs it.)
@@ -20,10 +22,10 @@ Do not skip the JIRA transitions and do not fake the build discipline. A merged 
 
 ## Phase 0: Claim
 
-1. **Resolve the target.** If given an issue key, use it. If given `next` (or nothing), find the ready queue with JQL (`labels = "ready-for-agent"`, see `<jira-mechanics>`) and pick the oldest unblocked one — confirm with me before claiming.
-2. **Read the issue fully** with `getJiraIssue` (include `comment`, `description`, `parent`, `issuelinks`, `status`, `labels`): its spec, acceptance criteria, any agent brief comment from `triage`, and its parent Feature/epic for context. Read the linked PRD (Confluence) if one is referenced.
-3. **Check it's actually takeable.** If it's blocked by an open issue, stop and say so. If it's under-specified (no acceptance criteria, vague brief), stop and recommend `grill-with-docs` or `to-prd` first — don't build on fog.
-4. **Feature vs Task.** If the key is a **Feature** with child **Tasks**, don't build the Feature directly — work its Tasks one at a time (Phase 0→7 per Task), then close the Feature when all its Tasks are Done (Phase 7). If it's a leaf **Task** (or a Feature with no children), implement it directly.
+1. **Resolve the target.** If given a ticket key, use it. If given `next` (or nothing), find the ready queue with JQL (the `On Deck` / `Night Work` / `To Do` columns, see `<jira-mechanics>`) and pick the oldest unblocked one — confirm with me before claiming. **Running unattended** (a Night Work batch), take only from `Night Work`, never from `On Deck` — `On Deck` means a human is meant to do it.
+2. **Read the ticket fully** with `getJiraIssue` (include `comment`, `description`, `parent`, `issuelinks`, `status`, `labels`, `subtasks`): its PRD, acceptance criteria, sub-tasks, and its parent epic for context.
+3. **Check it's actually takeable.** If it's blocked by an open issue, stop and say so. If it has **no PRD** (no `## Problem Statement` + `## Acceptance Criteria`) it should never have left `To Plan` — **stop**, say the board was lying to you, and recommend `/plan-ticket <KEY>`. Don't build on fog, and don't quietly spec it yourself; that's how an un-reviewed guess becomes a merged PR.
+4. **The ticket vs its sub-tasks.** The **ticket** is the unit that rides the board. Work its **sub-tasks** one at a time (Phase 1→6 per sub-task), ticking each one Done as it lands, so the card's progress count stays true. The ticket itself moves `In Progress` once, at the start, and `In Review` once, at the end. If it has no sub-tasks, implement it directly — but say so, because `to-issues` should have made some.
 5. **Transition to In Progress.** Move the issue into the project's in-progress status (`getTransitionsForJiraIssue` → `transitionJiraIssue`; match the real workflow). Assign it to me if the project expects an assignee.
 6. **Branch** named with the issue key, e.g. `PROJ-124-recommendation-ranking-fn`, so JIRA↔GitHub links the work automatically.
 
@@ -77,7 +79,7 @@ Once tests pass and no regressions remain:
 2. **Open a PR** with the issue key in the title (e.g. `PROJ-124: recommendation ranking function`). The linked PR then shows in the issue's Development panel.
 3. **Transition to In Review** (or the project's review status). If the project has no review step, transition per its workflow.
 4. **On merge → Done.** If Smart Commits / the workflow auto-transition on merge, let them and verify. Otherwise transition the issue to Done yourself once merged. Never leave a merged issue un-transitioned.
-5. **Loop.** If you're inside a parent Feature, pick its next unblocked Task and go again from Phase 0. When every Task under the Feature is Done, transition the **Feature** to Done. When every Feature under the epic is Done, the epic is done — tell me.
+5. **Loop.** If the ticket has more unfinished sub-tasks, pick the next unblocked one and go again from Phase 1 (you don't re-claim — the ticket is already `In Progress`). When every sub-task is Done, transition the **ticket** to `In Review`, and to `Done` on merge. When every ticket under an epic is Done, the epic is done — tell me.
 
 Report at the end: the issue key(s) moved, their new statuses, the branch/PR, and what's next in the tree.
 
@@ -91,14 +93,14 @@ The whole point is that the board reflects reality without me nudging it. But **
 
 - **Never hardcode a status name.** Always `getTransitionsForJiraIssue` to see the available transitions from the issue's *current* status, then pick the one that matches the phase you're entering, then `transitionJiraIssue`.
 - If no transition matches a phase (e.g. the project has no "In Review"), skip it — don't invent statuses.
-- Confirm the mapping (which status = In Progress / In Review / Done) with me on first use in a project, and stay consistent with what `triage`, `to-issues`, and `create-epic` use.
-- The state labels (`ready-for-agent` etc.) and native statuses can coexist — when you take a `ready-for-agent` issue, remove that label as you move it In Progress so the ready queue stays honest.
+- The seven columns in `BOARD.md` are the *intended* names. A project that `jira-setup` has linked will have them — but read the project's `CLAUDE.md` Jira block for what it actually calls them, and if a transition doesn't exist, say so rather than inventing one.
+- **Leave `On Deck` alone when running unattended.** `On Deck` exists precisely because a human is supposed to make a call inside that ticket. An agent taking one is the failure mode the whole column was built to prevent.
 
 </jira-track-discipline>
 
 <scope>
 
-`implement` builds **one issue** — a build **Task** or **Feature** (planned work), or a **Bug** that `triage` has marked `ready-for-agent`. It does not plan, decompose, or spec: if the issue isn't ready, hand back to `grill-with-docs` / `to-prd` / `to-issues`. It does not resolve **investigation tickets** — those are decision work, closed with a decision comment by `create-epic`'s Investigation lane (via `research` / `prototype` / `grill-with-docs`), not built.
+`implement` builds **one level-0 ticket** — a `Feature`, `Task`, or `Bug` that has been through `/plan-ticket` and carries a PRD. It does not plan, decompose, or spec: if the ticket isn't ready, hand it back to **`/plan-ticket`**. It does not resolve **investigation tickets** — those are decision work, closed with a decision comment by `create-epic`'s Investigation lane (via `research` / `prototype` / `grill-with-docs`), not built.
 
 </scope>
 
@@ -114,7 +116,9 @@ The Atlassian connector's server prefix differs per install (and changes if it's
 
 **Discovery.** `getAccessibleAtlassianResources` → `cloudId`. Read the issue with `getJiraIssue` (fields: `summary, description, status, labels, parent, issuelinks, comment, assignee`).
 
-**Finding the ready queue** (`implement next`): `project = PROJ AND labels = "ready-for-agent" AND statusCategory != Done ORDER BY created ASC`. Filter out anything with an open blocker in `issuelinks`.
+**Finding the ready queue** (`implement next`): `project = PROJ AND status IN ("On Deck", "Night Work", "To Do") ORDER BY created ASC`. Filter out anything with an open blocker in `issuelinks`.
+
+**Running unattended** (draining the night queue): `project = PROJ AND status = "Night Work" ORDER BY created ASC` — **that column only**. If a ticket there turns out to have a decision in it after all, don't guess: stop, move it to `On Deck`, comment why, and take the next one. Waking up to one honest blocker beats waking up to six confident guesses.
 
 **Transitions.** `getTransitionsForJiraIssue` → the list of transitions valid from the current status (each has an `id` and a target status name). Pick the one matching the phase; `transitionJiraIssue` with that `id`. For a transition that requires fields (e.g. a resolution on Done), pass them in the transition `fields`. Re-fetch or re-list transitions after moving, since the valid set changes with status.
 

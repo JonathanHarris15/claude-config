@@ -7,6 +7,8 @@ description: Find deepening opportunities in a codebase, informed by the domain 
 
 Surface architectural friction and propose **deepening opportunities** — refactors that turn shallow modules into deep ones. The aim is testability and AI-navigability.
 
+**Where the output goes.** This skill *generates work* — it doesn't do it. If the project is linked to JIRA (a `<!-- jira-config -->` block in its `CLAUDE.md`), offer to file each agreed opportunity as a ticket in the **`To Plan`** column, one per refactor, with what you found and why it matters. They then come through `/plan-ticket` like anything else. Don't file them further right than `To Plan` — a refactor you've named is not a refactor you've specced. Don't file the ones the user didn't agree with.
+
 ## Glossary
 
 Use these terms exactly in every suggestion. Consistent language is the point — don't drift into "component," "service," "API," or "boundary."

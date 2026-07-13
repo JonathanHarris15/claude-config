@@ -1,7 +1,7 @@
 ---
 name: to-prd
-description: Turn the current conversation context into a PRD written directly onto its JIRA Feature — the "Feature block" (the Feature's own description) — then hand off to to-issues to break it into sub-tasks. Use when a Feature from create-epic has been grilled enough to specify. JIRA-native — the spec counterpart to create-epic.
-argument-hint: "Optional: the JIRA Feature key this PRD specifies (e.g. PROJ-123)"
+description: Turn the current conversation context into a PRD written directly onto its JIRA ticket — the ticket's own description — then hand off to to-issues to break it into sub-tasks. Normally invoked by plan-ticket once a ticket's fog has cleared (via workshop / research / grill-with-docs). JIRA-native — the spec step that makes a ticket eligible to leave To Plan.
+argument-hint: "Optional: the JIRA ticket key this PRD specifies (e.g. PROJ-123)"
 ---
 
 Take the current conversation context and codebase understanding and produce a **PRD** (Product Requirements Document), written **onto the JIRA Feature it specifies** — the Feature's own description, the "Feature block." A PRD is a *narrative* — the "what and why," not the "how."
@@ -10,13 +10,17 @@ Do NOT interview the user — synthesise what you already know. (If you need to 
 
 ## Where this sits in the workflow
 
-`create-epic` produces an epic whose **Features** carry **deliberately high-level** descriptions. When a developer picks one to build, the sequence is:
+Tickets wait in the **`To Plan`** column carrying, at best, a loose brief. `/plan-ticket` routes each one down whichever lane clears its fog (`workshop` / `research` / `grill-with-docs` / `diagnose`) and then **always converges here**:
 
 ```
-create-epic (high-level Feature) → grill-with-docs (get the detail) → to-prd (write the PRD onto the Feature block) → to-issues (slice into sub-tasks) → implement (build each)
+To Plan ticket → /plan-ticket → [workshop | research | grill | diagnose] → to-prd → to-issues → lands on the board
 ```
 
-So `to-prd` is the **sharpening** step: it takes the loose Feature description `create-epic` left behind, plus everything grilled since, and rewrites the **Feature's own description** into a full PRD. The PRD lives **on the Feature**; the implementation issues that `to-issues` creates are that Feature's **sub-tasks**. There is no separate Confluence page — the Feature block *is* the PRD.
+So `to-prd` is the **sharpening** step: it takes the loose description the ticket had, plus everything the lane surfaced, and rewrites the **ticket's own description** into a full PRD. The PRD lives **on the ticket** — the ticket *is* the PRD, there is no separate Confluence page. The implementation steps that `to-issues` creates next are that ticket's **sub-tasks**.
+
+Throughout this skill, **"Feature" means the level-0 ticket you're speccing** — the card on the board. It may be typed `Feature`, `Story`, `Task` or `Bug` depending on the project; the project's `CLAUDE.md` Jira block records the real names. See [BOARD.md](../jira-doctor/BOARD.md).
+
+You are normally invoked **by `/plan-ticket`**, not directly. Called directly, you still work — but you're skipping the routing that decides whether this ticket was ever ready to spec.
 
 ## Process
 
@@ -84,6 +88,8 @@ The Atlassian connector's server prefix differs per install (and changes if it's
 
 **If the description is genuinely too large** for one field, keep the narrative sections (Problem/Solution/User Stories/Out of Scope) on the Feature and move the long Implementation/Testing detail into a pinned `addCommentToJiraIssue` on the same Feature — still no Confluence.
 
-**Readiness.** The PRD makes the Feature *specified*, not *done*. Apply the project's agent-readiness convention (a `ready-for-agent` label or the equivalent status via a transition — match whatever `triage` uses) only once the Feature is fully specified and its sub-tasks exist. Readiness ultimately lives on the sub-tasks that `to-issues` creates.
+**Readiness — don't move the ticket.** The PRD makes the ticket *specified*, not *ready*. Speccing is only half of it: the ticket still needs its sub-tasks (`to-issues`), and something still has to judge whether an agent can be trusted with it unattended. **That call belongs to `plan-ticket`, not here.** Leave the ticket in `To Plan` and hand back.
+
+The board's integrity rule (see [BOARD.md](../jira-doctor/BOARD.md)) is that nothing sits right of `To Plan` without a PRD — this skill is what makes a ticket *eligible* to move, not what moves it. A PRD'd ticket with no sub-tasks that you pushed to `To Do` is exactly the kind of half-truth `jira-doctor` exists to sweep back.
 
 </atlassian-mechanics>

@@ -1,14 +1,18 @@
 ---
 name: to-issues
-description: Break a single specced JIRA Feature (one whose description to-prd has turned into a PRD) into independently-grabbable sub-task Issues under it. Use after to-prd, to slice a Feature into the concrete implementation steps a developer picks up. JIRA-native — the breakdown step below a Feature.
-argument-hint: "Optional: the JIRA Feature key to break into sub-tasks"
+description: Slice a specced JIRA ticket (one whose description to-prd has turned into a PRD) into sub-tasks under it, each classified AFK or HITL. Sub-tasks don't get board columns — they become the progress count inside the card. Normally invoked by plan-ticket straight after to-prd. JIRA-native — the breakdown step below a ticket.
+argument-hint: "Optional: the JIRA ticket key to slice into sub-tasks"
 ---
 
 # To Issues (JIRA)
 
 Break **one specced Feature** into independently-grabbable **sub-task Issues** under it. This is the step *below* a Feature: `create-epic` makes the Epic and its high-level **Features**; `to-prd` writes a PRD onto the chosen Feature's description; **`to-issues` slices that Feature into sub-tasks**; `implement` builds each one.
 
-Hierarchy: **Epic → Feature → sub-task**. `to-issues` operates at the bottom edge — it takes a Feature (level 0) and creates its breakdown steps as **sub-tasks** (JIRA's sub-task level, −1, the only way a step can nest under a Feature). It does **not** create Features (that's `create-epic`) and it does **not** create Bugs (those are standalone, handled by `triage`).
+Hierarchy: **Epic → ticket → sub-task**. `to-issues` operates at the bottom edge — it takes a level-0 ticket and creates its breakdown steps as **sub-tasks** (JIRA's sub-task level, −1, the only way a step can nest under a ticket). It does **not** create level-0 tickets (that's `create-epic`, or you scratching an idea into `To Plan`).
+
+**Sub-tasks don't get board columns** — they render as a progress count *inside* the parent card. That count is the point: it's what lets you glance at a `Night Work` ticket in the morning and see the agent got 4 of 7 done before it stalled, and on which one. See [BOARD.md](../jira-doctor/BOARD.md).
+
+You are normally invoked **by `/plan-ticket`**, straight after `to-prd`.
 
 ## Process
 
@@ -83,8 +87,8 @@ The Atlassian connector's server prefix differs per install (and changes if it's
 - `issueTypeName` = the sub-task-level type from metadata.
 - `parent` = the Feature's key.
 - `description` = the sub-task template (`contentFormat: "markdown"`); acceptance criteria as a checklist.
-- Tag AFK/HITL and the epic name as labels via `additional_fields`, e.g. `{"labels": ["afk", "epic-<slug>"]}`. Keep these strings consistent with `triage` and `create-epic`.
-- If a sub-task is fully specified and AFK, mark it ready for an agent using the project's agent-readiness convention (a `ready-for-agent` label, or the equivalent status via a transition — match whatever `triage` uses).
+- Tag AFK/HITL and the epic name as labels via `additional_fields`, e.g. `{"labels": ["afk", "epic-<slug>"]}`. Keep these strings consistent with `create-epic`.
+- **Don't move the parent ticket.** Slicing it doesn't make it ready — deciding whether an agent can be trusted with it unattended is `plan-ticket`'s Phase 6 call, and your AFK/HITL classifications are the **evidence it uses**. A single HITL sub-task is what sends the whole ticket to `On Deck` instead of `Night Work`, so classify honestly: if a step needs taste, a design call, or a product judgment, it is **HITL**, however small it looks.
 
 **Dependency links** with `createIssueLink` (confirm the `Blocks` type via `getIssueLinkTypes`): for "A is blocked by B" → `type: "Blocks"`, `inwardIssue: B` (blocker), `outwardIssue: A` (blocked). Link sub-task-to-sub-task within the Feature.
 
