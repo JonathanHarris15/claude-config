@@ -6,7 +6,7 @@ My personal Claude Code configuration, synced across machines.
 
 | Path | What it is |
 | --- | --- |
-| `skills/` | Custom skills — a JIRA-native planning chain (`create-epic` → `grill-with-docs` → `to-prd` → `to-issues` → `implement`), plus `tdd`, `diagnose`, `prototype`, `research`, `triage`, `improve-codebase-architecture`. |
+| `skills/` | Custom skills — a JIRA-native planning chain (`create-epic` → `grill-with-docs` → `to-prd` → `to-issues` → `implement`), plus `tdd`, `diagnose`, `prototype`, `research`, `triage`, `improve-codebase-architecture`, `rebuild-mobile`. |
 | `agents/` | Custom subagents. Markdown with frontmatter; the frontmatter sets the model, tools, and description. |
 | `workflows/` | Multi-agent orchestration scripts. Plain JS that fans out subagents with real control flow — loops, pipelines, adversarial verification. |
 | `commands/` | Custom slash commands. |
