@@ -236,28 +236,37 @@
     </div>
     <h1 class="verdict">
       Three tickets attempted, two landed and are waiting for review —
-      <em>one stopped and needs a decision from you.</em>
+      <em>one got four of its six sub-tasks done and needs a decision from you.</em>
     </h1>
   </header>
 
   <!-- ── 2. NEEDS YOU ────────────────────────────────────────────
        The most valuable section. Keep it first, keep it even when empty.
        Write it so the ticket can be unblocked in two minutes without
-       reconstructing the night. -->
+       reconstructing the night.
+
+       Two kinds of entry live here, and the chip must tell them apart:
+         chip attention  "Partly done"  — reached a HITL sub-task. Planned, fine,
+                                          the AFK half is banked. Say what to decide.
+         chip stopped    "Stopped"      — something went wrong that wasn't planned.
+                                          Say what broke, not just that it broke.
+       Neither has a PR. A partial ticket never gets one. -->
   <section>
     <h2>Needs you <span class="count">1</span></h2>
 
     <div class="entry">
       <div class="gutter">
         <span class="key"><a href="#">METH-48</a></span>
-        <span class="chip attention">Stopped</span>
+        <span class="chip attention">Partly done · 4 of 6</span>
       </div>
       <div class="body">
         <h3>Surface signup verification errors inline</h3>
         <dl>
           <div>
             <dt>Stopped at</dt>
-            <dd>Sub-task 3 of 5 — “show the verification failure without leaving the form.”</dd>
+            <dd>Sub-task 5 of 6 — “show the verification failure without leaving the form.”
+              It was flagged HITL when the ticket was planned, so this is where it was always
+              going to stop. The four sub-tasks before it are done and committed.</dd>
           </div>
           <div>
             <dt>Why</dt>
@@ -275,7 +284,7 @@
         </dl>
         <div class="evidence">
           <span>Branch <b>METH-48-inline-errors</b></span>
-          <span>Sub-tasks <b>2/5</b></span>
+          <span>Sub-tasks <b>4/6</b></span>
           <span>Suite <b>green</b></span>
           <span>No PR</span>
         </div>

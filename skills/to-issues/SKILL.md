@@ -37,7 +37,9 @@ The Feature is already a vertical slice (a thin path through the layers). Break 
 - Sequence them by dependency where it matters.
 </breakdown-rules>
 
-Classify each sub-task **AFK** (an agent can implement and merge it without a human) or **HITL** (needs human interaction — an architectural decision, a design review). Prefer AFK where possible.
+Classify each sub-task **AFK** (an agent can implement it end to end without a human) or **HITL** (needs human interaction — an architectural decision, a design review). Prefer AFK where possible, but never at the cost of honesty.
+
+This classification is **load-bearing**. It is not a note on the ticket — it is the fence a night agent steers by, sub-task by sub-task. A ticket that mixes AFK and HITL sub-tasks still goes to `Night Work`: `night-work` builds every AFK sub-task it can reach and hands the ticket back at the first HITL one. So **the dependency order matters as much as the label** — an AFK sub-task sitting *behind* a HITL one can't be built either, and a ticket where the first sub-task is HITL gives the agent nothing to do at all.
 
 ### 4. Quiz the user
 
@@ -88,7 +90,7 @@ The Atlassian connector's server prefix differs per install (and changes if it's
 - `parent` = the Feature's key.
 - `description` = the sub-task template (`contentFormat: "markdown"`); acceptance criteria as a checklist.
 - Tag AFK/HITL and the epic name as labels via `additional_fields`, e.g. `{"labels": ["afk", "epic-<slug>"]}`. Keep these strings consistent with `create-epic`.
-- **Don't move the parent ticket.** Slicing it doesn't make it ready — deciding whether an agent can be trusted with it unattended is `plan-ticket`'s Phase 6 call, and your AFK/HITL classifications are the **evidence it uses**. A single HITL sub-task is what sends the whole ticket to `On Deck` instead of `Night Work`, so classify honestly: if a step needs taste, a design call, or a product judgment, it is **HITL**, however small it looks.
+- **Don't move the parent ticket.** Slicing it doesn't make it ready — deciding whether an agent can be trusted with it unattended is `plan-ticket`'s Phase 6 call, and your AFK/HITL classifications (plus the blocked-by links) are the **evidence it uses**: they're what tells it whether there's anything an agent can start on. A ticket with *no* reachable AFK sub-task goes to `On Deck`; a mixed one goes to `Night Work` and comes back partly done. So classify honestly: if a step needs taste, a design call, or a product judgment, it is **HITL**, however small it looks. Mislabelling one `afk` doesn't cost a column — it costs a night, because an agent will walk into it at 3am believing it's mechanical.
 
 **Dependency links** with `createIssueLink` (confirm the `Blocks` type via `getIssueLinkTypes`): for "A is blocked by B" → `type: "Blocks"`, `inwardIssue: B` (blocker), `outwardIssue: A` (blocked). Link sub-task-to-sub-task within the Feature.
 

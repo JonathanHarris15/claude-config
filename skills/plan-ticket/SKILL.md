@@ -121,24 +121,36 @@ Always both, in order — no exceptions, whatever lane it took:
 ## Phase 6: Land it
 
 Now make the call that decides who does this work. Apply the AFK-safety rule from `BOARD.md`
-**strictly**:
+**strictly** — and note the question it asks is *not* "is this ticket entirely AFK?" but **"can
+an agent do any real work here without deciding anything?"** Compute the ticket's
+**AFK-reachable set**: the AFK sub-tasks whose blockers are all Done or themselves reachable.
+Anything HITL, and anything sitting behind a HITL sub-task, is out of reach.
 
 - **`Night Work`** — a PRD with pass/fail criteria, sub-tasks that each name what they build,
-  **zero decisions left**, nothing needing taste, no open blockers, and reversible if it goes
-  wrong. An agent will not stop to ask you. It will guess.
-- **`On Deck`** — ready, but there's judgment in it. A design call, a taste call, something
-  wanting your eyes. **Yours.**
+  **a non-empty AFK-reachable set**, no open blockers, and reversible if it goes wrong. Mixed
+  tickets belong here: `night-work` builds what it can reach and hands the ticket back at the
+  first HITL sub-task, with the mechanical half already done. Every sub-task it *will* touch
+  must be genuinely decision-free — an agent will not stop to ask you, it will guess.
+- **`On Deck`** — ready, but **the next step needs you**. Every sub-task is HITL, or the AFK
+  ones all sit behind a HITL one, so there is nothing for an agent to start on. **Yours.**
 - **`To Do`** — ready, but you're not scheduling it yet.
+
+The classification that matters most is now **per sub-task**, not per ticket. A HITL sub-task no
+longer condemns the whole ticket — but a HITL sub-task *mislabelled AFK* is worse than ever,
+because an agent will walk straight into it at 3am. When in doubt about a sub-task, call it HITL.
 
 **Recommend, with the reason, then confirm before moving:**
 
 > Specced. METH-48 has a PRD and 5 sub-tasks.
 >
-> I'd put it in **On Deck**, not Night Work — sub-task 3 is "surface the verification error
-> inline," and there's no right answer to *how* that should look. An agent would invent
-> something. Everything else in here is mechanical.
+> I'd put it in **Night Work** — sub-tasks 1, 2, 4 and 5 are mechanical, and an agent can do
+> all four tonight. It'll stop at sub-task 3, "surface the verification error inline," because
+> there's no right answer to *how* that should look and it isn't allowed to invent one. You'd
+> wake up to four of five done on a branch, and a question to answer over coffee.
 >
-> Move it to On Deck?
+> (If sub-task 3 blocked the others, it'd be On Deck instead — but it doesn't.)
+>
+> Move it to Night Work?
 
 Transition with `getTransitionsForJiraIssue` → `transitionJiraIssue`. **Never assume a
 transition exists**; if there's no valid path from the current status, say so and stop.

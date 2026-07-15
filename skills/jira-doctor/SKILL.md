@@ -87,11 +87,21 @@ Criteria` heading. Length is not evidence — a thousand words of prose is not a
 *Judgment call:* a ticket in `In Progress` with no PRD is being actively worked. Don't yank
 it backwards — **flag it and ask**. Someone may be mid-flight.
 
-**③ Unsafe — in `Night Work` but not AFK-safe.**
-Apply the AFK-safety rule from `BOARD.md` strictly. It fails if: acceptance criteria are
-vague rather than pass/fail; a sub-task asks for taste or a design call; there's an open
-blocker in `issuelinks`; there's an unanswered question in the comments; it's an
-`investigation` ticket (deciding is never AFK work); or the change is hard to reverse.
+**③ Unsafe — in `Night Work` with nothing an agent can safely start.**
+Apply the AFK-safety rule from `BOARD.md`. The test is whether the ticket has a **non-empty
+AFK-reachable set** — at least one AFK sub-task whose blockers are all Done or themselves
+reachable. A mix of AFK and HITL sub-tasks is **fine** and belongs here: `night-work` builds
+what it can reach and hands the ticket back at the first HITL one.
+
+It fails if: acceptance criteria are vague rather than pass/fail; **every** sub-task is HITL, or
+the AFK ones all sit behind a HITL one (nothing to start on); there's an open blocker in
+`issuelinks`; there's an unanswered question in the comments; it's an `investigation` ticket
+(deciding is never AFK work); or the change is hard to reverse.
+
+Also flag — **don't demote, just say it** — any sub-task labelled `afk` whose description asks
+for taste or a design call ("pick a sensible layout", "decide how errors surface"). That's a
+mislabel, and it's the one that actually costs a night: the agent walks into it believing it's
+mechanical. Propose relabelling it `hitl` and leave the ticket in `Night Work`.
 
 → **Propose: demote to `On Deck`.** When in doubt, demote. A wrong `On Deck` costs you an
 afternoon; a wrong `Night Work` costs you a night and a branch full of confident guesses.
