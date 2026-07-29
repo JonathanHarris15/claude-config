@@ -1,7 +1,7 @@
 ---
 name: jira-doctor
-description: Audit a linked JIRA project against the board contract and repair what it can — check the seven columns exist, check the Epic/ticket/sub-task shape is right, sweep stray tickets into To Plan, push un-specced tickets out of To Do, and demote tickets that aren't AFK-safe out of Night Work. Use when the board looks wrong, after jira-setup, before a big planning session, or periodically to keep the board honest.
-argument-hint: "Optional: 'fix' to apply repairs after confirming, or a specific area (e.g. 'night work')"
+description: Audit a linked JIRA project against the board contract and repair what it can — check the six columns exist, check the Epic/ticket/sub-task shape is right, sweep stray tickets into To Plan, push un-specced tickets out of To Do, and demote tickets whose next step needs you out of To Do. Use when the board looks wrong, after jira-setup, before a big planning session, or periodically to keep the board honest.
+argument-hint: "Optional: 'fix' to apply repairs after confirming, or a specific area (e.g. 'sub-tasks')"
 ---
 
 # Jira Doctor
@@ -34,15 +34,15 @@ then in one further `ToolSearch → select:…` using that prefix: `searchJiraIs
 
 ## Phase 1: Check the board's shape
 
-**The seven statuses.** Probe each with JQL — `project = <KEY> AND status = "<name>"`. A
+**The six statuses.** Probe each with JQL — `project = <KEY> AND status = "<name>"`. A
 status that exists returns results (zero results is fine and still proves existence); one
 that doesn't **errors** with *"The value … does not exist for the field 'status'"*. Probe
-all seven: `To Plan`, `To Do`, `On Deck`, `Night Work`, `In Progress`, `In Review`, `Done`.
+all six: `To Plan`, `To Do`, `On Deck`, `In Progress`, `In Review`, `Done`.
 
 **You cannot fix this yourself.** There is no board or workflow API in this connector.
 When a status is missing, hand the user an exact manual fix — *Project settings → Workflows*
 to add the status, *Board settings → Columns* to map a column to it — and name precisely
-which ones are absent. Don't bury it; a missing `Night Work` means half this workflow
+which ones are absent. Don't bury it; a missing status means part of this workflow
 silently doesn't exist.
 
 Be straight about the limit of the probe: it proves the **status** exists, not that a
@@ -75,7 +75,7 @@ A leftover status from the project's previous life (`Backlog`, `Selected for Dev
 the inbox is where it belongs.
 
 **② Lying — right of `To Plan` without a PRD.**
-This is the big one. For every ticket in `To Do` / `On Deck` / `Night Work` / `In Progress`,
+This is the big one. For every ticket in `To Do` / `On Deck` / `In Progress`,
 check the description for **both** a `## Problem Statement` heading and an `## Acceptance
 Criteria` heading. Length is not evidence — a thousand words of prose is not a PRD.
 
@@ -87,24 +87,24 @@ Criteria` heading. Length is not evidence — a thousand words of prose is not a
 *Judgment call:* a ticket in `In Progress` with no PRD is being actively worked. Don't yank
 it backwards — **flag it and ask**. Someone may be mid-flight.
 
-**③ Unsafe — in `Night Work` with nothing an agent can safely start.**
-Apply the AFK-safety rule from `BOARD.md`. The test is whether the ticket has a **non-empty
-AFK-reachable set** — at least one AFK sub-task whose blockers are all Done or themselves
-reachable. A mix of AFK and HITL sub-tasks is **fine** and belongs here: `night-work` builds
-what it can reach and hands the ticket back at the first HITL one.
+**③ Misfiled — in `To Do` when the next step actually needs you.**
+Apply the decision rule from `BOARD.md`. The test is whether the ticket's **first reachable
+sub-task is AFK** — decision-free, with every blocker Done or itself reachable. A mix of AFK
+and HITL sub-tasks is **fine**: `implement` builds what it can reach and stops to ask at the
+first real decision.
 
 It fails if: acceptance criteria are vague rather than pass/fail; **every** sub-task is HITL, or
 the AFK ones all sit behind a HITL one (nothing to start on); there's an open blocker in
-`issuelinks`; there's an unanswered question in the comments; it's an `investigation` ticket
-(deciding is never AFK work); or the change is hard to reverse.
+`issuelinks`; there's an unanswered question in the comments; or it's an `investigation`
+ticket (deciding is never decision-free work).
 
 Also flag — **don't demote, just say it** — any sub-task labelled `afk` whose description asks
 for taste or a design call ("pick a sensible layout", "decide how errors surface"). That's a
-mislabel, and it's the one that actually costs a night: the agent walks into it believing it's
-mechanical. Propose relabelling it `hitl` and leave the ticket in `Night Work`.
+mislabel, and the expensive kind: a builder walks into it believing it's mechanical. Propose
+relabelling it `hitl`.
 
 → **Propose: demote to `On Deck`.** When in doubt, demote. A wrong `On Deck` costs you an
-afternoon; a wrong `Night Work` costs you a night and a branch full of confident guesses.
+afternoon; a wrong `To Do` costs you a confident guess made on your behalf.
 
 **④ Naked — no sub-tasks but claims to be ready.**
 A ticket right of `To Plan` with a PRD but **zero sub-tasks** was specced but never sliced.
@@ -147,6 +147,6 @@ status to where it needs to go, say so and leave it.
 
 ## Phase 4: Close out
 
-End with a one-line verdict — *"Board is healthy"* or *"Board is healthy except: no `Night
-Work` status, and 3 tickets need speccing"* — then the single most useful next move, which
+End with a one-line verdict — *"Board is healthy"* or *"Board is healthy except: no `On
+Deck` status, and 3 tickets need speccing"* — then the single most useful next move, which
 is usually `/plan-ticket ALL` if `To Plan` has anything in it.

@@ -1,14 +1,14 @@
 ---
 name: implement
-description: Build a planned JIRA ticket end-to-end while driving it across the board — claim it and move it In Progress, work its sub-tasks test-first at agreed seams, guard against regressions, review, grow the docs, then commit/PR with the ticket key and transition to In Review / Done. Use when you're ready to build a specific ticket from To Do / On Deck / Night Work (the executor that follows plan-ticket), or 'next' to take the oldest ready one. Refuses tickets with no PRD.
-argument-hint: "The JIRA ticket key to implement (e.g. PROJ-124), or 'next' to pick from the On Deck / Night Work queue"
+description: Build a planned JIRA ticket end-to-end while driving it across the board — claim it and move it In Progress, work its sub-tasks test-first at agreed seams, guard against regressions, review, grow the docs, then commit/PR with the ticket key and transition to In Review / Done. Use when you're ready to build a specific ticket from To Do or On Deck (the executor that follows plan-ticket), or 'next' to take the oldest ready one. Refuses tickets with no PRD.
+argument-hint: "The JIRA ticket key to implement (e.g. PROJ-124), or 'next' to pick from the To Do / On Deck queue"
 ---
 
 <what-to-do>
 
 You are the **executor**. `create-epic` maps the project, `plan-ticket` takes a ticket from `To Plan` and specs it (`to-prd`) and slices it (`to-issues`) — and `implement` **builds one ticket and moves it along the board as it goes**.
 
-Read [BOARD.md](../jira-doctor/BOARD.md) first. What binds you: you build **level-0 tickets** — the cards. Their **sub-tasks** are your checklist inside the card, not separate cards. You take work from **`On Deck`** (yours, has judgment in it), **`Night Work`** (AFK-safe, an agent can be trusted with it unattended), or **`To Do`** (ready but unscheduled), and you drive it `In Progress → In Review → Done`.
+Read [BOARD.md](../jira-doctor/BOARD.md) first. What binds you: you build **level-0 tickets** — the cards. Their **sub-tasks** are your checklist inside the card, not separate cards. You take work from **`To Do`** (ready, and the next step is buildable without the user) or **`On Deck`** (ready, but the next step needs their judgment), and you drive it `In Progress → In Review → Done`.
 
 Two responsibilities, always both:
 1. **Build the thing** — test-first at pre-agreed seams, small changesets, no regressions, docs grown. (This is the old `feature` discipline; `implement` absorbs it.)
@@ -22,12 +22,12 @@ Do not skip the JIRA transitions and do not fake the build discipline. A merged 
 
 ## Phase 0: Claim
 
-1. **Resolve the target.** If given a ticket key, use it. If given `next` (or nothing), find the ready queue with JQL (the `On Deck` / `Night Work` / `To Do` columns, see `<jira-mechanics>`) and pick the oldest unblocked one — confirm with me before claiming. **Running unattended** (a Night Work batch), take only from `Night Work`, never from `On Deck` — `On Deck` means a human is meant to do it.
+1. **Resolve the target.** If given a ticket key, use it. If given `next` (or nothing), find the ready queue with JQL (the `To Do` / `On Deck` columns, see `<jira-mechanics>`) and pick the oldest unblocked one — confirm with me before claiming. Prefer `To Do` over `On Deck`: `On Deck` means the next step in it is mine to make.
 2. **Read the ticket fully** with `getJiraIssue` (include `comment`, `description`, `parent`, `issuelinks`, `status`, `labels`, `subtasks`): its PRD, acceptance criteria, sub-tasks, and its parent epic for context.
 3. **Check it's actually takeable.** If it's blocked by an open issue, stop and say so. If it has **no PRD** (no `## Problem Statement` + `## Acceptance Criteria`) it should never have left `To Plan` — **stop**, say the board was lying to you, and recommend `/plan-ticket <KEY>`. Don't build on fog, and don't quietly spec it yourself; that's how an un-reviewed guess becomes a merged PR.
 4. **The ticket vs its sub-tasks.** The **ticket** is the unit that rides the board. Work its **sub-tasks** one at a time (Phase 1→6 per sub-task), ticking each one Done as it lands, so the card's progress count stays true. The ticket itself moves `In Progress` once, at the start, and `In Review` once, at the end. If it has no sub-tasks, implement it directly — but say so, because `to-issues` should have made some.
 
-   **If you were given a sub-task allowlist** (`night-work` does this: *"work only METH-51, METH-53, METH-54"*), that list is a hard boundary. Work exactly those, in the order given, and **stop**. The ones left out are `HITL` — they need a human, and doing "just the obvious part" of one is the failure this whole split exists to prevent. A ticket that still has unfinished sub-tasks when you stop is **not** finished: tick what you did, **do not open a PR**, and hand back per the caller's instructions (`night-work` pushes the branch and moves the ticket to `On Deck`).
+   **If you were given a sub-task allowlist** (*"work only METH-51, METH-53, METH-54"*), that list is a hard boundary. Work exactly those, in the order given, and **stop**. The ones left out need me, and doing "just the obvious part" of one is the failure this split exists to prevent. A ticket that still has unfinished sub-tasks when you stop is **not** finished: tick what you did, **do not open a PR**, push the branch, and say plainly which sub-task you stopped on and what it needs from me.
 5. **Transition to In Progress.** Move the issue into the project's in-progress status (`getTransitionsForJiraIssue` → `transitionJiraIssue`; match the real workflow). Assign it to me if the project expects an assignee.
 6. **Branch** named with the issue key, e.g. `PROJ-124-recommendation-ranking-fn`, so JIRA↔GitHub links the work automatically.
 
@@ -118,9 +118,9 @@ The Atlassian connector's server prefix differs per install (and changes if it's
 
 **Discovery.** `getAccessibleAtlassianResources` → `cloudId`. Read the issue with `getJiraIssue` (fields: `summary, description, status, labels, parent, issuelinks, comment, assignee`).
 
-**Finding the ready queue** (`implement next`): `project = PROJ AND status IN ("On Deck", "Night Work", "To Do") ORDER BY created ASC`. Filter out anything with an open blocker in `issuelinks`.
+**Finding the ready queue** (`implement next`): `project = PROJ AND status IN ("To Do", "On Deck") ORDER BY created ASC`. Filter out anything with an open blocker in `issuelinks`.
 
-**Running unattended** (draining the night queue): `project = PROJ AND status = "Night Work" ORDER BY created ASC` — **that column only**. Tickets there may legitimately mix `afk` and `hitl` sub-tasks; you build the AFK ones you can reach and stop at the first HITL one (see Phase 0.4). If a sub-task labelled `afk` turns out to have a decision in it after all, don't guess: stop there too, push the branch, move the ticket to `On Deck`, comment why, and take the next one. Waking up to one honest blocker beats waking up to six confident guesses.
+**Stopping honestly.** A `To Do` ticket may legitimately mix `afk` and `hitl` sub-tasks; you build the AFK ones you can reach and stop at the first HITL one (see Phase 0.4). If a sub-task labelled `afk` turns out to have a decision in it after all, don't guess: stop there too, push the branch, move the ticket to `On Deck`, and comment why. One honest blocker beats six confident guesses.
 
 **Transitions.** `getTransitionsForJiraIssue` → the list of transitions valid from the current status (each has an `id` and a target status name). Pick the one matching the phase; `transitionJiraIssue` with that `id`. For a transition that requires fields (e.g. a resolution on Done), pass them in the transition `fields`. Re-fetch or re-list transitions after moving, since the valid set changes with status.
 

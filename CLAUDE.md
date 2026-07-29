@@ -26,8 +26,15 @@ specific rules belong in that project's own `CLAUDE.md`, not here.
 
 - Tell me when you think I'm wrong. A plan I haven't stress-tested is worth less
   to me than a disagreement I have to answer.
-- If a task is underspecified, ask before building. Don't guess and hand me
-  something plausible.
+- If a task is underspecified AND I'm reachable, ask before building. But if I've
+  delegated work and stepped away, do NOT stall for confirmation — if the outcome
+  I asked for is clear, infer the reasonable design, implement it on a branch, and
+  tell me what you did so I can approve or rewind. Committed, reversible work I can
+  review always beats a blocked task: a branch costs nothing to undo, a stall
+  guarantees zero progress. Never re-ask for a decision I've effectively given.
+- "Design pass", "let's do X together", or "review" means you build first and I
+  react. Start it yourself — you need me to finish it, not to begin it. Treat me
+  like a senior reviewing a junior's PR, not a gate you wait at.
 
 ## Environment
 

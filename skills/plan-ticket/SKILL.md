@@ -1,6 +1,6 @@
 ---
 name: plan-ticket
-description: Take a ticket from the To Plan column all the way to the board — read how big and how formed it is, route it down the right lane (workshop / research / grill / diagnose, or escalate a whole project to create-epic), then converge on a PRD and sub-tasks and land it in Night Work, On Deck, or To Do. The front door of the JIRA workflow. Use with a ticket key (/plan-ticket METH-48) or ALL to work the whole To Plan column.
+description: Take a ticket from the To Plan column all the way to the board — read how big and how formed it is, route it down the right lane (workshop / research / grill / diagnose, or escalate a whole project to create-epic), then converge on a PRD and sub-tasks and land it in To Do or On Deck. The front door of the JIRA workflow. Use with a ticket key (/plan-ticket METH-48) or ALL to work the whole To Plan column.
 argument-hint: "A JIRA ticket key (e.g. METH-48), or ALL to queue up the whole To Plan column"
 ---
 
@@ -115,7 +115,7 @@ Always both, in order — no exceptions, whatever lane it took:
 1. **`/to-prd`** — writes the PRD onto **this ticket's own description**. The ticket *is* the
    PRD; there's no separate doc.
 2. **`/to-issues`** — creates the real **sub-tasks** under it. These don't get board columns;
-   they show as a progress count inside the card, which is what lets you glance at a Night Work
+   they show as a progress count inside the card, which is what lets you glance at a To Do
    ticket in the morning and see it got 4 of 7 done before it stalled.
 
 ## Phase 6: Land it
@@ -126,31 +126,29 @@ an agent do any real work here without deciding anything?"** Compute the ticket'
 **AFK-reachable set**: the AFK sub-tasks whose blockers are all Done or themselves reachable.
 Anything HITL, and anything sitting behind a HITL sub-task, is out of reach.
 
-- **`Night Work`** — a PRD with pass/fail criteria, sub-tasks that each name what they build,
-  **a non-empty AFK-reachable set**, no open blockers, and reversible if it goes wrong. Mixed
-  tickets belong here: `night-work` builds what it can reach and hands the ticket back at the
-  first HITL sub-task, with the mechanical half already done. Every sub-task it *will* touch
-  must be genuinely decision-free — an agent will not stop to ask you, it will guess.
+- **`To Do`** — a PRD with pass/fail criteria, sub-tasks that each name what they build,
+  **a non-empty AFK-reachable set**, and no open blockers. Mixed tickets belong here:
+  `implement` builds what it can reach and stops to ask at the first real decision, with the
+  mechanical half already done.
 - **`On Deck`** — ready, but **the next step needs you**. Every sub-task is HITL, or the AFK
-  ones all sit behind a HITL one, so there is nothing for an agent to start on. **Yours.**
-- **`To Do`** — ready, but you're not scheduling it yet.
+  ones all sit behind a HITL one, so there is nothing to start on. **Yours.**
 
-The classification that matters most is now **per sub-task**, not per ticket. A HITL sub-task no
-longer condemns the whole ticket — but a HITL sub-task *mislabelled AFK* is worse than ever,
-because an agent will walk straight into it at 3am. When in doubt about a sub-task, call it HITL.
+The classification that matters most is **per sub-task**, not per ticket. A HITL sub-task no
+longer condemns the whole ticket — but a HITL sub-task *mislabelled AFK* is worse, because a
+builder walks straight into it believing it's mechanical. When in doubt, call it HITL.
 
 **Recommend, with the reason, then confirm before moving:**
 
 > Specced. METH-48 has a PRD and 5 sub-tasks.
 >
-> I'd put it in **Night Work** — sub-tasks 1, 2, 4 and 5 are mechanical, and an agent can do
-> all four tonight. It'll stop at sub-task 3, "surface the verification error inline," because
-> there's no right answer to *how* that should look and it isn't allowed to invent one. You'd
-> wake up to four of five done on a branch, and a question to answer over coffee.
+> I'd put it in **To Do** — sub-tasks 1, 2, 4 and 5 are mechanical and can be built straight
+> through. It'll stop at sub-task 3, "surface the verification error inline," because there's
+> no right answer to *how* that should look and it shouldn't invent one. You'd get four of five
+> done, and one question to answer.
 >
 > (If sub-task 3 blocked the others, it'd be On Deck instead — but it doesn't.)
 >
-> Move it to Night Work?
+> Move it to To Do?
 
 Transition with `getTransitionsForJiraIssue` → `transitionJiraIssue`. **Never assume a
 transition exists**; if there's no valid path from the current status, say so and stop.

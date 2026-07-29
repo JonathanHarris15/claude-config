@@ -71,7 +71,7 @@ project = <KEY> AND status = "To Plan"
 A status that exists returns results (possibly zero — that's fine, zero results means the
 status exists but is empty). A status that **does not exist** makes JQL **error** with
 something like *"The value 'To Plan' does not exist for the field 'status'"*. That error is
-your signal. Probe all seven: `To Plan`, `To Do`, `On Deck`, `Night Work`, `In Progress`,
+your signal. Probe all six: `To Plan`, `To Do`, `On Deck`, `In Progress`,
 `In Review`, `Done`.
 
 **Be honest about what this proves.** It proves the *status* exists in the project's workflow.
@@ -103,14 +103,14 @@ before any planning or ticket work.
 - **Cloud ID:** `xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx`
 - **Project:** `METH` — Methodology
 - **Epic type:** `Epic` · **Ticket types:** `Feature`, `Task`, `Bug` · **Sub-task type:** `Subtask`
-- **Board:** To Plan → To Do → On Deck → Night Work → In Progress → In Review → Done
+- **Board:** To Plan → To Do → On Deck → In Progress → In Review → Done
 
 **The board carries level-0 tickets only.** Epics group them (never on the board);
 sub-tasks live inside a card (never their own card).
 
-**A ticket may not sit right of `To Plan` without a PRD on it.** `To Do` / `On Deck` /
-`Night Work` are a promise the thinking is finished. `Night Work` additionally promises
-the ticket is AFK-safe — zero open decisions, an agent can grind it unattended.
+**A ticket may not sit right of `To Plan` without a PRD on it.** `To Do` and `On Deck`
+are a promise the thinking is finished. `To Do` additionally promises the next step is
+buildable without you; `On Deck` means the next step needs your judgment.
 
 - New idea, however rough → file it in **To Plan**.
 - Plan it → `/plan-ticket <KEY>`, or `/plan-ticket ALL` for the whole To Plan column.
@@ -127,7 +127,7 @@ type, the `Ticket types` line must say what it really has.
 Run `/jira-doctor` immediately. Setup proves the *connection* is good; the doctor proves the
 *board* is good, and it will almost always find something on a project that predates this
 workflow — tickets in no column, tickets sitting in `To Do` that were never specced, a missing
-`Night Work` status.
+status.
 
 Report at the end, briefly: the site and project you linked, what the issue types are really
 called, which of the seven statuses exist, and what the doctor found.

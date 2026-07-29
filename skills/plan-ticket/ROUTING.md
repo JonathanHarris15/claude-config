@@ -107,7 +107,7 @@ Whatever lane a ticket took, it ends the same way:
 ```
    → /to-prd      (PRD written onto the ticket's own description)
    → /to-issues   (real sub-tasks created under it)
-   → land it      (Night Work / On Deck / To Do — see BOARD.md)
+   → land it      (To Do / On Deck — see BOARD.md)
 ```
 
 The lane is *how the fog cleared*. The convergence is *how it gets on the board*.

@@ -21,17 +21,17 @@ across the board rather than working alongside it.
 
 ### The board
 
-Seven columns. **Only level-0 tickets ride it** — Epics group them (never a card),
+Six columns. **Only level-0 tickets ride it** — Epics group them (never a card),
 sub-tasks live inside a card (never a card of their own).
 
 ```
-To Plan  →  To Do  →  On Deck  →  Night Work  →  In Progress  →  In Review  →  Done
+To Plan  →  To Do  →  On Deck  →  In Progress  →  In Review  →  Done
 ```
 
 - **To Plan** — the inbox. Anything, at any stage. A title you scratched down mid-feature
   is as welcome as a fully-argued proposal.
-- **To Do / On Deck / Night Work** — specced and ready. `On Deck` has judgment left in it
-  and is *yours*; `Night Work` is AFK-safe and an agent can grind it unattended.
+- **To Do / On Deck** — specced and ready. `To Do` means the next step is buildable without
+  you; `On Deck` has judgment left in it and is *yours*.
 - **In Progress / In Review / Done** — being built.
 
 **The rule that makes it worth trusting: nothing sits right of `To Plan` without a PRD
@@ -51,8 +51,6 @@ The full contract is [`skills/jira-doctor/BOARD.md`](skills/jira-doctor/BOARD.md
 /plan-ticket METH-48 # take one ticket from To Plan onto the board
 /plan-ticket ALL     # queue up and work the whole To Plan column
 /implement METH-48   # build a ticket that's ready
-
-/night-work          # before bed: drain the Night Work column, a PR per ticket
 ```
 
 Everything downstream keys off the `<!-- jira-config -->` block that `jira-setup` writes.
@@ -78,9 +76,8 @@ feature or a whole quarter. So it reads two dials — *how big* and *how formed*
                                                      │
                               /to-prd → /to-issues ──┘
                                         │
-                                        └─→ AFK-safe? → Night Work
-                                            judgment?  → On Deck
-                                            else       → To Do
+                                        └─→ next step buildable? → To Do
+                                            needs your judgment?  → On Deck
 ```
 
 The lanes flow into each other — a workshop that hits a factual unknown hands to research,
@@ -91,25 +88,20 @@ than a change. `grill-with-docs` interrogates a plan you have; `workshop` is for
 don't have one, so Claude pitches three genuinely different framings and you react. Much
 easier to say "not that, but that bit yes" than to invent something from nothing.
 
-### The night agent
+### Stopping beats guessing
 
-`/night-work`, run before bed, drains the `Night Work` column: one ticket at a time, each on
-its own branch off `main`, each ending in a PR. In the morning there's a comment on every
-ticket it touched and an HTML report of the night.
+`/implement` is built around one idea:
 
-It is built around one idea:
+> **A blocked ticket is a fine outcome. A guessed one is not.**
 
-> **A blocked ticket in the morning is a fine outcome. A guessed one is not.**
-
-You can unblock a stalled ticket over coffee in two minutes. You cannot easily undo a
-plausible-looking PR built on a decision it invented at 3am and never mentioned — because it
-*looks* finished, so it gets reviewed as if it were. So when the PRD doesn't answer something,
-it does not pick the sensible option. It stops that ticket, moves it to `On Deck`, says exactly
-what it needed, and takes the next one.
+You can unblock a stalled ticket in two minutes. You cannot easily undo a plausible-looking
+PR built on a decision it invented and never mentioned — because it *looks* finished, so it
+gets reviewed as if it were. So when the PRD doesn't answer something, it does not pick the
+sensible option. It stops, moves the ticket to `On Deck`, and says exactly what it needed.
 
 It refuses to start on a red test suite (you cannot detect a regression against a broken
-baseline), it never touches `On Deck`, it never merges its own PR, and it will not weaken a
-test to make it pass — a failing test it didn't expect is a **stop**, not an obstacle.
+baseline), it never merges its own PR, and it will not weaken a test to make it pass — a
+failing test it didn't expect is a **stop**, not an obstacle.
 
 ## The .gitignore is an allowlist, on purpose
 

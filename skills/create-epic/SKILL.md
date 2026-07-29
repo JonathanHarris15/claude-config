@@ -175,8 +175,8 @@ Each working session (this can be a fresh `create-epic` invocation on an existin
 The full contract is in [BOARD.md](../jira-doctor/BOARD.md). What binds `create-epic`:
 
 - **The Epic never appears on the board.** It's a grouping — the answer to "what project is this part of." Don't try to give it a column.
-- **Features are level-0 tickets and go to `To Plan`.** They carry a high-level brief, not a PRD. `To Do` / `On Deck` / `Night Work` promise the thinking is finished; a fresh Feature has not had its thinking finished, so it may not sit there. `/plan-ticket` is what earns it a place further right.
-- **Investigation tickets are also level-0, also `To Plan`.** They're the one exception to the PRD rule — their output is a decision comment, never a PRD, and they never enter `Night Work` (deciding is not AFK work).
+- **Features are level-0 tickets and go to `To Plan`.** They carry a high-level brief, not a PRD. `To Do` / `On Deck` promise the thinking is finished; a fresh Feature has not had its thinking finished, so it may not sit there. `/plan-ticket` is what earns it a place further right.
+- **Investigation tickets are also level-0, also `To Plan`.** They're the one exception to the PRD rule — their output is a decision comment, never a PRD, and they never enter `To Do` (deciding is never decision-free work).
 - **Sub-tasks are not yours to create.** `to-issues` does that, later, per-Feature, after `to-prd`.
 
 </board>
