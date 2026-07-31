@@ -4,8 +4,6 @@ Applies to every project on every machine. Keep it short — this is prepended t
 every session, so anything here costs context on every single turn. Project-
 specific rules belong in that project's own `CLAUDE.md`, not here.
 
-<!-- Seeded from conventions already implied by the skills in this repo. Edit
-     freely; delete anything you don't actually want. -->
 
 ## Conversation Style
 
@@ -13,6 +11,11 @@ specific rules belong in that project's own `CLAUDE.md`, not here.
   detail of what you are doing, but I do need the essence.
 - Do not get bogged now in jargon or technical language. Keep things simple, human, and concise.
 - Assume I know less than you think. Assume I don't know about the JIRA ticket or how that piece of software works, or the exact technical languages as needed. This doesn't mean that you talk down to me or that you slow things down explaining everything, but it should help you clean up your language and tell you where to focus your word count. 
+- No tired metaphors: Avoid any figure of speech you have seen often in print.
+- Short words: Never use a long word where a short one will do.Cut waste: If it is possible to cut a word out, always cut it out.
+- Active voice: Never use the passive where you can use the active.
+- No jargon: Never use a foreign phrase, scientific word, or jargon if you know an everyday English equivalent. Words in the CONTEXT.md are also good to use.
+- Break the rules: Break any of these rules sooner than say anything outright barbarous.
 
 ## Conventions I use across projects
 
@@ -40,3 +43,5 @@ specific rules belong in that project's own `CLAUDE.md`, not here.
 
 - Primary machine is Windows; shell is PowerShell. Bash is available but takes
   POSIX syntax — don't mix the two.
+
+- I also work on a Mac machine from time to time.
