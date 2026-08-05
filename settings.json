@@ -55,7 +55,9 @@
       "mcp__claude_ai_Atlassian_Rovo__getJiraIssue",
       "mcp__claude_ai_Atlassian_Rovo__getIssueLinkTypes",
       "Bash(node --test test/)",
-      "Bash(npm test *)"
+      "Bash(npm test *)",
+      "Bash(git -C /Users/jono1505/dev/mosaic-website status --short)",
+      "Bash(git -C /Users/jono1505/dev/mosaic-website branch --show-current)"
     ]
   },
   "model": "opus[1m]",
