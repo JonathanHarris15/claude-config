@@ -39,22 +39,30 @@ parent**, ask which epic it belongs under — or whether it's genuinely standalo
 
 > **If I sat down to write the PRD right now, what would stop me?**
 
-The four lanes are a spectrum, and they **flow into each other** — a workshop that
-uncovers a factual unknown hands to research; research that resolves it hands to
-grill. It is normal for one ticket to pass through two or three.
+The four lanes are a spectrum, and they **flow into each other** — a grilling that
+uncovers a factual unknown hands to research; research that resolves it hands back
+to grill. It is normal for one ticket to pass through two or three.
 
-### 🌫️ Fog — "I don't know what I want" → `/workshop`
+### 🌫️ Fog — "I don't know what I want" → `/grill-with-docs`, opened wide
 
 **Signals:** The ticket is a title and nothing else. It names a *feeling* ("the
 onboarding is rough") rather than a change. You wrote it to stop thinking about it.
 You cannot say what "done" looks like. Asked to describe the feature, you describe
 the annoyance.
 
-**What it needs:** Not interrogation — there's nothing to interrogate. It needs
-*proposals* to react to. That's `workshop`.
+**What it needs:** The same grilling, started a step earlier. There is no plan to
+interrogate yet, so the first questions are about *what the change even is* — and
+because a fog ticket gives you nothing to push against, you must **lead with your
+own reading**: name the two or three genuinely different things the ticket could
+mean, say which you'd back and why, and let the user react. Reacting is far easier
+than inventing. Only once the change has a name do you start sharpening it against
+`CONTEXT.md`.
 
-**Exit when:** You can name the change you want in a sentence, and it survives one
-challenge.
+**Say you're doing this.** "This is fog, so I'm starting wider than usual" is worth
+a sentence — otherwise the grilling looks like it's missing the point.
+
+**Exit when:** You can name the change in a sentence, and it survives one challenge.
+Then carry on grilling it normally.
 
 ### 🔍 Unknowns — "I know roughly what I want, but not whether it's possible" → `/research`
 

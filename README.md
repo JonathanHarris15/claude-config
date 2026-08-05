@@ -6,7 +6,7 @@ My personal Claude Code configuration, synced across machines.
 
 | Path | What it is |
 | --- | --- |
-| `skills/` | Custom skills — a JIRA-native planning chain (`create-epic` → `grill-with-docs` → `to-prd` → `to-issues` → `implement`), plus `tdd`, `diagnose`, `prototype`, `research`, `triage`, `improve-codebase-architecture`, `rebuild-mobile`. |
+| `skills/` | Custom skills — a JIRA-native planning chain (`create-epic` → `plan-ticket` → `grill-with-docs` → `to-prd` → `to-issues` → `implement`), plus the two pieces `grill-with-docs` composes (`grilling`, `domain-modeling`), and `tdd`, `diagnose`, `prototype`, `research`, `improve-codebase-architecture`, `rebuild-mobile`, `sync-config`, `wait-what`. |
 | `agents/` | Custom subagents. Markdown with frontmatter; the frontmatter sets the model, tools, and description. |
 | `workflows/` | Multi-agent orchestration scripts. Plain JS that fans out subagents with real control flow — loops, pipelines, adversarial verification. |
 | `commands/` | Custom slash commands. |
@@ -35,28 +35,24 @@ To Plan  →  To Do  →  On Deck  →  In Progress  →  In Review  →  Done
 - **In Progress / In Review / Done** — being built.
 
 **The rule that makes it worth trusting: nothing sits right of `To Plan` without a PRD
-on it.** Those columns are a promise that the thinking is finished. `jira-doctor` sweeps
-anything that breaks the promise back to the inbox.
+on it.** Those columns are a promise that the thinking is finished. The rule is upheld at
+the doors — `plan-ticket` won't land a ticket without one, `implement` won't build one.
 
-The full contract is [`skills/jira-doctor/BOARD.md`](skills/jira-doctor/BOARD.md).
+The full contract is [`skills/plan-ticket/BOARD.md`](skills/plan-ticket/BOARD.md).
 
 ### Using it in a project
 
 ```sh
-/jira-setup          # once per project — links the repo to a JIRA project,
-                     # discovers what its issue types are really called,
-                     # writes a Jira block into the project's CLAUDE.md
-/jira-doctor         # audit the board; run it whenever things look wrong
-
 /plan-ticket METH-48 # take one ticket from To Plan onto the board
 /plan-ticket ALL     # queue up and work the whole To Plan column
 /implement METH-48   # build a ticket that's ready
 ```
 
-Everything downstream keys off the `<!-- jira-config -->` block that `jira-setup` writes.
-No site, project key, issue-type name or status is hardcoded in any skill — they're all
-discovered per-project, which is what lets you clone this repo into someone else's JIRA
-and have it work.
+No site, project key, issue-type name or status is hardcoded in any skill. They're read
+from a `<!-- jira-config -->` block in the project's own `CLAUDE.md`, and if there isn't
+one, `plan-ticket` discovers them from JIRA on its first run and offers to write the block
+for next time. That's what lets you clone this repo into someone else's JIRA and have it
+work.
 
 ### How planning actually happens
 
@@ -69,8 +65,8 @@ feature or a whole quarter. So it reads two dials — *how big* and *how formed*
                 │
    To Plan  ────┼─ a bug?            → /diagnose     (reproduce before you spec)
     ticket      │
-                ├─ no idea what I want → /workshop  ─┐
-                ├─ vague, need facts    → /research  ─┼─→ /grill-with-docs
+                ├─ vague, need facts    → /research  ─┐
+                ├─ unsure how it feels  → /prototype ─┼─→ /grill-with-docs
                 ├─ I know what I want   → /grill-with-docs
                 └─ already sharp  ───────────────────┘
                                                      │
@@ -80,13 +76,13 @@ feature or a whole quarter. So it reads two dials — *how big* and *how formed*
                                             needs your judgment?  → On Deck
 ```
 
-The lanes flow into each other — a workshop that hits a factual unknown hands to research,
-research hands to grill. Passing through two or three is normal.
+The lanes flow into each other — a grilling that hits a factual unknown hands to research,
+research hands back to grill. Passing through two or three is normal.
 
-`workshop` is the one worth knowing about: it's for when the ticket names a *feeling* rather
-than a change. `grill-with-docs` interrogates a plan you have; `workshop` is for when you
-don't have one, so Claude pitches three genuinely different framings and you react. Much
-easier to say "not that, but that bit yes" than to invent something from nothing.
+`grill-with-docs` is the default and does most of the work. When a ticket is pure fog — it
+names a *feeling* rather than a change — the grilling just starts a step wider: Claude puts
+two or three genuinely different readings of the ticket in front of you and says which it
+would back, because reacting is far easier than inventing.
 
 ### Stopping beats guessing
 

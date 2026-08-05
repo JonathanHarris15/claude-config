@@ -1,7 +1,6 @@
 # The board contract
 
 The canonical description of the workflow every JIRA skill in this config assumes.
-`jira-setup` writes it into a project's `CLAUDE.md`; `jira-doctor` enforces it;
 `plan-ticket`, `create-epic`, `to-prd`, `to-issues` and `implement` all obey it.
 
 If you are reading this because a skill pointed you here: this file is the source
@@ -21,9 +20,9 @@ JIRA nests exactly three levels, and this workflow uses all of them for differen
 the columns. Never an Epic, never a sub-task.
 
 Issue-type *names* differ per project (some have `Feature`, some only `Story`).
-**Never hardcode them.** Read the real names from `getJiraProjectIssueTypesMetadata`,
-or from the `Issue types` line of the project's `CLAUDE.md` Jira block, which
-`jira-setup` recorded after discovering them.
+**Never hardcode them.** Read the real names from the `Issue types` line of the
+project's `CLAUDE.md` Jira block if it has one, and otherwise from
+`getJiraProjectIssueTypesMetadata`.
 
 ## The six columns
 
@@ -33,7 +32,7 @@ To Plan  →  To Do  →  On Deck  →  In Progress  →  In Review  →  Done
 
 | Column | Meaning | Who puts things here |
 | --- | --- | --- |
-| **To Plan** | **The inbox.** Anything, at any stage of formulation — a title you scratched down mid-feature, a Feature `create-epic` emitted, a long ticket you wrote by hand, an untriaged bug. Nothing here is specced. | You, `create-epic`, `jira-doctor`, `improve-codebase-architecture` |
+| **To Plan** | **The inbox.** Anything, at any stage of formulation — a title you scratched down mid-feature, a Feature `create-epic` emitted, a long ticket you wrote by hand, an untriaged bug. Nothing here is specced. | You, `create-epic`, `improve-codebase-architecture` |
 | **To Do** | Specced and ready, **and the next step is buildable without you.** Has a PRD and sub-tasks. Not yet claimed by anyone or anything. | `plan-ticket` |
 | **On Deck** | Ready, **and the next step in it needs you.** A design call, a taste call, something needing your eyes. **Yours to do.** | `plan-ticket` |
 | **In Progress** | Being built right now. | `implement` |
@@ -50,8 +49,10 @@ This is the load-bearing rule of the whole system, and it is what makes the boar
 trustworthy. `To Do` / `On Deck` are a promise that the thinking is finished. A
 ticket in `To Do` that is really still an idea is a lie the board is telling you.
 
-`jira-doctor` enforces it: anything right of `To Plan` without a PRD gets swept
-**back to `To Plan`**.
+Nothing sweeps the board for you, so the rule is upheld at the two doors:
+`plan-ticket` will not land a ticket right of `To Plan` until `to-prd` has run,
+and `implement` refuses to build a ticket that has no PRD. If you find one that
+slipped through anyway, move it back to `To Plan` yourself and say why.
 
 **A ticket "has a PRD"** when its description carries the `to-prd` template — in
 practice, look for a `## Problem Statement` heading *and* an `## Acceptance Criteria`
@@ -133,5 +134,5 @@ never gets a PRD**, because its output is a decision comment, not code. They are
 closed by `create-epic`'s Phase 6I, not by `implement`, and they never enter
 `To Do` — deciding is not decision-free work, so it is always yours.
 
-`jira-doctor` skips them when enforcing the integrity rule, and flags any that has
-somehow reached `To Do`.
+So don't judge one against the integrity rule — a missing PRD is correct here.
+An investigation ticket sitting in `To Do` is the thing to flag.

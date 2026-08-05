@@ -12,7 +12,7 @@ Interview me relentlessly, but structured in phases: **Discover → Shape → Ch
 
 **`create-epic` stops at Features; it does not pre-build their sub-task breakdown** — each Feature's sub-tasks are created later, per-Feature, by `to-issues` after that Feature has been sharpened with `grill-with-docs` and `to-prd`.
 
-**This skill sits inside a board-driven workflow.** Read [BOARD.md](../jira-doctor/BOARD.md)
+**This skill sits inside a board-driven workflow.** Read [BOARD.md](../plan-ticket/BOARD.md)
 first — the Epic you create is a **grouping and never appears on the board**; the **Features**
 you create are level-0 tickets that land in the **`To Plan`** column, where each is later
 picked up by `/plan-ticket` on its own. You are *filling the inbox*, not filling the board.
@@ -22,7 +22,9 @@ rather than one deliverable. The size-and-fog judgment both skills make lives in
 place — [ROUTING.md](../plan-ticket/ROUTING.md). Phase 3's Construction/Investigation fork is
 the same call; keep them in step.
 
-Rules that carry over from `grill-with-docs`:
+Rules for this session — note that discovery runs **one question at a time**, unlike the
+round-based frontier that `/grilling` uses. A macro session is finding the shape, and batching
+questions before the shape exists produces a round of questions built on guesses:
 
 - Ask questions **one at a time**, waiting for my answer before continuing.
 - For every question, **provide your recommended answer** and reasoning — don't just interrogate.
@@ -172,7 +174,7 @@ Each working session (this can be a fresh `create-epic` invocation on an existin
 
 <board>
 
-The full contract is in [BOARD.md](../jira-doctor/BOARD.md). What binds `create-epic`:
+The full contract is in [BOARD.md](../plan-ticket/BOARD.md). What binds `create-epic`:
 
 - **The Epic never appears on the board.** It's a grouping — the answer to "what project is this part of." Don't try to give it a column.
 - **Features are level-0 tickets and go to `To Plan`.** They carry a high-level brief, not a PRD. `To Do` / `On Deck` promise the thinking is finished; a fresh Feature has not had its thinking finished, so it may not sit there. `/plan-ticket` is what earns it a place further right.

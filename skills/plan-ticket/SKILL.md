@@ -1,6 +1,6 @@
 ---
 name: plan-ticket
-description: Take a ticket from the To Plan column all the way to the board — read how big and how formed it is, route it down the right lane (workshop / research / grill / diagnose, or escalate a whole project to create-epic), then converge on a PRD and sub-tasks and land it in To Do or On Deck. The front door of the JIRA workflow. Use with a ticket key (/plan-ticket METH-48) or ALL to work the whole To Plan column.
+description: Take a ticket from the To Plan column all the way to the board — read how big and how formed it is, route it down the right lane (research / prototype / grill / diagnose, or escalate a whole project to create-epic), then converge on a PRD and sub-tasks and land it in To Do or On Deck. The front door of the JIRA workflow. Use with a ticket key (/plan-ticket METH-48) or ALL to work the whole To Plan column.
 argument-hint: "A JIRA ticket key (e.g. METH-48), or ALL to queue up the whole To Plan column"
 ---
 
@@ -9,7 +9,7 @@ argument-hint: "A JIRA ticket key (e.g. METH-48), or ALL to queue up the whole T
 The **front door**. Everything in `To Plan` comes through here and leaves specced, sliced,
 and sitting in the right column.
 
-Read [BOARD.md](../jira-doctor/BOARD.md) (the contract you're upholding) and
+Read [BOARD.md](./BOARD.md) (the contract you're upholding) and
 [ROUTING.md](./ROUTING.md) (the judgment call you're making) before you start.
 
 **The premise:** `To Plan` is a genuine inbox, and things land in it at wildly different
@@ -20,13 +20,18 @@ skill is about **reading which one you're holding** before you start working it.
 
 ## Phase 0: Gate
 
-Read the project's `./CLAUDE.md` and find the `<!-- jira-config -->` block.
+Read the project's `./CLAUDE.md` and find the `<!-- jira-config -->` block. Take the
+cloudId, project key, and the **real issue-type names** from it.
 
-**No block → stop immediately.** Say plainly: *"This project isn't linked to Jira yet. Run
-`/jira-setup` first."* Then **stop** — don't offer to plan anything anyway, don't guess a
-project key, don't half-run it. The whole point of the spine is that it isn't optional.
+**No block?** Then discover it once, here, before planning anything — and **never guess a
+project key**. Ask the user which JIRA project this repo belongs to, confirm the connection
+with `getAccessibleAtlassianResources` → `getVisibleJiraProjects`, then read the real issue
+types and statuses with `getJiraProjectIssueTypesMetadata` and map them onto the three levels
+and six columns in [BOARD.md](./BOARD.md). Offer to write what you found into the project's
+`CLAUDE.md` as a `<!-- jira-config -->` block so the next run doesn't repeat the work. If the
+Atlassian tools aren't connected at all, say so and stop — there is nothing to plan against.
 
-Take the cloudId, project key, and the **real issue-type names** from the block. Load the
+Load the
 Atlassian tools (deferred — read the server prefix off the first call, never hardcode it):
 
 ```
@@ -49,8 +54,8 @@ comment, subtasks`.
 **Sanity-check it's actually in `To Plan`.** If it isn't:
 - Already right of `To Plan` **with** a PRD → it's already planned. Say so, show what's on
   it, and ask if they want to re-plan (which means overwriting the PRD — confirm explicitly).
-- Right of `To Plan` **without** a PRD → the board is lying. Plan it anyway, and mention that
-  `/jira-doctor` would have caught this.
+- Right of `To Plan` **without** a PRD → the board is lying. Plan it anyway, and say so —
+  something moved it there without doing the thinking.
 
 Then **explore the codebase** before forming any opinion. Read `CONTEXT.md` (the glossary)
 and `docs/adr/`; if a `CONTEXT-MAP.md` exists, follow it to the right context. A ticket that
@@ -67,7 +72,7 @@ Apply [ROUTING.md](./ROUTING.md). Two dials, **size first**:
 
 ## Phase 3: Say what you see, and get agreement
 
-**Do not silently start a workshop.** Tell the user what you read and where you're taking it:
+**Do not silently start a lane.** Tell the user what you read and where you're taking it:
 
 > **METH-48 — "Make onboarding less painful"**
 >
@@ -78,8 +83,9 @@ Apply [ROUTING.md](./ROUTING.md). Two dials, **size first**:
 > plausible places this could mean — the email verification round-trip, the six-field form,
 > or the empty first-run state — and they'd be completely different pieces of work.
 >
-> **I'd take this to `/workshop`** — I'll put three genuinely different framings in front of
-> you and you tell me which one is the itch you were actually scratching. Roughly 15 minutes.
+> **I'd take this to `/grill-with-docs`**, starting wide — first question is which of those
+> three is the itch you were actually scratching, and I'll say which one I'd back. Once we
+> have the change named, we sharpen it. Roughly 15 minutes.
 >
 > Sound right, or do you already know which one you meant?
 
@@ -94,14 +100,14 @@ once, then do as they say.
 | **A project, not a ticket** | `/create-epic`. The epic's Features land back in `To Plan` as fresh tickets. Close METH-48 with a comment linking the epic — it did its job. **Stop here**; the new tickets each come through `plan-ticket` on their own. |
 | **A pile** | Split into sibling tickets in `To Plan`, close the original, then plan each. |
 | **Bug** | `/diagnose` — reproduce and find the cause. Then re-read the clarity dial; usually the cause makes the fix obvious → go straight to Phase 5. If it won't reproduce, park it in `To Plan` with what you found and say what you need. |
-| **Fog** | `/workshop` → then usually `/grill-with-docs`. |
+| **Fog** | `/grill-with-docs`, opened wide — name the change before sharpening it. Say out loud that you're starting from nothing. |
 | **Unknowns (facts)** | `/research` → then `/grill-with-docs`. |
 | **Unknowns (feel)** | `/prototype` → then `/grill-with-docs`. |
 | **Sharp** | `/grill-with-docs`. **The default lane.** |
 | **Already specced** | Straight to Phase 5 — but only after honestly hunting for one question whose answer would change the PRD. If you find one, it wasn't this lane. |
 
-Lanes **flow into each other**. A workshop that surfaces a factual unknown hands to research;
-research that resolves it hands to grill. Passing through two or three is normal, not a
+Lanes **flow into each other**. A grilling that surfaces a factual unknown hands to research;
+research that resolves it hands back to grill. Passing through two or three is normal, not a
 failure — just say when you're moving between them.
 
 **Placement.** Before you converge: if the ticket has no epic parent, ask which epic it
@@ -188,7 +194,7 @@ tickets that themselves need planning), then cheapest-first within that:
 | Ticket | Summary | Read | Lane | You needed? |
 | --- | --- | --- | --- | --- |
 | METH-51 | Rework the sync engine | **Project** | `/create-epic` | Heavily — ~45m |
-| METH-48 | Make onboarding less painful | Fog | `/workshop` → grill | Yes — ~15m |
+| METH-48 | Make onboarding less painful | Fog | `/grill-with-docs` (wide) | Yes — ~15m |
 | METH-52 | Retry failed webhooks | Sharp | `/grill-with-docs` | Some — ~10m |
 | METH-49 | Duplicate rows on import | Bug | `/diagnose` | Only if it won't repro |
 | METH-50 | Add `--json` to the CLI | Specced | straight to `to-prd` | No |
@@ -201,8 +207,7 @@ they may well want to stop right there and think.
 ## Phase D: Work the queue
 
 One at a time, in order, **interactively** — Phases 3→6 per ticket. This is not unattended:
-workshops and grillings are conversations, and batching them wouldn't make them faster, just
-worse.
+grillings are conversations, and batching them wouldn't make them faster, just worse.
 
 After each ticket lands, show a one-line progress marker (*"3 of 6 done — METH-52 → On Deck"*)
 and carry straight on to the next. **Don't ask permission to continue** between tickets; they

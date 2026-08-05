@@ -8,7 +8,7 @@ argument-hint: "The JIRA ticket key to implement (e.g. PROJ-124), or 'next' to p
 
 You are the **executor**. `create-epic` maps the project, `plan-ticket` takes a ticket from `To Plan` and specs it (`to-prd`) and slices it (`to-issues`) — and `implement` **builds one ticket and moves it along the board as it goes**.
 
-Read [BOARD.md](../jira-doctor/BOARD.md) first. What binds you: you build **level-0 tickets** — the cards. Their **sub-tasks** are your checklist inside the card, not separate cards. You take work from **`To Do`** (ready, and the next step is buildable without the user) or **`On Deck`** (ready, but the next step needs their judgment), and you drive it `In Progress → In Review → Done`.
+Read [BOARD.md](../plan-ticket/BOARD.md) first. What binds you: you build **level-0 tickets** — the cards. Their **sub-tasks** are your checklist inside the card, not separate cards. You take work from **`To Do`** (ready, and the next step is buildable without the user) or **`On Deck`** (ready, but the next step needs their judgment), and you drive it `In Progress → In Review → Done`.
 
 Two responsibilities, always both:
 1. **Build the thing** — test-first at pre-agreed seams, small changesets, no regressions, docs grown. (This is the old `feature` discipline; `implement` absorbs it.)
@@ -95,7 +95,7 @@ The whole point is that the board reflects reality without me nudging it. But **
 
 - **Never hardcode a status name.** Always `getTransitionsForJiraIssue` to see the available transitions from the issue's *current* status, then pick the one that matches the phase you're entering, then `transitionJiraIssue`.
 - If no transition matches a phase (e.g. the project has no "In Review"), skip it — don't invent statuses.
-- The seven columns in `BOARD.md` are the *intended* names. A project that `jira-setup` has linked will have them — but read the project's `CLAUDE.md` Jira block for what it actually calls them, and if a transition doesn't exist, say so rather than inventing one.
+- The six columns in `BOARD.md` are the *intended* names. Read the project's `CLAUDE.md` Jira block for what it actually calls them, and if a transition doesn't exist, say so rather than inventing one.
 - **Leave `On Deck` alone when running unattended.** `On Deck` exists precisely because a human is supposed to make a call inside that ticket. An agent taking one is the failure mode the whole column was built to prevent.
 
 </jira-track-discipline>

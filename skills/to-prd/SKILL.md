@@ -1,6 +1,6 @@
 ---
 name: to-prd
-description: Turn the current conversation context into a PRD written directly onto its JIRA ticket — the ticket's own description — then hand off to to-issues to break it into sub-tasks. Normally invoked by plan-ticket once a ticket's fog has cleared (via workshop / research / grill-with-docs). JIRA-native — the spec step that makes a ticket eligible to leave To Plan.
+description: Turn the current conversation context into a PRD written directly onto its JIRA ticket — the ticket's own description — then hand off to to-issues to break it into sub-tasks. Normally invoked by plan-ticket once a ticket's fog has cleared (via research / prototype / grill-with-docs). JIRA-native — the spec step that makes a ticket eligible to leave To Plan.
 argument-hint: "Optional: the JIRA ticket key this PRD specifies (e.g. PROJ-123)"
 ---
 
@@ -10,15 +10,15 @@ Do NOT interview the user — synthesise what you already know. (If you need to 
 
 ## Where this sits in the workflow
 
-Tickets wait in the **`To Plan`** column carrying, at best, a loose brief. `/plan-ticket` routes each one down whichever lane clears its fog (`workshop` / `research` / `grill-with-docs` / `diagnose`) and then **always converges here**:
+Tickets wait in the **`To Plan`** column carrying, at best, a loose brief. `/plan-ticket` routes each one down whichever lane clears its fog (`research` / `prototype` / `grill-with-docs` / `diagnose`) and then **always converges here**:
 
 ```
-To Plan ticket → /plan-ticket → [workshop | research | grill | diagnose] → to-prd → to-issues → lands on the board
+To Plan ticket → /plan-ticket → [research | prototype | grill | diagnose] → to-prd → to-issues → lands on the board
 ```
 
 So `to-prd` is the **sharpening** step: it takes the loose description the ticket had, plus everything the lane surfaced, and rewrites the **ticket's own description** into a full PRD. The PRD lives **on the ticket** — the ticket *is* the PRD, there is no separate Confluence page. The implementation steps that `to-issues` creates next are that ticket's **sub-tasks**.
 
-Throughout this skill, **"Feature" means the level-0 ticket you're speccing** — the card on the board. It may be typed `Feature`, `Story`, `Task` or `Bug` depending on the project; the project's `CLAUDE.md` Jira block records the real names. See [BOARD.md](../jira-doctor/BOARD.md).
+Throughout this skill, **"Feature" means the level-0 ticket you're speccing** — the card on the board. It may be typed `Feature`, `Story`, `Task` or `Bug` depending on the project; the project's `CLAUDE.md` Jira block records the real names. See [BOARD.md](../plan-ticket/BOARD.md).
 
 You are normally invoked **by `/plan-ticket`**, not directly. Called directly, you still work — but you're skipping the routing that decides whether this ticket was ever ready to spec.
 
@@ -90,6 +90,6 @@ The Atlassian connector's server prefix differs per install (and changes if it's
 
 **Readiness — don't move the ticket.** The PRD makes the ticket *specified*, not *ready*. Speccing is only half of it: the ticket still needs its sub-tasks (`to-issues`), and something still has to judge whether an agent can be trusted with it unattended. **That call belongs to `plan-ticket`, not here.** Leave the ticket in `To Plan` and hand back.
 
-The board's integrity rule (see [BOARD.md](../jira-doctor/BOARD.md)) is that nothing sits right of `To Plan` without a PRD — this skill is what makes a ticket *eligible* to move, not what moves it. A PRD'd ticket with no sub-tasks that you pushed to `To Do` is exactly the kind of half-truth `jira-doctor` exists to sweep back.
+The board's integrity rule (see [BOARD.md](../plan-ticket/BOARD.md)) is that nothing sits right of `To Plan` without a PRD — this skill is what makes a ticket *eligible* to move, not what moves it. A PRD'd ticket with no sub-tasks that you pushed to `To Do` is exactly the half-truth the rule exists to prevent — and nothing sweeps the board behind you, so don't create one.
 
 </atlassian-mechanics>

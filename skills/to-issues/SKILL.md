@@ -10,7 +10,7 @@ Break **one specced Feature** into independently-grabbable **sub-task Issues** u
 
 Hierarchy: **Epic → ticket → sub-task**. `to-issues` operates at the bottom edge — it takes a level-0 ticket and creates its breakdown steps as **sub-tasks** (JIRA's sub-task level, −1, the only way a step can nest under a ticket). It does **not** create level-0 tickets (that's `create-epic`, or you scratching an idea into `To Plan`).
 
-**Sub-tasks don't get board columns** — they render as a progress count *inside* the parent card. That count is the point: it's what lets you glance at a ticket and see 4 of 7 are done and which one it stopped on. See [BOARD.md](../jira-doctor/BOARD.md).
+**Sub-tasks don't get board columns** — they render as a progress count *inside* the parent card. That count is the point: it's what lets you glance at a ticket and see 4 of 7 are done and which one it stopped on. See [BOARD.md](../plan-ticket/BOARD.md).
 
 You are normally invoked **by `/plan-ticket`**, straight after `to-prd`.
 

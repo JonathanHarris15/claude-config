@@ -34,7 +34,12 @@ This skill is _informed_ by the project's domain model. The domain language give
 
 ### 1. Explore
 
-Read the project's domain glossary (`CONTEXT.md`) and any ADRs first.
+**Scope before you scan — YAGNI.** Deepening a module pays off by making *future* changes to it easier, so weight the parts of the codebase that have recently changed. Decide *where* to look before you look:
+
+- If the user named a direction — a module, a subsystem, a pain point — take it, and skip the inference below.
+- Otherwise, walk back a good stretch of the commit history (`git log --oneline`) to find the hot spots — the files and areas that keep coming up — and let those paths pull your attention first. If the changes are scattered with no clear hot spot, widen the net.
+
+Read the project's domain glossary (`CONTEXT.md`) and any ADRs in the area you're touching first.
 
 Then use the Agent tool with `subagent_type=Explore` to walk the codebase. Don't follow rigid heuristics — explore organically and note where you experience friction:
 
@@ -50,7 +55,9 @@ Apply the **deletion test** to anything you suspect is shallow: would deleting i
 
 Write a self-contained HTML file to the OS temp directory so nothing lands in the repo. Resolve the temp dir from `$TMPDIR`, falling back to `/tmp` (or `%TEMP%` on Windows), and write to `<tmpdir>/architecture-review-<timestamp>.html` so each run gets a fresh file. Open it for the user — `start <path>` on Windows, `open <path>` on macOS, `xdg-open <path>` on Linux — and tell them the absolute path.
 
-The report uses **Tailwind via CDN** for layout and **Mermaid via CDN** for graph/flow diagrams. Mix Mermaid with hand-crafted CSS/SVG — use Mermaid for dependency flows and sequences, hand-built divs/SVG for editorial visuals (mass diagrams, cross-sections). Each candidate gets a **before/after visualisation**. Be visual.
+The report uses **Tailwind via CDN** for layout and **Mermaid via CDN** for graph/flow diagrams. Mix Mermaid with hand-crafted CSS/SVG — use Mermaid when relationships are genuinely graph-shaped (call graphs, dependencies, sequences), hand-built divs/SVG for editorial visuals (mass diagrams, cross-sections, collapse animations). Each candidate gets a **before/after visualisation**. Be visual.
+
+See [HTML-REPORT.md](HTML-REPORT.md) for the full scaffold, diagram patterns, and styling guidance.
 
 Each candidate card includes:
 
@@ -71,7 +78,7 @@ Do NOT propose interfaces yet. After the file is written, ask the user: "Which o
 
 ### 3. Grilling loop
 
-Once the user picks a candidate, drop into a grilling conversation. Walk the design tree with them — constraints, dependencies, the shape of the deepened module, what sits behind the seam, what tests survive.
+Once the user picks a candidate, run the **`/grilling`** skill to walk the design tree with them — constraints, dependencies, the shape of the deepened module, what sits behind the seam, what tests survive.
 
 **Dependency categories** (determines how the deepened module is tested):
 1. **In-process** — pure computation, no I/O. Always deepenable; test directly through the new interface.
@@ -81,7 +88,7 @@ Once the user picks a candidate, drop into a grilling conversation. Walk the des
 
 **Seam discipline**: one adapter = hypothetical seam. Two adapters = real seam. Don't introduce a port unless at least two adapters are justified.
 
-Side effects happen inline as decisions crystallize:
+Side effects happen inline as decisions crystallize — run the **`/domain-modeling`** skill to keep the domain model current as you go:
 
 - **Naming a deepened module after a concept not in `CONTEXT.md`?** Add the term to `CONTEXT.md`. Create the file lazily if it doesn't exist.
 - **Sharpening a fuzzy term?** Update `CONTEXT.md` right there.
