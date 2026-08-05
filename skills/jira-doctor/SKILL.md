@@ -119,8 +119,11 @@ isn't.)
   be standalone). Don't auto-fix. Just **list them** and ask whether any want a home.
 
 **⑥ Bug hygiene.**
-A `Bug` with an epic parent or a due date violates the contract — bugs are reactive work.
-→ **Propose: unparent it, clear the due date.**
+A `Bug` with a **due date** violates the contract — a bug is dated by the epic it blocks,
+not on its own. → **Propose: clear the due date.**
+
+An epic parent on a Bug is **not** a violation: a bug that must be fixed before its epic
+ships belongs to that epic. Don't touch it.
 
 ## Phase 3: Report, then repair
 

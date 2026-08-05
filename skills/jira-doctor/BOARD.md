@@ -113,8 +113,13 @@ Bugs are level-0 tickets like any other. They land in **`To Plan`** and are rout
 by `plan-ticket` to `/diagnose` — reproduce *first*, then spec, then onto the board.
 There is no separate triage lane; the board **is** the triage.
 
-Bugs get **no epic parent and no due date**. They are reactive work — they don't
-belong to a dated objective.
+**Parent a bug to an epic when it must be fixed before that epic can ship** — a
+defect in the thing being built is part of shipping it, and an epic whose known
+bugs are invisible from the epic is lying about how close it is. Otherwise leave
+it standalone: a drive-by defect in unrelated code belongs to no objective.
+
+Bugs still get **no due date**. Even a release-blocking one is reactive work —
+it's dated by the epic it blocks, not on its own.
 
 ## Investigation tickets
 
