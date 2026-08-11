@@ -27,7 +27,8 @@ decision.
 
 | Thing | Who wins | Why |
 | --- | --- | --- |
-| **Tokens** — colour, type, spacing, radius, shadow | **Code** | The config is what actually renders. Generated, never hand-edited. |
+| **Tokens** — colour, type, spacing, radius, shadow | **Code**, when the code moved | The config is what actually renders. |
+| **A token edited in the design system** | **The design system** | It is generated and says so, so an edit is a decision somebody made on purpose. Take it down into the config; never overwrite it. |
 | **Tokens the code doesn't have** | **Design system** | Nothing to win with. A framework default is not a decision — adopt the design system's value into the config. |
 | **Components** — what a Button is, its variants | **Whoever changed last** | A primitive can be born on either side. Code is the *check*: does the app really draw it this way? |
 | **Rules — facts** ("we use Material Symbols") | **Code** | The system can be wrong about the product. It has been. |
@@ -51,10 +52,33 @@ two unrelated things in their head to approve either.
 1. Run the project's token build with its check flag. If it reports stale,
    run the build for real.
 2. Read the design system's token files with `DesignSync get_file` and compare
-   against the local generated ones.
-3. If they differ, `finalize_plan` then `write_files`. The tool shows the user
-   the exact path list, so narration is not the safeguard — but say what changed
-   and why anyway.
+   against the local generated ones — **inside the `@generated` markers only.**
+   Everything outside them is the design system's own.
+3. **Work out which side moved before you write anything.** This is the step
+   that is easy to skip and expensive to skip. If the project has a comparator
+   (`tokens.compare` in `.claude/design.json`), pipe each fetched file into it
+   rather than reading a hundred lines of CSS by eye — it reports per token and
+   exits 3 when the two differ.
+
+   - **Only the config moved** — the ordinary case. Push. Say which tokens
+     changed, not just which files.
+   - **Only the design system moved** — somebody edited a token in Claude
+     Design. That is a *decision*, not drift, and pushing would erase it
+     without ever showing them what was lost. Do not push. Name the tokens,
+     the old value and the new, and ask. The default answer is to adopt it
+     into the config and regenerate, because a person deliberately typed it —
+     the file's own header says do not hand-edit, so nobody arrives there by
+     accident.
+   - **Both moved** — say so plainly and resolve it token by token. Never take
+     one side wholesale.
+
+4. Then `finalize_plan` and `write_files`. The permission prompt shows a path
+   list, not a diff, so it cannot tell anyone a value is about to be reverted.
+   Only your comparison can.
+
+**A token in the design system that the config does not have is the second row
+of the table above** — nothing to win with. Propose adopting it, do not delete
+it.
 
 Only the block between the `@generated` markers is ever in scope. Everything
 outside it — motion, composed values, helper classes — is the design system's
