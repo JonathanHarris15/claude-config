@@ -140,19 +140,44 @@ expected, not a finding.
 **The goal is zero.** Not "fewer than last time" — every colour is either a
 token or carries a written reason. Once it is zero, the check enforces it.
 
-### Pass 3 — Components and rules (judged, never automatic)
+### Pass 3 — Components and rules
 
-Compare the project's component gallery against `components/*.prompt.md` and the
-prop signatures in the adherence manifest. Look for:
+If the project has a component source (`components.source` in
+`.claude/design.json`), most of this pass is mechanical too:
 
-- A component the design system has that the app draws differently.
-- A pattern the app repeats everywhere that the design system has no name for —
-  a candidate to promote.
-- A documented rule that the code contradicts. Separate the fact from the intent
-  before proposing anything.
+1. Run `components.check` — the generated outputs are behind their source if it
+   fails, and the fix is to run the build.
+2. Run `components.parity` — this catches what a generator cannot: markup
+   reaching for a class nothing defines. Those render as **nothing at all**, no
+   error, no warning.
+3. Push the staged design-system files from `components.designSystemStaging`.
+
+What is left is genuinely judged, and it is the interesting part:
+
+- **A pattern the app repeats that has no name.** Three or four hand-written
+  copies of the same thing is a component nobody has named. Count before
+  deciding — one label written five different ways across six files is not five
+  decisions, it is one decision made badly five times.
+- **A component the two sides disagree about.** Reconcile by deciding, never by
+  averaging. Ask which side chose deliberately: a documented rule beats an
+  accident of implementation, and a shipped touch target beats a desktop
+  default. Write the reason into the component's notes, because the next person
+  will wonder.
+- **A rule the code contradicts.** Separate the fact from the intent. And when
+  you correct one, **grep for every place that states it** — a rule fixed in the
+  readme and left standing in `SKILL.md` and in eleven component examples has
+  not been fixed, it has been made harder to find. That exact failure survived
+  two tickets here.
 
 Write nothing in this pass without the user agreeing to each item. Promoting a
 component means other people's future designs will use it.
+
+### After a sweep
+
+Run the project's test suite. Assertions match on source text, and renaming a
+class breaks them — which is not a reason to skip the rename, only a reason to
+look. Compare against a baseline first if the suite is not already green, so you
+can tell your breakage from the breakage you inherited.
 
 ## Rules
 
