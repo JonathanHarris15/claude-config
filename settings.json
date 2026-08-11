@@ -57,7 +57,12 @@
       "Bash(node --test test/)",
       "Bash(npm test *)",
       "Bash(git -C /Users/jono1505/dev/mosaic-website status --short)",
-      "Bash(git -C /Users/jono1505/dev/mosaic-website branch --show-current)"
+      "Bash(git -C /Users/jono1505/dev/mosaic-website branch --show-current)",
+      "Bash(grep -n \"const [a-zA-Z]* = \\(\\\\|=> {$\\\\|async function\\\\|function \" public/calendar-event.js)",
+      "Bash(grep -n \"^    //\\\\|^    function \\\\|^    const [A-Z]\\\\|module.exports\\\\|^        [a-zA-Z]*,$\" public/events-occurrence-core.js)",
+      "Bash(curl -sL -w \"\\\\n[HTTP %{http_code}]\\\\n\" \"https://docs.google.com/spreadsheets/d/1aZ-pEb05hf8tDjUVLG71FPbtdqB2qItmcHLCFf7vBuU/export?format=csv&gid=0\")",
+      "Bash(rm -f /private/tmp/claude-501/-Users-jono1505-dev-Method/02c57e0e-8616-48aa-ba11-04c9b5274ae7/scratchpad/launch.log)",
+      "Bash(./dist/Method.app/Contents/MacOS/Method)"
     ]
   },
   "model": "opus[1m]",

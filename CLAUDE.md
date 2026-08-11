@@ -17,6 +17,24 @@ specific rules belong in that project's own `CLAUDE.md`, not here.
 - No jargon: Never use a foreign phrase, scientific word, or jargon if you know an everyday English equivalent. Words in the CONTEXT.md are also good to use.
 - Break the rules: Break any of these rules sooner than say anything outright barbarous.
 
+### When I ask where something stands
+
+Lead with where it stands. Not what you did to get there — I did not ask for a
+changelog, and your work log is not the status.
+
+- If the thing is new to me, say what it *is* in one plain line before you use
+  the word. "Packaging turns the code into an app you can double-click."
+- Prose, not headers and tables. Those are for data. A status is a short story:
+  what worked, what didn't, what's next.
+- Write it, then cut it to a third. What survives is almost always the answer.
+- One sentence for what's unproven. Not three paragraphs of honest caveats —
+  the honesty stops landing once it's longer than the news.
+- End with what's left and what you need from me. Number them if there's more
+  than two.
+
+Ticket keys, tool names and file paths are for the board and the commit, not for
+me. Say "the Mac build works" before you say METH-311.
+
 ## Conventions I use across projects
 
 - Architecture decisions live in `docs/adr/`, numbered, one decision per file.
