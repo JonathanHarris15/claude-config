@@ -31,7 +31,9 @@ Look in `docs/design/` for a matching file:
   changed. Most of Step 1 disappears.
 - **A `-prompt.md` from `design-prototype`** — read it. Its *what is real*
   section is your Real list, already written. Its *what is open* section is
-  where New was invited.
+  where New was invited. Its header names the files the design was pointed at —
+  anything it used from outside that list was read off its own initiative and
+  is worth a second look.
 - **Neither** — a cold pull. Say so, and be slower.
 
 Save what the user pasted to `docs/design/<slug>-export.md` before you touch
@@ -53,7 +55,7 @@ Classify each one:
 | **New** | A genuine change to what the feature does | Somebody can now do something they could not do before, or sees something the product did not show |
 | **Scaffolding** | Placeholder so the picture reads | Sample content, invented names, a list padded to look full |
 
-Two traps decide most of the wrong answers:
+Three traps decide most of the wrong answers:
 
 - **A real noun given a new power is New, not Real.** Roles exist; roles
   editable inline from the list is New. The noun being familiar is exactly what
@@ -62,6 +64,14 @@ Two traps decide most of the wrong answers:
   proposal.** Five tags exist, the design shows six: the sixth is a question. Do
   not delete it as filler and do not build it as fact. It goes in the New bucket
   and gets asked about.
+- **A design that read the repo produces a better class of wrong answer.**
+  Claude Design can be given the source, so a field name being real is no longer
+  evidence that it is *current* — it may have been read out of a legacy path, a
+  dead branch, or the half of a file the brief said was out of scope. Real means
+  it maps to something that exists **and is the thing this feature uses**. Check
+  where it came from before waving it through, and treat a term the design used
+  that `CONTEXT.md` does not carry as a finding either way: either the design
+  read stale code, or the model has drifted from the code and nobody noticed.
 
 Show the user **the list**. Not code, not a plan. Grouped by bucket, one line
 each, with the evidence for the classification. Ask them to correct the

@@ -47,6 +47,11 @@ enough context to judge against, clearly marked as context, not as the subject.
 
 ## Step 3 — Flatten it
 
+**Claude Design can read the repo, and it still cannot run it.** Linking the
+source lets it read the file this came out of; it does not give it a browser
+with a signed-in session and live data. So the snapshot is still the deliverable
+— what a linked repo buys you is the surrounding context, not the rendering.
+
 The desktop runs Alpine and Tailwind against live Firestore. None of that
 survives the trip. Turn dynamic markup into rendered output:
 
@@ -88,6 +93,11 @@ differences. Skip this step and you have thrown that away.
 Give one paste block containing the flattened markup, the real data, the states,
 which shared components it is built from, and:
 
+- **Where it came from** — the repo (`owner/name` and branch, or *Link local
+  code*) and the file and line range. Tell them to attach it. The snapshot is
+  the subject, but the file around it is the argument for why the thing is
+  shaped the way it is, and a design that can read it stops guessing at
+  constraints that are written down three lines up.
 - **What it is for** — who opens this, what they came to do. Not what is wrong
   with it; that is the thing the user cannot say yet, and guessing at it puts
   words in their mouth that Claude Design will then design against.

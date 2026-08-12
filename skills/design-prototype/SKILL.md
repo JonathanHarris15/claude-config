@@ -9,15 +9,27 @@ The user is building a new feature, or reworking something regardless of what it
 looks like today. This skill does not design it. It writes the **prompt they
 paste into Claude Design**, and then it stops.
 
-Everything hard about this skill is one problem: Claude Design cannot see the
-repo. It knows the design system and nothing else. So every fact it is not given
-it will invent — and an invented fact comes home looking exactly like a design
-decision. That is `design-pull`'s worst failure, and this is where it gets
-prevented, at source.
+Everything hard about this skill is one problem: **an invented fact comes home
+looking exactly like a design decision.** That is `design-pull`'s worst failure,
+and this is where it gets prevented, at source.
 
-**Read `.claude/design.json` first** for the component source, the gallery and
-the design system id. **Run `design-sync` Pass 1 before you start**, so the
-design gets drawn against current tokens. Pass 1 only.
+**Claude Design can read the repo** — its `+` menu offers *Choose a repository*
+(from GitHub) and *Link local code*. So the prompt's job is no longer to be the
+only source of truth. It is to make sure the repo is actually attached, to say
+which files answer which question, and to write out the load-bearing facts so
+the design does not have to go looking for them and guess when it comes up
+short. A linked repo it never opens is worth nothing.
+
+⚠ **A linked repo is not a substitute for the prompt.** It removes the excuse
+for inventing, not the need to say what matters. A codebase answers *what is
+there*; it does not say which of those things is settled, which is legacy, and
+which is the part you are asking to be redesigned. Skip the facts because "it
+can read the code" and you get a design built confidently on the wrong half of
+the repo.
+
+**Read `.claude/design.json` first** for the component source, the gallery, the
+design system id and the repo to name. **Run `design-sync` Pass 1 before you
+start**, so the design gets drawn against current tokens. Pass 1 only.
 
 ## Find out what is being built
 
@@ -41,7 +53,25 @@ handed to Claude Design.
 
 ## What goes in the prompt
 
-Six sections, in this order. Write it as prose the user can paste whole.
+A header and six sections, in this order. Write it as prose the user can paste
+whole.
+
+**0. The header — what to read, and where it is.** Two lists, and they are
+different things:
+
+- **In the design system project:** its readme, its stylesheet, its guidelines
+  and its components. That is what the design is composed *from*.
+- **In the repo:** name it — the GitHub `owner/name` and branch from
+  `.claude/design.json`, or tell the user to use *Link local code* — then give a
+  short table of **which file settles which question**. The screens being
+  reworked, the modules holding the closed sets and the copy, the component
+  gallery, and the sections of `CONTEXT.md` that carry the domain language.
+  Point at the exact block where a file is big: *"the part being merged is the
+  `managingSeries` block; the rest of that file is out of scope."*
+
+A file list beats a folder. "Read the repo" is an instruction nobody can finish,
+and a design that cannot tell when it has read enough stops at whatever it found
+first.
 
 **1. The job.** One paragraph. Who opens this screen, what they came to do, and
 what makes it hard today. No layout, no components, no adjectives about
@@ -61,10 +91,18 @@ List the actual domain nouns from `CONTEXT.md`, with their actual values:
 - The states that exist: empty, loading, one, many, error, and whatever this
   screen's own bad day looks like.
 
-Say plainly: *these are the real values from the product; use them exactly, and
-if you need something not on this list, mark it as a suggestion.* That line is
-what makes the difference between a design that pulls cleanly and a design that
-needs an argument.
+Say plainly: *these are the real values from the product; use them exactly. If
+you need something not on this list, look for it in the code first, and if it is
+not there either, mark what you used as a suggestion.*
+
+And settle the precedence before it comes up: **this section is a digest of the
+code, not a replacement for it. Where the two disagree, the code wins — and say
+where you found a difference.** A disagreement means one of the two is stale,
+and which one matters. Left unsaid, the design silently picks a side and you
+find out during the port.
+
+That precedence line is what makes the difference between a design that pulls
+cleanly and a design that needs an argument.
 
 **3. Compose from these.** Name the component classes the design system already
 has and that this screen should use — `m-btn`, `m-row`, `m-card`, whatever fits.
@@ -86,9 +124,10 @@ named from the design system's rules — check it, do not assume. Both a phone
 width and a desktop width, because the repo ships both. Anything the ticket
 fixes as non-negotiable.
 
-**6. What to send back.** Ask for the export prompt, plus a note on anything it
-placeholdered. A design that flags its own guesses saves the entire grilling
-session.
+**6. What to send back.** Ask for three things: the export prompt, a note on
+anything it placeholdered or invented, and **anywhere the code and section 2
+disagreed, with which one it followed**. A design that flags its own guesses
+saves the entire grilling session; one that flags a stale fact saves a bug.
 
 ## Save it
 
@@ -108,6 +147,10 @@ in.
 - **Never invent a domain fact to fill a gap.** Look it up, or leave it out and
   say the prompt has a hole in it. A plausible wrong field name is worse than a
   missing one — it survives all the way to the code.
+- **Name the repo and name the files.** The one thing the prompt can do that
+  nothing downstream can is aim the reading. A brief that leaves the design to
+  find its own way round the codebase has handed back the problem it exists to
+  solve.
 - **Real data or no data.** Placeholder content hides every layout problem worth
   finding.
 - **One screen, or one clearly bounded flow.** A prompt covering four pages
