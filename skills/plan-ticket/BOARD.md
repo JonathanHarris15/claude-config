@@ -3,6 +3,9 @@
 The canonical description of the workflow every JIRA skill in this config assumes.
 `plan-ticket`, `create-epic`, `to-prd`, `to-issues` and `implement` all obey it.
 
+This file says what the columns and levels **mean**. [JIRA.md](./JIRA.md) says how to
+touch them — the connector, the three levels, creating, linking, editing, transitions.
+
 If you are reading this because a skill pointed you here: this file is the source
 of truth. Where a skill's prose and this file disagree, this file wins — say so.
 
@@ -124,14 +127,15 @@ it's dated by the epic it blocks, not on its own.
 
 ## Investigation tickets
 
-`create-epic`'s Investigation lane produces tickets that resolve a *decision*, not
+`create-epic` produces **investigation tickets** that resolve a *decision*, not
 a deliverable — labelled `investigation`, summary prefixed `[research]` /
 `[prototype]` / `[grill]` / `[task]`.
 
 These are level-0 tickets and **do** sit on the board, in `To Plan` or `On Deck`.
 But they are the one exception to the integrity rule: **an investigation ticket
 never gets a PRD**, because its output is a decision comment, not code. They are
-closed by `create-epic`'s Phase 6I, not by `implement`, and they never enter
+closed by `/plan-ticket`, which routes each one by its prefix and posts the
+decision as a comment — never by `implement`. They never enter
 `To Do` — deciding is not decision-free work, so it is always yours.
 
 So don't judge one against the integrity rule — a missing PRD is correct here.

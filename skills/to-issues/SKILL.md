@@ -73,27 +73,27 @@ Do NOT modify the parent Feature's PRD beyond linking. Report the created sub-ta
 
 <jira-mechanics>
 
-Load the Atlassian tools first (deferred) in one call:
+See [JIRA.md](../plan-ticket/JIRA.md) for the connector, the three levels, and how to create,
+link and edit issues. Beyond the usual set, load `getJiraProjectIssueTypesMetadata`,
+`createJiraIssue`, `getIssueLinkTypes` and `createIssueLink`.
 
-```
-ToolSearch → jira create issue
-```
+**Find the sub-task type.** Read the Feature with `getJiraIssue` to confirm it really is
+level-0 and to get its `projectKey`, then take the real **sub-task-level** type name from the
+project metadata. It is JIRA's `Subtask`, which projects often rename to "Task".
 
-The Atlassian connector's server prefix differs per install (and changes if it's reinstalled), so never hardcode it — read the prefix off what that call returns, then load the whole set in one further `ToolSearch → select:…` using that prefix with: `getAccessibleAtlassianResources`, `getJiraProjectIssueTypesMetadata`, `getJiraIssue`, `createJiraIssue`, `editJiraIssue`, `getIssueLinkTypes`, `createIssueLink`.
+**Create each sub-task** with `parent` = the Feature's key, the description as markdown with
+acceptance criteria as a checklist, and labels tagging AFK/HITL plus the epic, e.g.
+`{"labels": ["afk", "epic-<slug>"]}`. Keep those label strings consistent with `create-epic`.
 
-**Discovery.** `getAccessibleAtlassianResources` → `cloudId`. Read the Feature with `getJiraIssue` to get its `projectKey` and confirm it's a level-0 Feature. `getJiraProjectIssueTypesMetadata` → the real **sub-task-level** type name (JIRA's `Subtask`, which a project may have renamed to "Task"). Don't assume names verbatim — use what the metadata says.
+**Link sub-task to sub-task**, within this Feature only. A dependency that crosses tickets
+belongs at ticket level, and that is `create-epic`'s job, not yours.
 
-**The hierarchy — why a breakdown step = a sub-task.** JIRA only nests three levels: Epic (1) → level-0 item (0) → sub-task (−1). `Feature`, `Task`, and `Bug` are all level 0 and cannot nest inside each other. So a step "under a Feature" must be created at the **sub-task level**, with `parent` = the Feature's key. There is no 4th level — a sub-task's own micro-steps go in a checklist in its description.
-
-**Create each sub-task** with `createJiraIssue` (required: `cloudId`, `projectKey`, `issueTypeName`, `summary`):
-- `issueTypeName` = the sub-task-level type from metadata.
-- `parent` = the Feature's key.
-- `description` = the sub-task template (`contentFormat: "markdown"`); acceptance criteria as a checklist.
-- Tag AFK/HITL and the epic name as labels via `additional_fields`, e.g. `{"labels": ["afk", "epic-<slug>"]}`. Keep these strings consistent with `create-epic`.
-- **Don't move the parent ticket.** Slicing it doesn't make it ready — deciding whether its next step needs you is `plan-ticket`'s Phase 6 call, and your AFK/HITL classifications (plus the blocked-by links) are the **evidence it uses**: they're what tells it whether there's anything an agent can start on. A ticket with *no* reachable AFK sub-task goes to `On Deck`; a mixed one goes to `To Do` and stops part-way. So classify honestly: if a step needs taste, a design call, or a product judgment, it is **HITL**, however small it looks. Mislabelling one `afk` doesn't cost a column — it costs a confident guess made on your behalf.
-
-**Dependency links** with `createIssueLink` (confirm the `Blocks` type via `getIssueLinkTypes`): for "A is blocked by B" → `type: "Blocks"`, `inwardIssue: B` (blocker), `outwardIssue: A` (blocked). Link sub-task-to-sub-task within the Feature.
-
-**GitHub linkage.** Remind the user to put the issue key in branch names (`PROJ-124-...`), commit messages, and PR titles so the JIRA↔GitHub app links code and PRs to each sub-task automatically.
+**Don't move the parent ticket.** Slicing it doesn't make it ready — deciding whether its next
+step needs the user is `plan-ticket`'s Phase 6 call, and your AFK/HITL classifications (plus the
+blocked-by links) are the **evidence it uses**: they're what tells it whether there's anything an
+agent can start on. A ticket with *no* reachable AFK sub-task goes to `On Deck`; a mixed one goes
+to `To Do` and stops part-way. So classify honestly: if a step needs taste, a design call, or a
+product judgment, it is **HITL**, however small it looks. Mislabelling one `afk` doesn't cost a
+column — it costs a confident guess made on the user's behalf.
 
 </jira-mechanics>

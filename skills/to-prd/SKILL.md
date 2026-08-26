@@ -74,22 +74,25 @@ Tell the user the Feature key and confirm its description now holds the PRD. Off
 
 <atlassian-mechanics>
 
-The Atlassian tools are MCP tools and may be **deferred** — load them first in one call:
+See [JIRA.md](../plan-ticket/JIRA.md) for the connector and for editing an issue without
+destroying what's already on it. You need only the usual set here — no issue creation.
 
-```
-ToolSearch → jira edit issue
-```
+**Find the Feature.** If the user passed a key, use it. Otherwise ask which JIRA **Feature**
+this PRD specifies, or offer to create the epic and its Features first with `create-epic`. Read
+it with `getJiraIssue` (include `description`) to confirm it exists, reuse its summary and
+vocabulary, and capture the current description so the rewrite preserves what should survive.
 
-The Atlassian connector's server prefix differs per install (and changes if it's reinstalled), so never hardcode it — read the prefix off what that call returns, then load the whole set in one further `ToolSearch → select:…` using that prefix with: `getAccessibleAtlassianResources`, `getJiraIssue`, `editJiraIssue`, `addCommentToJiraIssue`, `searchJiraIssuesUsingJql`.
+**Write the PRD onto the Feature** — `editJiraIssue` on its `description`, set to the filled
+template. This *is* the PRD. There is no Confluence page and no separate condensed spec.
 
-**Find the Feature.** If the user passed a key as an argument, use it. Otherwise ask which JIRA **Feature** this PRD specifies (or offer to create the epic + Features first with `create-epic`). Read it with `getJiraIssue` (include `description`) to confirm it exists, reuse its summary/vocabulary, and capture the current description so step 3's rewrite preserves what should survive.
+**Readiness — don't move the ticket.** The PRD makes the ticket *specified*, not *ready*.
+Speccing is only half of it: the ticket still needs its sub-tasks (`to-issues`), and something
+still has to judge whether an agent can be trusted with it unattended. **That call belongs to
+`plan-ticket`, not here.** Leave the ticket in `To Plan` and hand back.
 
-**Write the PRD onto the Feature.** `editJiraIssue` on the Feature's `description` (`contentFormat: "markdown"`), setting it to the filled template. This *is* the PRD — there is no Confluence page and no separate condensed spec. Keep any pre-existing acceptance criteria or problem statement that should survive; don't blindly overwrite context you didn't author.
-
-**If the description is genuinely too large** for one field, keep the narrative sections (Problem/Solution/User Stories/Out of Scope) on the Feature and move the long Implementation/Testing detail into a pinned `addCommentToJiraIssue` on the same Feature — still no Confluence.
-
-**Readiness — don't move the ticket.** The PRD makes the ticket *specified*, not *ready*. Speccing is only half of it: the ticket still needs its sub-tasks (`to-issues`), and something still has to judge whether an agent can be trusted with it unattended. **That call belongs to `plan-ticket`, not here.** Leave the ticket in `To Plan` and hand back.
-
-The board's integrity rule (see [BOARD.md](../plan-ticket/BOARD.md)) is that nothing sits right of `To Plan` without a PRD — this skill is what makes a ticket *eligible* to move, not what moves it. A PRD'd ticket with no sub-tasks that you pushed to `To Do` is exactly the half-truth the rule exists to prevent — and nothing sweeps the board behind you, so don't create one.
+The board's integrity rule (see [BOARD.md](../plan-ticket/BOARD.md)) is that nothing sits right
+of `To Plan` without a PRD — this skill is what makes a ticket *eligible* to move, not what
+moves it. A PRD'd ticket with no sub-tasks that you pushed to `To Do` is exactly the half-truth
+the rule exists to prevent, and nothing sweeps the board behind you, so don't create one.
 
 </atlassian-mechanics>

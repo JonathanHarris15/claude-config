@@ -65,7 +65,11 @@ If a test that was passing before this work began is now failing: **stop** and f
 
 ## Phase 5: Review
 
-Run `/code-review` on the change (if available; otherwise self-review against the acceptance criteria and the domain model). Address what it surfaces before shipping.
+Run the **`/review`** skill on the change. It reviews three things at once and keeps them apart: whether the code follows the repo's standards, whether it does what this ticket's PRD asked for, and whether it speaks the language in `CONTEXT.md`.
+
+The fixed point is the merge-base with main — the whole of this ticket's work, not the last commit. Pass it the issue key so the Spec axis measures against the real acceptance criteria.
+
+Address what it surfaces before shipping. Treat a **Domain** finding as blocking — a wrong name outlives a bug, and it is cheap to fix now and expensive later. If you disagree with a finding, say why rather than quietly skipping it.
 
 ## Phase 6: Grow
 
@@ -102,33 +106,31 @@ The whole point is that the board reflects reality without me nudging it. But **
 
 <scope>
 
-`implement` builds **one level-0 ticket** — a `Feature`, `Task`, or `Bug` that has been through `/plan-ticket` and carries a PRD. It does not plan, decompose, or spec: if the ticket isn't ready, hand it back to **`/plan-ticket`**. It does not resolve **investigation tickets** — those are decision work, closed with a decision comment by `create-epic`'s Investigation lane (via `research` / `prototype` / `grill-with-docs`), not built.
+`implement` builds **one level-0 ticket** — a `Feature`, `Task`, or `Bug` that has been through `/plan-ticket` and carries a PRD. It does not plan, decompose, or spec: if the ticket isn't ready, hand it back to **`/plan-ticket`**. It does not resolve **investigation tickets** — those are decision work, routed by `/plan-ticket` to `research` / `prototype` / `grill-with-docs` and closed with a decision comment, not built.
 
 </scope>
 
 <jira-mechanics>
 
-Load the Atlassian tools first (deferred) in one call:
+See [JIRA.md](../plan-ticket/JIRA.md) for the connector, transitions, JQL, editing an issue
+without destroying what's on it, and GitHub linkage. Beyond the usual set, load
+`getTransitionsForJiraIssue` and `transitionJiraIssue`.
 
-```
-ToolSearch → jira transition issue
-```
+**Read the issue** with `getJiraIssue`, fields:
+`summary, description, status, labels, parent, issuelinks, comment, assignee`.
 
-The Atlassian connector's server prefix differs per install (and changes if it's reinstalled), so never hardcode it — read the prefix off what that call returns, then load the whole set in one further `ToolSearch → select:…` using that prefix with: `getAccessibleAtlassianResources`, `searchJiraIssuesUsingJql`, `getJiraIssue`, `editJiraIssue`, `addCommentToJiraIssue`, `getTransitionsForJiraIssue`, `transitionJiraIssue`.
+**Finding the ready queue** (`implement next`) — the JQL is in `JIRA.md`. Prefer `To Do` over
+`On Deck`, oldest first, and drop anything with an open blocker.
 
-**Discovery.** `getAccessibleAtlassianResources` → `cloudId`. Read the issue with `getJiraIssue` (fields: `summary, description, status, labels, parent, issuelinks, comment, assignee`).
+**Stopping honestly.** A `To Do` ticket may legitimately mix `afk` and `hitl` sub-tasks; you
+build the AFK ones you can reach and stop at the first HITL one (see Phase 0.4). If a sub-task
+labelled `afk` turns out to have a decision in it after all, don't guess: stop there too, push
+the branch, move the ticket to `On Deck`, and comment why. One honest blocker beats six
+confident guesses.
 
-**Finding the ready queue** (`implement next`): `project = PROJ AND status IN ("To Do", "On Deck") ORDER BY created ASC`. Filter out anything with an open blocker in `issuelinks`.
-
-**Stopping honestly.** A `To Do` ticket may legitimately mix `afk` and `hitl` sub-tasks; you build the AFK ones you can reach and stop at the first HITL one (see Phase 0.4). If a sub-task labelled `afk` turns out to have a decision in it after all, don't guess: stop there too, push the branch, move the ticket to `On Deck`, and comment why. One honest blocker beats six confident guesses.
-
-**Transitions.** `getTransitionsForJiraIssue` → the list of transitions valid from the current status (each has an `id` and a target status name). Pick the one matching the phase; `transitionJiraIssue` with that `id`. For a transition that requires fields (e.g. a resolution on Done), pass them in the transition `fields`. Re-fetch or re-list transitions after moving, since the valid set changes with status.
-
-**Editing the issue.** `editJiraIssue` for description edits (ticking acceptance criteria, updating a spec) and label changes — read current labels first, then re-set the whole array (JIRA replaces it). Keep exactly one state label if the project uses them.
-
-**Comments.** `addCommentToJiraIssue` with `contentFormat: "markdown"` for a review-ready note or a blocker explanation.
-
-**GitHub linkage.** Put the issue key in the branch name (`PROJ-124-…`), commit messages, and PR title so the JIRA↔GitHub app links code and PRs to the issue automatically. Smart Commit syntax can transition and comment: `PROJ-124 #comment done #time 2h`.
+**Ticking acceptance criteria** means editing the description — read it first, then re-set it,
+so you don't wipe anything you didn't write. Same for labels: keep exactly one state label if
+the project uses them.
 
 </jira-mechanics>
 

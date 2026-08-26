@@ -23,7 +23,7 @@ A **seam** is the public boundary you test at: the interface where you observe b
 
 Ask: "What's the public interface, and which seams should we test?"
 
-When the shape of that interface is itself in question — how deep the module is, where the seam belongs, what the interface should expose — see [deep-modules.md](deep-modules.md) for the depth vocabulary and [interface-design.md](interface-design.md) for designing something you can test through.
+When the shape of that interface is itself in question — how deep the module is, where the seam belongs, what the interface should expose — call the Skill tool with "codebase-design". It holds the module, interface, depth, seam, adapter, leverage and locality vocabulary, and the rules for designing something you can test through. It is a reference to consult, not a session to run.
 
 ## Anti-patterns
 
@@ -35,15 +35,4 @@ When the shape of that interface is itself in question — how deep the module i
 
 - **Red before green.** Write the failing test first, then only enough code to pass it. Don't anticipate future tests or add speculative features.
 - **One slice at a time.** One seam, one test, one minimal implementation per cycle.
-- **Never refactor while red.** Get to green first.
-
-## Refactoring
-
-Refactoring is **not** a step inside the red → green cycle. It happens once the slice is green — better still, once the whole piece of work is. Interleaving refactors with the loop is how one slice quietly becomes a rewrite.
-
-When you get there, look for [refactor candidates](refactoring.md):
-
-- Extract duplication
-- Deepen modules — move complexity behind simple interfaces
-- Consider what the new code reveals about the existing code
-- Run the tests after each refactor step
+- **Refactoring is not part of the loop.** It belongs to the review stage — see the `/review` skill. Interleaving refactors with red → green is how one slice quietly becomes a rewrite. Get to green, keep going, and let the review find what wants restructuring; its smell baseline is the list you would otherwise be trying to hold in your head.

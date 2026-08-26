@@ -20,27 +20,19 @@ skill is about **reading which one you're holding** before you start working it.
 
 ## Phase 0: Gate
 
-Read the project's `./CLAUDE.md` and find the `<!-- jira-config -->` block. Take the
-cloudId, project key, and the **real issue-type names** from it.
+Read the project's `./CLAUDE.md` and find the `<!-- jira-config -->` block. Take the cloudId,
+project key, and the **real issue-type names** from it.
 
-**No block?** Then discover it once, here, before planning anything — and **never guess a
-project key**. Ask the user which JIRA project this repo belongs to, confirm the connection
-with `getAccessibleAtlassianResources` → `getVisibleJiraProjects`, then read the real issue
-types and statuses with `getJiraProjectIssueTypesMetadata` and map them onto the three levels
-and six columns in [BOARD.md](./BOARD.md). Offer to write what you found into the project's
-`CLAUDE.md` as a `<!-- jira-config -->` block so the next run doesn't repeat the work. If the
-Atlassian tools aren't connected at all, say so and stop — there is nothing to plan against.
+**No block?** Then discover it once, here, before planning anything — the discovery steps are
+in [JIRA.md](./JIRA.md), and the rule that matters is **never guess a project key**. Map the
+types and statuses you find onto the three levels and six columns in [BOARD.md](./BOARD.md),
+then offer to write what you found into the project's `CLAUDE.md` as a `<!-- jira-config -->`
+block so the next run doesn't repeat the work. If the Atlassian tools aren't connected at all,
+say so and stop — there is nothing to plan against.
 
-Load the
-Atlassian tools (deferred — read the server prefix off the first call, never hardcode it):
-
-```
-ToolSearch → jira search issues
-```
-
-then one `ToolSearch → select:…` with that prefix for: `searchJiraIssuesUsingJql`,
-`getJiraIssue`, `editJiraIssue`, `addCommentToJiraIssue`, `createJiraIssue`,
-`getTransitionsForJiraIssue`, `transitionJiraIssue`, `createIssueLink`, `getIssueLinkTypes`.
+Load the tools per [JIRA.md](./JIRA.md), seeding with `ToolSearch → jira search issues`. Beyond
+the usual set you need `createJiraIssue`, `getTransitionsForJiraIssue`, `transitionJiraIssue`,
+`createIssueLink` and `getIssueLinkTypes`.
 
 ---
 
@@ -97,6 +89,7 @@ once, then do as they say.
 
 | Read | Run |
 | --- | --- |
+| **An investigation ticket** | Labelled `investigation`, summary prefixed `[research]` / `[prototype]` / `[grill]` / `[task]`. Resolve it by its prefix: `[research]` → `/research`, `[prototype]` → `/prototype`, `[grill]` → `/grill-with-docs`, `[task]` → just do the small thing. The output is a **decision**, not code. Post the decision as a comment (what we decided and why, linking any research or prototype asset), close the ticket, and **stop — skip Phase 5 and 6 entirely.** See [BOARD.md](./BOARD.md). |
 | **A project, not a ticket** | `/create-epic`. The epic's Features land back in `To Plan` as fresh tickets. Close METH-48 with a comment linking the epic — it did its job. **Stop here**; the new tickets each come through `plan-ticket` on their own. |
 | **A pile** | Split into sibling tickets in `To Plan`, close the original, then plan each. |
 | **Bug** | `/diagnose` — reproduce and find the cause. Then re-read the clarity dial; usually the cause makes the fix obvious → go straight to Phase 5. If it won't reproduce, park it in `To Plan` with what you found and say what you need. |
@@ -116,7 +109,8 @@ Don't invent an epic for a one-off.
 
 ## Phase 5: Converge
 
-Always both, in order — no exceptions, whatever lane it took:
+Always both, in order, whatever lane it took. The one exception is an **investigation
+ticket**, which never reaches this phase: its output is a decision comment, not a PRD.
 
 1. **`/to-prd`** — writes the PRD onto **this ticket's own description**. The ticket *is* the
    PRD; there's no separate doc.

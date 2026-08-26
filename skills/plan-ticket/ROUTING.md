@@ -1,7 +1,8 @@
 # Routing a `To Plan` ticket
 
 The shared judgment call. `plan-ticket` uses it to route one ticket; `create-epic`
-uses the same two dials to decide between its Construction and Investigation lanes.
+uses the same two dials to decide whether each ticket it emits is a buildable
+Feature or a question that has to be answered first.
 Keep them in step — if you change the thinking here, both skills inherit it.
 
 Read the ticket, then read **two dials, in this order**. Size first: there is no

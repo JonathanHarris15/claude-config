@@ -6,7 +6,7 @@ My personal Claude Code configuration, synced across machines.
 
 | Path | What it is |
 | --- | --- |
-| `skills/` | Custom skills — a JIRA-native planning chain (`create-epic` → `plan-ticket` → `grill-with-docs` → `to-prd` → `to-issues` → `implement`), plus the two pieces `grill-with-docs` composes (`grilling`, `domain-modeling`), and `tdd`, `diagnose`, `prototype`, `research`, `improve-codebase-architecture`, `rebuild-mobile`, `sync-config`, `wait-what`. |
+| `skills/` | Custom skills — a JIRA-native planning chain (`create-epic` → `plan-ticket` → `grill-with-docs` → `to-prd` → `to-issues` → `implement` → `review`), plus the two pieces `grill-with-docs` composes (`grilling`, `domain-modeling`), the design chain (`design-prototype`, `design-push`, `design-pull`, `design-sync`), and `tdd`, `diagnose`, `prototype`, `research`, `codebase-design`, `improve-codebase-architecture`, `wizard`, `writing-for-agents`, `retro`, `sync-config`, `wait-what`. |
 | `agents/` | Custom subagents. Markdown with frontmatter; the frontmatter sets the model, tools, and description. |
 | `workflows/` | Multi-agent orchestration scripts. Plain JS that fans out subagents with real control flow — loops, pipelines, adversarial verification. |
 | `commands/` | Custom slash commands. |
@@ -38,7 +38,9 @@ To Plan  →  To Do  →  On Deck  →  In Progress  →  In Review  →  Done
 on it.** Those columns are a promise that the thinking is finished. The rule is upheld at
 the doors — `plan-ticket` won't land a ticket without one, `implement` won't build one.
 
-The full contract is [`skills/plan-ticket/BOARD.md`](skills/plan-ticket/BOARD.md).
+The full contract is [`skills/plan-ticket/BOARD.md`](skills/plan-ticket/BOARD.md) — what the
+columns and levels mean. [`skills/plan-ticket/JIRA.md`](skills/plan-ticket/JIRA.md) is the
+other half: how the skills actually touch JIRA. Both are shared reference, not skills.
 
 ### Using it in a project
 
