@@ -162,6 +162,9 @@ skills it drives (`plan-ticket`, `implement`) are the ones already in
 
 ## Setup
 
+Setting up a new machine? Hand an agent [SETUP.md](./SETUP.md) — it is written to be followed step by step, with a check after each.
+
+
 Needs the Teamwork Graph CLI, logged in:
 
 ```
