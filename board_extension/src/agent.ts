@@ -1153,6 +1153,15 @@ export class AgentSession {
   }
 
   private setState(state: AgentState) {
+    // An unanswered prompt outranks every progress signal. The model keeps
+    // streaming while a tool waits on you — it asks for several tools at once,
+    // and the next tool_use block arrives after the first has already put a
+    // question on screen. Without this the panel says "working" while the only
+    // thing it is doing is waiting for you, which is the one lie it must not
+    // tell. Failing and stopping still win: both end the wait.
+    if ((this.queue.length || this.held) && state !== 'error' && state !== 'idle') {
+      state = 'asking';
+    }
     const busy = state === 'thinking' || state === 'working' || state === 'waiting';
     if (busy && !this.since) {
       this.since = Date.now();

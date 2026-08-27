@@ -710,7 +710,18 @@ function assert(condition, message) {
     assert(block.indexOf("'needs you'") >= 0, 'asking does not read as "needs you"');
     assert(block.indexOf("'failed'") >= 0, 'error does not read as "failed"');
     assert(block.indexOf('bd-chip--attention') >= 0, 'asking is not the attention colour');
-    return 'needs you, failed, and the chip colours';
+
+    // The model streams on while a tool waits on you, and it asks for several
+    // tools at once — so a later tool_use block used to paint "working" over
+    // the question that was actually blocking. Saying it is busy while it is
+    // waiting on you is the one thing the panel must never do.
+    const agent = fs.readFileSync(path.join(root, 'src', 'agent.ts'), 'utf8');
+    const at = agent.indexOf('private setState(');
+    const setState = agent.slice(at, agent.indexOf('this.changed();', at));
+    assert(setState.indexOf('this.queue.length') >= 0 && setState.indexOf('this.held') >= 0,
+      'a pending prompt can be painted over with "working"');
+    assert(setState.indexOf("state = 'asking'") >= 0, 'a pending prompt does not force asking');
+    return 'needs you, failed, the chip colours, and asking outranks working';
   });
 
   check('history is the story, log is the record, sub-tasks sit with the spec', () => {
