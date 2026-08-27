@@ -39,36 +39,30 @@ Install anything missing:
 Logins need a browser and the human's account — if a login step blocks on
 that, *ask the human* to complete it, then continue.
 
-## 2. Build
+## 2. Build and link
 
 ```
-npm install
-npm run compile
+node setup.js
 ```
 
-**Check:** `out/extension.js` exists and is newer than everything in `src/`.
+One script, both platforms, safe to run again: it installs dependencies,
+compiles, and links this folder into VS Code. The extension is not packaged —
+VS Code reads the folder through the link, so a later `git pull` plus another
+`node setup.js` is the whole upgrade.
 
-## 3. Link into VS Code
+It stops rather than guess if `~/.vscode/extensions/board-extension` already
+exists and points somewhere else. If it says that, *ask the human*.
 
-The extension is not packaged; VS Code loads this folder through a link, so a
-later `git pull` + `npm run compile` is the whole upgrade.
+It finishes by naming what it cannot do itself — a missing CLI, or the repo
+mapping in step 3. Work through that list.
 
-**Windows** (PowerShell):
-```
-New-Item -ItemType Junction -Path "$env:USERPROFILE\.vscode\extensions\board-extension" -Target "$env:USERPROFILE\.claude\board_extension"
-```
-**macOS:**
-```
-ln -s ~/.claude/board_extension ~/.vscode/extensions/board-extension
-```
+If it reports `twg` missing but you know it is installed, set `board.twgPath`
+to its full path in step 4 rather than moving the install.
 
-If the path already exists and points here, leave it. If it exists and points
-somewhere else, *ask the human* before replacing it.
+**Check:** `node setup.js --check` prints `Board is already set up on this
+machine`.
 
-**Check:** `~/.vscode/extensions/board-extension/package.json` resolves to this
-folder's `package.json`.
-
-## 4. Tell the board where the repos are
+## 3. Tell the board where the repos are
 
 Agents run inside a checkout of each project. The setting `board.repos` maps a
 JIRA space key to a repo path, and its defaults are Windows paths for one
@@ -93,7 +87,7 @@ specific machine, so on any other machine it must be set explicitly.
 
 **Check:** each path in the mapping exists and `git -C <path> rev-parse --is-inside-work-tree` prints `true`.
 
-## 5. Optional settings
+## 4. Optional settings
 
 Only set these if the human asks or the defaults are wrong for this machine:
 
@@ -104,7 +98,7 @@ Only set these if the human asks or the defaults are wrong for this machine:
 | `board.storyModel` | `claude-sonnet-5` | a different model should write the History tab |
 | `board.sharedCommands` | tests and build patterns | a project has a test runner the defaults do not name |
 
-## 6. Prove it works without opening the editor
+## 5. Prove it works without opening the editor
 
 ```
 npm run preflight
@@ -118,7 +112,7 @@ build). Fix what it names and run it again.
 **Check:** the output ends with `All checks passed — the board is ready.` and
 `worktree checks passed`.
 
-## 7. Hand over
+## 6. Hand over
 
 Restart VS Code. The **Board** icon is in the activity bar; clicking a space
 opens its board as an editor tab.
@@ -127,3 +121,9 @@ Report to the human, in this order: which requirements you installed, the
 `board.repos` mapping you wrote, anything you had to ask about, and the last
 two lines of the preflight output. Do not start an agent on a ticket — that
 costs money and is the human's call.
+
+## 7. Afterwards
+
+`/sync-config` runs `node setup.js` whenever a sync brings down a change to this
+folder, so an ordinary pull keeps the board built. This file is only needed for
+a machine that has never had it running.

@@ -815,6 +815,21 @@ function assert(condition, message) {
     return 'error banner, detail panel and state chip all obey hidden';
   });
 
+  check('a fresh machine can build the board with one command', () => {
+    // out/ and node_modules/ are never synced, so this script is the only thing
+    // between a clone and a working board. A syntax error in it is discovered
+    // on the machine that has nothing else to fall back on.
+    const setup = path.join(root, 'setup.js');
+    assert(fs.existsSync(setup), 'no setup.js — a fresh clone has no way to build');
+    const checked = require('child_process').spawnSync(
+      process.execPath, ['--check', setup], { encoding: 'utf8' }
+    );
+    assert(checked.status === 0, 'setup.js does not parse: ' + (checked.stderr || '').trim());
+    const doc = fs.readFileSync(path.join(root, 'SETUP.md'), 'utf8');
+    assert(doc.indexOf('node setup.js') >= 0, 'SETUP.md still walks the build by hand');
+    return 'setup.js parses, SETUP.md points at it';
+  });
+
   check('motion never loops except to mean liveness', () => {
     const css = fs.readFileSync(path.join(root, 'media', 'board.css'), 'utf8');
     assert(css.indexOf('prefers-reduced-motion') >= 0, 'no reduced-motion escape hatch');

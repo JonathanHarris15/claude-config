@@ -32,6 +32,13 @@ diff), not a generic message. If there's nothing staged, skip the commit.
 `settings.local.json` is untracked by design — leave it alone.
 
 ### 2. Fetch and compare
+Note where `main` is first — step 5 needs it to tell whether the sync moved the
+board extension:
+
+```sh
+git -C ~/.claude rev-parse main    # keep this as <before>
+```
+
 ```sh
 git -C ~/.claude fetch origin
 git -C ~/.claude rev-list --left-right --count main...origin/main   # -> "<ahead>	<behind>"
@@ -71,8 +78,42 @@ If the rebase gets into a state you can't safely untangle:
 `git -C ~/.claude rebase --abort` and hand it back to the user with what you found.
 Never force-push (`--force`) to escape a conflict — it destroys remote history.
 
-### 5. Confirm
+### 5. Rebuild the board if the sync moved it
+
+The repo syncs the Board extension's **source**; `board_extension/out/` and
+`node_modules/` are in the ignore list because they are per-machine. So a pull
+that brings down a TypeScript change leaves the editor running yesterday's
+build, and a fresh clone has every file the board needs and still does nothing.
+
+After the push or pull, run the board's setup script if — and only if — the
+sync moved anything under `board_extension/`, or the board has never been built
+on this machine:
+
+```sh
+git -C ~/.claude diff --quiet <before> main -- board_extension/ || NEEDED=1
+test -d ~/.claude/board_extension/out || NEEDED=1
+[ -n "$NEEDED" ] && node ~/.claude/board_extension/setup.js
+```
+
+On Windows, PowerShell:
+
+```powershell
+git -C ~/.claude diff --quiet <before> main -- board_extension/
+$needed = -not $? -or -not (Test-Path ~/.claude/board_extension/out)
+if ($needed) { node ~/.claude/board_extension/setup.js }
+```
+
+The script installs, compiles and links, is safe to run again, and no-ops when
+there is nothing to do. If it ends with a **Still needs you** list — a missing
+CLI, or the `board.repos` mapping — pass that list on to the user verbatim; it
+names things only they can do. If it fails outright, say so and point at
+`board_extension/SETUP.md`, which is the full first-time walkthrough.
+
+Don't run it when the sync touched nothing there. Compiling on every sync is
+slow and tells the user nothing.
+
+### 6. Confirm
 End by reporting the outcome in one or two lines: what moved, which direction,
 and the final `git -C ~/.claude status` (should be clean and "up to date with
 origin/main"). Remind the user that running Claude Code sessions must restart to
-pick up changed config.
+pick up changed config — and VS Code too, if step 5 rebuilt the board.
