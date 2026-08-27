@@ -22,6 +22,11 @@
 !hooks/
 !hooks/**
 
+# Per-space working notes, written from the board's sidebar. Small, hand-kept,
+# and worth having on every machine.
+!board/
+!board/**
+
 !board_extension/
 !board_extension/**
 # Built output and deps rebuild from source on each machine.

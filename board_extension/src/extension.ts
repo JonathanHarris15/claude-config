@@ -1,5 +1,6 @@
 import * as vscode from 'vscode';
 import { AgentSession, AgentSnapshot, Attachment, MERGE_QUEUE, PermissionLevel } from './agent';
+import { openNotes, notesPath } from './notes';
 import { cullWorktree, ensureIntegrationWorktree, ensureWorktree, mainBranch, mergesCleanly, worktreeStatus } from './git';
 import { listSkills } from './skills';
 import * as store from './store';
@@ -36,7 +37,12 @@ export function activate(context: vscode.ExtensionContext) {
       BoardPanel.open(resolveKey(space), context.extensionUri)
     ),
     vscode.commands.registerCommand('board.refresh', () => BoardPanel.refreshAll()),
-    vscode.commands.registerCommand('board.refreshSpaces', () => spaces.refresh())
+    vscode.commands.registerCommand('board.refreshSpaces', () => spaces.refresh()),
+    vscode.commands.registerCommand('board.notes', (space?: Space | string) => {
+      const key = resolveKey(space);
+      const name = typeof space === 'object' && space ? space.name : key;
+      return openNotes(key, name);
+    })
   );
 }
 
@@ -53,7 +59,10 @@ function resolveKey(space?: Space | string): string {
 }
 
 /** The sidebar: one row per JIRA space. */
-class SpacesProvider implements vscode.TreeDataProvider<Space> {
+/** A row in the sidebar: a space, or the one page hanging off it. */
+type Row = { kind: 'space'; space: Space } | { kind: 'notes'; space: Space };
+
+class SpacesProvider implements vscode.TreeDataProvider<Row> {
   private readonly changed = new vscode.EventEmitter<void>();
   readonly onDidChangeTreeData = this.changed.event;
 
@@ -61,8 +70,20 @@ class SpacesProvider implements vscode.TreeDataProvider<Space> {
     this.changed.fire();
   }
 
-  getTreeItem(space: Space): vscode.TreeItem {
-    const item = new vscode.TreeItem(space.key, vscode.TreeItemCollapsibleState.None);
+  getTreeItem(row: Row): vscode.TreeItem {
+    const { space } = row;
+    if (row.kind === 'notes') {
+      const item = new vscode.TreeItem('working notes', vscode.TreeItemCollapsibleState.None);
+      item.description = `${space.key}.md`;
+      item.tooltip = `How tickets move in ${space.name}. Opens ${notesPath(space.key)}`;
+      item.iconPath = new vscode.ThemeIcon('book');
+      item.command = { command: 'board.notes', title: 'Open working notes', arguments: [space] };
+      return item;
+    }
+
+    // Expanded, not collapsed: with one page each there is nothing to hide, and
+    // a twisty nobody opens is a page nobody reads.
+    const item = new vscode.TreeItem(space.key, vscode.TreeItemCollapsibleState.Expanded);
     item.description = space.name;
     item.tooltip = `${space.name} (${space.key})`;
     item.iconPath = new vscode.ThemeIcon('project');
@@ -70,9 +91,12 @@ class SpacesProvider implements vscode.TreeDataProvider<Space> {
     return item;
   }
 
-  async getChildren(): Promise<Space[]> {
+  async getChildren(row?: Row): Promise<Row[]> {
+    if (row) {
+      return row.kind === 'space' ? [{ kind: 'notes', space: row.space }] : [];
+    }
     try {
-      return await fetchSpaces();
+      return (await fetchSpaces()).map((space) => ({ kind: 'space' as const, space }));
     } catch (err) {
       void vscode.window.showErrorMessage(describe(err));
       return [];
@@ -424,26 +448,34 @@ class BoardPanel {
    * The only transition a person drives from here. Everything else moves
    * because an agent moved it.
    */
+  /**
+   * Done is not ours to declare from In Review. The branch still has to land in
+   * the main branch, and until it does, "finished" is a claim the repo does not
+   * support. The merge queue is the one agent allowed to move a ticket to Done,
+   * and it does it after the merge is pushed and green.
+   *
+   * So this hands the ticket over and leaves it exactly where it is. The queue
+   * moves it when it lands, or says why it could not. The worktree stays for
+   * the same reason: there is still a branch to merge.
+   */
   private async complete(ticket: string) {
+    const repo = repoFor(this.space);
+    if (!repo) {
+      void this.panel.webview.postMessage({
+        type: 'error',
+        message:
+          `No repo is configured for ${this.space}, so there is no merge queue to hand ` +
+          `${ticket} to. Set board.repos, or move the card to Done yourself.`
+      });
+      return;
+    }
+
+    const session = await this.openAgent(MERGE_QUEUE);
+    if (!session) {
+      return;
+    }
     try {
-      await moveTicket(ticket, 'Done');
-
-      const repo = repoFor(this.space);
-      if (repo) {
-        const culled = cullWorktree(repo, ticket);
-        if (!culled.removed && culled.reason !== 'no worktree') {
-          void this.panel.webview.postMessage({
-            type: 'error',
-            message:
-              `${ticket} is Done, but its worktree was kept: ${culled.reason}. ` +
-              'Nothing was deleted — merge or discard the branch, then cull it from the panel.'
-          });
-        }
-      }
-
-      await this.pushBoard();
-      await this.pushDetail(ticket);
-      this.pushWorktree(ticket);
+      await session.send(`merge ${ticket}`);
     } catch (err) {
       void this.panel.webview.postMessage({ type: 'error', message: describe(err) });
     }

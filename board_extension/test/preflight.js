@@ -104,7 +104,9 @@ function assert(condition, message) {
 
   console.log('\nSpaces');
   const provider = recorded.treeProviders[c.views[c.viewsContainers.activitybar[0].id][0].id];
-  const spaces = await provider.getChildren();
+  // Top-level rows wrap a space; each one has a notes page hanging off it.
+  const rows = await provider.getChildren();
+  const spaces = rows.map((row) => row.space);
 
   check('spaces listed from JIRA', () => {
     assert(!recorded.errors.length, recorded.errors[0]);
@@ -113,11 +115,20 @@ function assert(condition, message) {
   });
 
   check('each row opens its own board', () => {
-    const item = provider.getTreeItem(spaces[0]);
+    const item = provider.getTreeItem(rows[0]);
     assert(item.label === spaces[0].key, 'row is not labelled with the space key');
     assert(item.command?.command === 'board.open', 'row does not open the board');
     assert(item.command.arguments?.[0]?.key === spaces[0].key, 'row passes the wrong space');
     return `${item.label} — ${item.description}`;
+  });
+
+  const kids = await provider.getChildren(rows[0]);
+  check('every space carries its own working notes', () => {
+    assert(kids.length === 1 && kids[0].kind === 'notes', 'no notes row under the space');
+    const item = provider.getTreeItem(kids[0]);
+    assert(item.command?.command === 'board.notes', 'the notes row opens nothing');
+    assert(item.command.arguments?.[0]?.key === spaces[0].key, 'the notes row passes the wrong space');
+    return `${spaces[0].key} — ${item.label}`;
   });
 
   console.log('\nBoard tab');
@@ -357,17 +368,22 @@ function assert(condition, message) {
     assert(header.indexOf("post('plan'") < 0, 'Plan button is still in the header');
     assert(header.indexOf("post('implement'") < 0, 'Implement button is still in the header');
     assert(header.indexOf("'In Review'") >= 0, 'no In Review case in the header actions');
-    assert(header.indexOf("post('complete'") >= 0, 'no Mark complete button');
-    return 'only Mark complete, Stop agent and Open in JIRA';
+    assert(header.indexOf("post('complete'") >= 0, 'no hand-to-the-queue button');
+    assert(header.indexOf('Hand to merge queue') >= 0, 'the button still claims to finish the ticket');
+    return 'only Hand to merge queue, Stop agent and Open in JIRA';
   });
 
-  check('Mark complete is handled and moves to Done', () => {
+  check('finishing hands the ticket to the queue rather than declaring it done', () => {
     const ext = fs.readFileSync(path.join(root, 'src', 'extension.ts'), 'utf8');
     assert(ext.indexOf("case 'complete'") >= 0, 'extension never handles complete');
-    const body = ext.slice(ext.indexOf('private async complete('), ext.indexOf('private async runSkill('));
-    assert(body.indexOf("moveTicket(ticket, 'Done')") >= 0, 'complete does not move to Done');
-    assert(body.indexOf('pushBoard()') >= 0, 'complete does not refresh the board');
-    return 'transitions to Done and repaints';
+    const body = ext.slice(ext.indexOf('private async complete('), ext.indexOf('private async drag('));
+    // The branch still has to land. Only the queue may call it Done, and only
+    // after the merge is pushed and green.
+    assert(body.indexOf("moveTicket(ticket, 'Done')") < 0, 'the panel still moves the ticket to Done itself');
+    assert(body.indexOf('cullWorktree') < 0, 'the worktree is culled while its branch is unmerged');
+    assert(body.indexOf('openAgent(MERGE_QUEUE)') >= 0, 'nothing hands the ticket to the merge queue');
+    assert(body.indexOf('`merge ${ticket}`') >= 0, 'the queue is not told which ticket to merge');
+    return 'handed to the queue, ticket and worktree left alone';
   });
 
   check('the agent is told what the board is', () => {
@@ -485,15 +501,34 @@ function assert(condition, message) {
     return 'one checkout per ticket';
   });
 
-  check('marking complete culls the worktree', () => {
+  check('a worktree is only culled once its branch has landed', () => {
     const ext = fs.readFileSync(path.join(root, 'src', 'extension.ts'), 'utf8');
-    const body = ext.slice(ext.indexOf('private async complete('), ext.indexOf('private pushWorktree('));
-    assert(body.indexOf('cullWorktree(repo, ticket)') >= 0, 'complete does not cull');
-    assert(body.indexOf('was kept') >= 0, 'a refused cull is not reported');
-    return 'culled, and says so when it refuses';
+    const js = fs.readFileSync(path.join(root, 'media', 'board.js'), 'utf8');
+    // Handing a ticket to the queue does not cull: the branch is the thing the
+    // queue is about to merge. The worktree line offers "remove" once it has.
+    const body = ext.slice(ext.indexOf('private async complete('), ext.indexOf('private async drag('));
+    assert(body.indexOf('cullWorktree') < 0, 'the worktree goes before the branch is merged');
+    assert(ext.indexOf('private async cull(') >= 0, 'nothing culls a worktree at all');
+    assert(js.indexOf('wt.merged && !wt.dirty') >= 0, 'remove is offered on an unmerged worktree');
+    return 'kept through the merge, removed after it';
   });
 
   console.log('\nPanel affordances');
+  check('each space has working notes, reachable from the sidebar', () => {
+    const ext = fs.readFileSync(path.join(root, 'src', 'extension.ts'), 'utf8');
+    const notes = fs.readFileSync(path.join(root, 'src', 'notes.ts'), 'utf8');
+    assert(ext.indexOf("registerCommand('board.notes'") >= 0, 'no command opens the notes');
+    assert(ext.indexOf("kind: 'notes'") >= 0, 'the sidebar has no row for them');
+    assert(ext.indexOf("command: 'board.notes'") >= 0, 'the row does not open anything');
+    // In ~/.claude, not the space's repo: a space with no repo still gets a
+    // page, and the pages travel with the rest of the config.
+    assert(notes.indexOf("'.claude', 'board'") >= 0, 'the notes do not live with the config');
+    assert(notes.indexOf('fs.existsSync(file)') >= 0, 'a missing page is not created');
+    const ignore = fs.readFileSync(path.join(root, '..', '.gitignore'), 'utf8');
+    assert(ignore.indexOf('!board/**') >= 0, 'the notes would not sync between machines');
+    return 'a page per space, seeded on first open, synced with the config';
+  });
+
   check('the panel can be dragged wider', () => {
     const ext = fs.readFileSync(path.join(root, 'src', 'extension.ts'), 'utf8');
     const js = fs.readFileSync(path.join(root, 'media', 'board.js'), 'utf8');

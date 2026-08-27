@@ -817,7 +817,13 @@
     // in the slash menu rather than up here. Only what you cannot say gets a
     // button.
     if (ticket.status === 'In Review') {
-      row.append(button('Mark complete', () => post('complete', ticket.key)));
+      // Not "done": the branch still has to land. This asks the merge queue to
+      // take it, and the queue is what moves it to Done once it has.
+      const hand = button('Hand to merge queue', () => post('complete', ticket.key));
+      hand.title =
+        'Ask the merge queue to merge this branch. The ticket stays In Review ' +
+        'until the merge is pushed and green, then the queue moves it to Done.';
+      row.append(hand);
     }
     if (live) {
       row.append(button('Stop agent', () => post('stopAgent', ticket.key), true));
