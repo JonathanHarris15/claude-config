@@ -623,6 +623,17 @@ a:hover { color: var(--vscode-textLink-activeForeground, var(--board-hue-info));
 .bd-subtask-box .bd-section-head{margin-top:0}
 .bd-subtask-box .bd-subtasks{margin-bottom:0}
 
+/* One size for the whole conversation. Agent replies were shrunk twice — by
+   the chat entry and again by the Markdown paragraph inside it — while the
+   permission box and the composer were shrunk once, so the three never
+   matched and the A-/A+ steppers made the gap obvious. */
+.bd-scroll .md-p,.bd-scroll .md-item,.bd-scroll .md-list,.bd-scroll .md-quote,.bd-scroll .md-h3,.bd-scroll .md-h4,.bd-scroll .md-h5,.bd-scroll .md-h6{font-size:inherit}
+.bd-scroll .md-h2{font-size:var(--text-title)}
+.bd-permission,.bd-question,.bd-hello,.bd-typing,.bd-step{font-size:var(--text-body)}
+.bd-permission .bd-btn,.bd-question .bd-btn{font-size:inherit}
+.bd-permission-tool{font-size:var(--text-meta)}
+.bd-choice-label{font-size:inherit}
+
 /* Conversation text size: two quiet steppers beside the pickers. */
 .bd-zoom{display:inline-flex;border:var(--border-width) solid var(--board-line-input);border-radius:var(--radius-inline);overflow:hidden}
 .bd-zoom-btn{background:var(--board-bg-input);color:var(--board-fg-input);border:none;font-family:inherit;font-size:var(--text-micro);line-height:1;padding:3px var(--space-3);cursor:pointer;opacity:var(--dim-1);text-transform:none;letter-spacing:normal}
