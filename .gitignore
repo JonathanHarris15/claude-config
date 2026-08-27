@@ -22,6 +22,18 @@
 !hooks/
 !hooks/**
 
+!board_extension/
+!board_extension/**
+# Built output and deps rebuild from source on each machine.
+board_extension/node_modules/
+board_extension/out/
+
+# Installed by the twg CLI's own setup, not authored here. Each machine gets
+# its own copy when it runs `twg setup`, so syncing them would fight the
+# installer. Delete them with `rm -rf ~/.claude/skills/twg*` if unwanted.
+skills/twg/
+skills/twg-*/
+
 # --- Deliberately NOT synced, even though they sit next to the above ---
 # .credentials.json   OAuth token
 # .claude.json        (parent dir) user id, machine id, prompt history, MCP keys

@@ -1,0 +1,138 @@
+{
+  "name": "board-extension",
+  "displayName": "Board",
+  "description": "Live JIRA board and Claude Code agent harness",
+  "version": "0.1.0",
+  "private": true,
+  "publisher": "local",
+  "engines": {
+    "vscode": "^1.85.0"
+  },
+  "categories": [
+    "Other"
+  ],
+  "activationEvents": [
+    "onStartupFinished"
+  ],
+  "main": "./out/extension.js",
+  "contributes": {
+    "commands": [
+      {
+        "command": "board.open",
+        "title": "Open Board",
+        "category": "Board"
+      },
+      {
+        "command": "board.refresh",
+        "title": "Refresh Board",
+        "category": "Board",
+        "icon": "$(refresh)"
+      },
+      {
+        "command": "board.refreshSpaces",
+        "title": "Refresh Spaces",
+        "category": "Board",
+        "icon": "$(refresh)"
+      }
+    ],
+    "configuration": {
+      "title": "Board",
+      "properties": {
+        "board.project": {
+          "type": "string",
+          "default": "METH",
+          "description": "JIRA project key the board shows."
+        },
+        "board.site": {
+          "type": "string",
+          "default": "",
+          "description": "Atlassian site prefix. Blank uses the twg default site."
+        },
+        "board.twgPath": {
+          "type": "string",
+          "default": "",
+          "description": "Path to the twg binary. Blank auto-resolves per platform."
+        },
+        "board.doneWindowDays": {
+          "type": "number",
+          "default": 14,
+          "description": "How far back the Done column reaches, in days."
+        },
+        "board.refreshSeconds": {
+          "type": "number",
+          "default": 30,
+          "description": "Auto-refresh interval in seconds. 0 disables polling."
+        },
+        "board.repos": {
+          "type": "object",
+          "default": {
+            "METH": "c:/Users/jono1/Profesional Projects/Method",
+            "HAS": "c:/Users/jono1/Profesional Projects/harris-appraisals",
+            "MS": "c:/Users/jono1/Profesional Projects/mosaic-website"
+          },
+          "markdownDescription": "Where an agent runs for each JIRA space, keyed by space key. A space with no entry here is board-only — its tickets can be read, but Plan and Implement are disabled."
+        },
+        "board.conversationDir": {
+          "type": "string",
+          "default": ".board/conversations",
+          "markdownDescription": "Where agent conversations are written, relative to each space repo. One `<TICKET>.json` the panel reloads, and one `<TICKET>.md` you can read."
+        },
+        "board.worktreeDir": {
+          "type": "string",
+          "default": "",
+          "markdownDescription": "Where per-ticket worktrees are created. Blank puts them in a sibling folder next to each repo (`Method-worktrees`), which keeps them out of the working tree."
+        }
+      }
+    },
+    "menus": {
+      "view/title": [
+        {
+          "command": "board.refreshSpaces",
+          "when": "view == board.spaces",
+          "group": "navigation"
+        }
+      ],
+      "editor/title": [
+        {
+          "command": "board.refresh",
+          "when": "activeWebviewPanelId == 'board'",
+          "group": "navigation"
+        }
+      ]
+    },
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "board",
+          "title": "Board",
+          "icon": "media/board-icon.svg"
+        }
+      ]
+    },
+    "views": {
+      "board": [
+        {
+          "id": "board.spaces",
+          "name": "Spaces"
+        }
+      ]
+    }
+  },
+  "scripts": {
+    "compile": "tsc -p .",
+    "watch": "tsc -w -p .",
+    "preflight": "tsc -p . && node test/preflight.js && node test/markdown.test.js && node test/git.test.js",
+    "smoke": "node test/smoke.js",
+    "markdown": "node test/markdown.test.js",
+    "git": "node test/git.test.js"
+  },
+  "devDependencies": {
+    "@types/node": "^20.11.0",
+    "@types/vscode": "^1.85.0",
+    "typescript": "^5.4.0"
+  },
+  "dependencies": {
+    "@anthropic-ai/claude-agent-sdk": "^0.3.246",
+    "zod": "^4.4.3"
+  }
+}

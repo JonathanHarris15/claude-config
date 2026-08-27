@@ -1,0 +1,416 @@
+/* @generated from Claude Design project 35b84d5f-5a81-4ee4-8868-eb56b4fd9f2a
+   Board design system. Edit in Claude Design, not here — design-sync compares
+   inside these markers. The tab strip at the foot of this file is the one
+   exception and is marked. */
+
+/* ============ tokens/theme-bridge.css ============
+   The only place allowed to name a --vscode-* variable. Board owns no colour;
+   VS Code owns colour. Raw hex appears in exactly four LAST RESORT fallbacks,
+   for keys not guaranteed present in every theme. */
+:root {
+  --board-fg: var(--vscode-foreground);
+  --board-fg-on-accent: var(--vscode-button-foreground);
+  --board-fg-warning: var(--vscode-editorWarning-foreground, var(--vscode-foreground));
+  --board-fg-badge: var(--vscode-badge-foreground);
+
+  --board-bg-editor: var(--vscode-editor-background);
+  --board-bg-widget: var(--vscode-editorWidget-background);
+  --board-bg-quote: var(--vscode-textBlockQuote-background);
+  --board-bg-code: var(--vscode-textCodeBlock-background);
+  --board-bg-badge: var(--vscode-badge-background);
+  --board-bg-selection: var(--vscode-list-activeSelectionBackground);
+  --board-bg-input: var(--vscode-input-background);
+  --board-fg-input: var(--vscode-input-foreground);
+
+  --board-line: var(--vscode-panel-border);
+  --board-line-focus: var(--vscode-focusBorder);
+  --board-line-input: var(--vscode-input-border, var(--vscode-panel-border));
+
+  --board-action-bg: var(--vscode-button-background);
+  --board-action-bg-hover: var(--vscode-button-hoverBackground);
+  --board-action-fg: var(--vscode-button-foreground);
+  --board-action-quiet-bg: var(--vscode-button-secondaryBackground);
+  --board-action-quiet-fg: var(--vscode-button-secondaryForeground);
+
+  --board-invalid-bg: var(--vscode-inputValidation-errorBackground);
+  --board-invalid-line: var(--vscode-inputValidation-errorBorder);
+
+  --board-hue-info: var(--vscode-charts-blue, #3794ff);
+  --board-hue-warn: var(--vscode-editorWarning-foreground, #d29922);
+  --board-hue-pass: var(--vscode-testing-iconPassed, #2ea043);
+  --board-hue-fail: var(--vscode-testing-iconFailed, #f14c4c);
+
+  --board-font-ui: var(--vscode-font-family);
+  --board-font-mono: var(--vscode-editor-font-family);
+  --board-font-size-root: var(--vscode-font-size);
+}
+
+/* ============ tokens/color-roles.css ============
+   Six semantic roles. Consumers use these, never the bridge. */
+:root {
+  --role-neutral-fg: var(--board-fg);
+  --role-neutral-line: var(--board-line);
+  --role-neutral-wash: var(--board-bg-widget);
+  --role-neutral-solid: var(--board-bg-badge);
+  --role-neutral-on-solid: var(--board-fg-badge);
+
+  --role-attention-fg: var(--board-hue-warn);
+  --role-attention-line: var(--board-hue-warn);
+  --role-attention-wash: color-mix(in srgb, var(--board-hue-warn) 10%, transparent);
+  --role-attention-solid: var(--board-hue-warn);
+  --role-attention-on-solid: var(--vscode-editor-background, #000);
+
+  --role-running-fg: var(--board-hue-info);
+  --role-running-line: var(--board-hue-info);
+  --role-running-wash: color-mix(in srgb, var(--board-hue-info) 10%, transparent);
+  --role-running-solid: var(--board-hue-info);
+  --role-running-on-solid: var(--vscode-editor-background, #000);
+
+  --role-settled-fg: var(--board-hue-pass);
+  --role-settled-line: var(--board-hue-pass);
+  --role-settled-wash: color-mix(in srgb, var(--board-hue-pass) 10%, transparent);
+  --role-settled-solid: var(--board-hue-pass);
+  --role-settled-on-solid: var(--vscode-editor-background, #000);
+
+  --role-broken-fg: var(--board-hue-fail);
+  --role-broken-line: var(--board-invalid-line);
+  --role-broken-wash: var(--board-invalid-bg);
+  --role-broken-solid: var(--board-hue-fail);
+  --role-broken-on-solid: var(--vscode-editor-background, #000);
+
+  --role-quiet-fg: var(--board-fg);
+  --role-quiet-line: var(--board-line);
+  --role-quiet-wash: transparent;
+
+  --role-focus-line: var(--board-line-focus);
+  --role-selected-wash: var(--board-bg-selection);
+
+  --state-thinking: var(--role-running-line);
+  --state-working: var(--role-running-line);
+  --state-asking: var(--role-attention-line);
+  --state-done: var(--role-settled-line);
+  --state-error: var(--role-broken-solid);
+}
+
+/* A tint over pure black or white reads as dirt; the line carries the meaning. */
+body.vscode-high-contrast,
+body.vscode-high-contrast-light {
+  --role-attention-wash: transparent;
+  --role-running-wash: transparent;
+  --role-settled-wash: transparent;
+  --role-selected-wash: transparent;
+}
+
+/* ============ tokens/typography.css ============
+   Two families, both supplied by the editor. No webfont anywhere: strict CSP.
+   The scale is em so it tracks the user's configured editor size. */
+:root {
+  --font-ui: var(--board-font-ui);
+  --font-mono: var(--board-font-mono);
+
+  --text-micro: 0.7em;
+  --text-label: 0.78em;
+  --text-meta: 0.85em;
+  --text-body: 0.9em;
+  --text-base: 1em;
+  --text-title: 1.05em;
+
+  --weight-normal: 400;
+  --weight-strong: 600;
+
+  --leading-tight: 1.2;
+  --leading-card: 1.35;
+  --leading-prose: 1.4;
+
+  --eyebrow-transform: uppercase;
+  --eyebrow-tracking: 0.05em;
+  --eyebrow-tracking-wide: 0.04em;
+
+  --dim-1: 0.75;
+  --dim-2: 0.65;
+  --dim-3: 0.5;
+}
+
+/* ============ tokens/spacing.css ============
+   A dense tool beside code. Base step 4px, largest gap 18px, not an 8px grid. */
+:root {
+  --space-1: 3px;
+  --space-2: 4px;
+  --space-3: 5px;
+  --space-4: 6px;
+  --space-5: 8px;
+  --space-6: 10px;
+  --space-7: 12px;
+  --space-8: 14px;
+  --space-9: 16px;
+  --space-10: 18px;
+
+  --gap: var(--space-7);
+  --gap-card: var(--space-5);
+  --gap-tag: var(--space-2);
+  --gap-action: var(--space-5);
+  --pad-card: var(--space-5) var(--space-6);
+  --pad-panel: var(--space-7) var(--space-9);
+  --pad-panel-narrow: var(--space-7) var(--space-8);
+}
+
+/* ============ tokens/radius.css ============
+   No shadows anywhere: a shadow tuned for dark is invisible in light. */
+:root {
+  --radius: 6px;
+  --radius-pill: 8px;
+  --radius-inline: 4px;
+
+  --border-width: 1px;
+  --accent-width: 3px;
+  --rail-width: 2px;
+}
+
+/* ============ tokens/layout.css ============ */
+:root {
+  --column-width: 260px;
+  --detail-width: 380px;
+  --chat-log-max: 340px;
+  --subtask-mark-width: 32px;
+  --stack-breakpoint: 620px;
+}
+
+/* ============ tokens/motion.css ============
+   Board has none, deliberately: a panel beside code must never pull the eye
+   while the eye is reading code. */
+:root {
+  --motion-instant: 0ms;
+  --motion-quick: 80ms;
+  --ease: linear;
+}
+
+/* ============ tokens/base.css ============
+   A webview body is a bare document: it must adopt the editor canvas itself
+   or it renders as a white box in a dark editor. */
+body {
+  margin: 0;
+  font-family: var(--font-ui);
+  font-size: var(--board-font-size-root);
+  color: var(--role-neutral-fg);
+  background: var(--board-bg-editor);
+}
+
+a { color: var(--vscode-textLink-foreground, var(--board-hue-info)); text-decoration: none; }
+a:hover { color: var(--vscode-textLink-activeForeground, var(--board-hue-info)); text-decoration: underline; }
+
+*:focus-visible { outline: var(--border-width) solid var(--role-focus-line); outline-offset: 0; }
+
+/* ============ components/components.css ============ */
+
+.bd-btn{background:var(--board-action-bg);color:var(--board-action-fg);border:none;border-radius:var(--radius);padding:var(--space-3) var(--space-7);cursor:pointer;font-family:inherit;font-size:var(--text-body)}
+.bd-btn:hover{background:var(--board-action-bg-hover)}
+.bd-btn:disabled{opacity:var(--dim-3);cursor:default}
+.bd-btn--quiet{background:var(--board-action-quiet-bg);color:var(--board-action-quiet-fg)}
+.bd-actions{display:flex;gap:var(--gap-action);flex-wrap:wrap;margin:var(--space-8) 0 var(--space-10)}
+.bd-actions--tight{margin:var(--space-6) 0 0}
+
+.bd-chip{display:inline-block;font-size:var(--text-micro);line-height:var(--leading-tight);padding:1px var(--space-4);border-radius:var(--radius-pill);white-space:nowrap;background:var(--role-neutral-solid);color:var(--role-neutral-on-solid)}
+.bd-chip--attention{background:var(--role-attention-solid);color:var(--role-attention-on-solid)}
+.bd-chip--running{background:var(--role-running-solid);color:var(--role-running-on-solid)}
+.bd-chip--settled{background:var(--role-settled-solid);color:var(--role-settled-on-solid)}
+.bd-chip--broken{background:var(--role-broken-wash);color:var(--role-neutral-fg);border:var(--border-width) solid var(--role-broken-line);padding:0 calc(var(--space-4) - 1px)}
+.bd-chip--quiet{background:transparent;color:var(--role-neutral-fg);opacity:var(--dim-2);border:var(--border-width) solid var(--role-neutral-line);padding:0 calc(var(--space-4) - 1px)}
+.bd-chips{display:flex;flex-wrap:wrap;gap:var(--gap-tag);margin-top:var(--space-4)}
+
+.bd-column{flex:0 0 var(--column-width);display:flex;flex-direction:column;min-height:0}
+.bd-column-head,.bd-section-head{display:flex;justify-content:space-between;align-items:baseline;gap:var(--space-4);font-weight:var(--weight-strong);font-size:var(--text-label);text-transform:var(--eyebrow-transform);letter-spacing:var(--eyebrow-tracking-wide);opacity:var(--dim-1)}
+.bd-column-head{padding:0 var(--space-2) var(--space-5)}
+.bd-section-head{padding:0 0 var(--space-4);margin-top:var(--space-6)}
+.bd-column-body{flex:1;overflow-y:auto;display:flex;flex-direction:column;gap:var(--gap-card);padding-right:var(--space-2)}
+.bd-columns{flex:1;min-width:0;display:flex;gap:var(--gap);padding:var(--gap) var(--space-9);overflow-x:auto;min-height:0}
+
+.bd-card{background:var(--role-neutral-wash);border:var(--border-width) solid var(--role-neutral-line);border-left:var(--accent-width) solid transparent;border-radius:var(--radius);padding:var(--pad-card);cursor:pointer;text-align:left;font:inherit;color:inherit;display:block;width:100%;box-sizing:border-box}
+.bd-card:hover{border-color:var(--role-focus-line)}
+.bd-card--selected{border-color:var(--role-focus-line);background:var(--role-selected-wash)}
+.bd-card-key{display:flex;justify-content:space-between;align-items:center;gap:var(--space-4);font-size:var(--text-label);opacity:var(--dim-2);font-family:var(--font-mono)}
+.bd-card-summary{margin-top:var(--space-1);font-size:var(--text-base);line-height:var(--leading-card)}
+.bd-card--thinking,.bd-card--working{border-left-color:var(--state-working);background:var(--role-running-wash)}
+.bd-card--asking{border-left-color:var(--state-asking);background:var(--role-attention-wash)}
+.bd-card--done{border-left-color:var(--state-done);background:var(--role-settled-wash)}
+.bd-card--error{border-left-color:var(--state-error);background:var(--role-broken-wash)}
+
+.bd-empty{opacity:var(--dim-3);font-style:italic;padding:var(--space-5) var(--space-2);font-size:var(--text-body)}
+.bd-quote{padding:var(--space-4) var(--space-5);border-radius:var(--radius);background:var(--board-bg-quote);line-height:var(--leading-prose)}
+
+.bd-chat-log{max-height:var(--chat-log-max);overflow-y:auto;border:var(--border-width) solid var(--role-neutral-line);border-radius:var(--radius);padding:var(--space-5);margin-bottom:var(--space-5);background:var(--role-neutral-wash)}
+.bd-chat-entry{margin-bottom:var(--space-6);font-size:var(--text-body)}
+.bd-chat-entry:last-child{margin-bottom:0}
+.bd-chat-who{font-size:var(--text-micro);text-transform:var(--eyebrow-transform);letter-spacing:var(--eyebrow-tracking);opacity:var(--dim-3);margin-bottom:var(--space-1)}
+.bd-chat-text{white-space:pre-wrap;line-height:var(--leading-prose)}
+.bd-chat-text--tool{font-family:var(--font-mono);font-size:var(--text-meta);opacity:var(--dim-2)}
+.bd-chat-text--system{color:var(--role-attention-fg);font-size:var(--text-meta)}
+.bd-chat-box{width:100%;box-sizing:border-box;min-height:54px;resize:vertical;padding:var(--space-4) var(--space-5);border-radius:var(--radius);border:var(--border-width) solid var(--board-line-input);background:var(--board-bg-input);color:var(--board-fg-input);font-family:inherit;font-size:var(--text-body)}
+.bd-chat-box:focus{outline:var(--border-width) solid var(--role-focus-line)}
+
+.bd-permission{border:var(--border-width) solid var(--role-attention-line);border-radius:var(--radius);padding:var(--space-6);margin-bottom:var(--space-5);background:var(--role-attention-wash)}
+.bd-permission-title{font-weight:var(--weight-strong);margin-bottom:var(--space-2)}
+.bd-permission-tool{display:block;font-family:var(--font-mono);font-size:var(--text-meta);padding:var(--space-2) var(--space-4);border-radius:var(--radius-inline);background:var(--board-bg-code);word-break:break-all}
+
+.bd-timeline{border-left:var(--rail-width) solid var(--role-neutral-line);padding-left:var(--space-7);margin-left:var(--space-2)}
+.bd-event{margin-bottom:var(--space-8);font-size:var(--text-body)}
+.bd-event:last-child{margin-bottom:0}
+.bd-event-meta{opacity:var(--dim-2);font-size:var(--text-meta);margin-bottom:var(--space-1)}
+
+.bd-subtasks{margin-bottom:var(--space-10);display:flex;flex-direction:column}
+.bd-subtask{display:flex;gap:var(--space-5);align-items:baseline;padding:var(--space-1) 0;font-size:var(--text-body)}
+.bd-subtask--done{opacity:var(--dim-3);text-decoration:line-through}
+.bd-subtask-mark{font-size:var(--text-micro);opacity:var(--dim-2);flex:none;width:var(--subtask-mark-width);font-family:var(--font-mono)}
+
+.bd-error{margin:var(--space-6) var(--space-9);padding:var(--space-6) var(--space-7);border-radius:var(--radius);background:var(--role-broken-wash);border:var(--border-width) solid var(--role-broken-line);white-space:pre-wrap;font-size:var(--text-body)}
+.bd-status{flex:none;padding:var(--space-3) var(--space-7);border-top:var(--border-width) solid var(--role-neutral-line);font-size:var(--text-meta);opacity:var(--dim-2);display:flex;justify-content:space-between;gap:var(--space-5)}
+
+@media (max-width:620px){
+.bd-columns{flex:none;flex-direction:column;overflow-x:hidden;padding:var(--space-5) var(--space-6)}
+.bd-column{flex:none}
+.bd-column-body{overflow-y:visible}
+.bd-column-head{position:sticky;top:0;background:var(--board-bg-editor);padding-top:var(--space-4);z-index:1}
+.bd-actions .bd-btn{flex:1 1 auto}
+}
+
+/* @end-generated */
+
+/* ---------------------------------------------------------------------------
+   NOT FROM THE DESIGN SYSTEM. The tabbed panel was asked for but the design
+   did not include it, so these are built from the system tokens and should be
+   pushed back into Claude Design as a Tabs component rather than left here.
+   Nothing below invents a colour or a spacing value.
+   --------------------------------------------------------------------------- */
+.bd-shell{height:100vh;display:flex;flex-direction:column;overflow:hidden}
+.bd-body{flex:1;min-width:0;display:flex;min-height:0}
+.bd-detail{flex:0 0 var(--detail-width);border-left:var(--border-width) solid var(--role-neutral-line);padding:var(--pad-panel);overflow:hidden;display:flex;flex-direction:column}
+.bd-detail-key{font-family:var(--font-mono);font-size:var(--text-label);opacity:var(--dim-2)}
+.bd-detail-title{margin:0 0 2px;font-size:var(--text-title);line-height:var(--leading-card);font-weight:var(--weight-strong)}
+
+.bd-tabs{display:flex;border-bottom:var(--border-width) solid var(--role-neutral-line);margin:var(--space-8) 0 var(--space-6)}
+.bd-tab{background:none;border:none;border-bottom:var(--accent-width) solid transparent;color:inherit;opacity:var(--dim-2);font-family:inherit;font-size:var(--text-label);font-weight:var(--weight-strong);text-transform:var(--eyebrow-transform);letter-spacing:var(--eyebrow-tracking-wide);padding:var(--space-3) var(--space-6);cursor:pointer;display:flex;align-items:center;gap:var(--space-2)}
+.bd-tab:hover{opacity:var(--dim-1)}
+.bd-tab--active{opacity:1;border-bottom-color:var(--role-focus-line)}
+.bd-tab-dot{width:6px;height:6px;border-radius:var(--radius-pill);background:var(--role-attention-solid);flex:none}
+
+.bd-desc{white-space:pre-wrap;line-height:var(--leading-prose);font-size:var(--text-body)}
+.bd-desc-edit{width:100%;box-sizing:border-box;min-height:320px;resize:vertical;padding:var(--space-4) var(--space-5);border-radius:var(--radius);border:var(--border-width) solid var(--board-line-input);background:var(--board-bg-input);color:var(--board-fg-input);font-family:var(--font-mono);font-size:var(--text-meta);line-height:var(--leading-prose)}
+.bd-desc-edit:focus{outline:var(--border-width) solid var(--role-focus-line)}
+.bd-notice{font-size:var(--text-meta);margin-bottom:var(--space-5);padding:var(--space-4) var(--space-5);border-radius:var(--radius);background:var(--role-attention-wash);border:var(--border-width) solid var(--role-attention-line)}
+
+@media (max-width:620px){
+.bd-body{flex-direction:column;overflow-y:auto}
+.bd-detail{flex:none;border-left:none;border-top:var(--border-width) solid var(--role-neutral-line);padding:var(--pad-panel-narrow)}
+}
+
+/* Rendered Markdown in the description tab. Every value is a system token;
+   the type scale is the panel scale, so a description reads like the rest of
+   the tool rather than like a web page dropped into it. */
+.bd-desc{white-space:normal}
+.bd-desc > :first-child{margin-top:0}
+.bd-desc > :last-child{margin-bottom:0}
+.md-p{margin:0 0 var(--space-6);line-height:var(--leading-prose);font-size:var(--text-body)}
+.md-h{margin:var(--space-10) 0 var(--space-4);font-weight:var(--weight-strong);line-height:var(--leading-tight)}
+.md-h2{font-size:var(--text-title)}
+.md-h3{font-size:var(--text-base)}
+.md-h4,.md-h5,.md-h6{font-size:var(--text-body);opacity:var(--dim-1)}
+.md-list{margin:0 0 var(--space-6);padding-left:var(--space-10)}
+.md-item{margin-bottom:var(--space-2);line-height:var(--leading-prose);font-size:var(--text-body)}
+.md-item:last-child{margin-bottom:0}
+.md-task{list-style:none;margin-left:calc(var(--space-10) * -1);display:flex;gap:var(--space-4);align-items:baseline}
+.md-task--done{opacity:var(--dim-3)}
+.md-check{font-family:var(--font-mono);font-size:var(--text-micro);opacity:var(--dim-2);flex:none}
+.md-quote{margin:0 0 var(--space-6);padding:var(--space-4) var(--space-5);border-left:var(--rail-width) solid var(--role-neutral-line);background:var(--board-bg-quote);border-radius:var(--radius);line-height:var(--leading-prose);font-size:var(--text-body)}
+.md-pre{margin:0 0 var(--space-6);padding:var(--space-5);border-radius:var(--radius);background:var(--board-bg-code);font-family:var(--font-mono);font-size:var(--text-meta);line-height:var(--leading-prose);overflow-x:auto;white-space:pre}
+.md-code{font-family:var(--font-mono);font-size:var(--text-meta);padding:1px var(--space-2);border-radius:var(--radius-inline);background:var(--board-bg-code)}
+.md-hr{border:none;border-top:var(--border-width) solid var(--role-neutral-line);margin:var(--space-10) 0}
+
+/* Permission level and image attachments. Also not yet in the design system:
+   both belong in Claude Design as a Select and an Attachment strip. */
+.bd-mode{background:var(--board-bg-input);color:var(--board-fg-input);border:var(--border-width) solid var(--board-line-input);border-radius:var(--radius-inline);font-family:inherit;font-size:var(--text-micro);padding:1px var(--space-2);text-transform:none;letter-spacing:normal;opacity:1}
+.bd-mode:focus{outline:var(--border-width) solid var(--role-focus-line)}
+.bd-attachments{display:flex;flex-wrap:wrap;gap:var(--space-4);margin-bottom:var(--space-5)}
+.bd-thumb{position:relative;width:64px;height:64px;border-radius:var(--radius);overflow:hidden;border:var(--border-width) solid var(--role-neutral-line)}
+.bd-thumb img{width:100%;height:100%;object-fit:cover;display:block}
+.bd-thumb-x{position:absolute;top:0;right:0;border:none;background:var(--role-broken-solid);color:var(--role-broken-on-solid);font-family:var(--font-mono);font-size:var(--text-micro);line-height:1;padding:2px 4px;cursor:pointer}
+
+/* The panel is a bounded column: a fixed head, a pane that grows, and — on the
+   agent tab — a composer resting on the floor while the transcript scrolls
+   above it. Same shape as a terminal chat, which is what it is. */
+.bd-detail-head{flex:none}
+.bd-pane{flex:1;min-height:0;display:flex;flex-direction:column}
+.bd-pane--scroll{overflow-y:auto}
+.bd-scroll{flex:1;min-height:0;overflow-y:auto;padding-right:var(--space-2);padding-bottom:var(--space-7)}
+.bd-composer{flex:none;padding-top:var(--space-9);border-top:var(--border-width) solid var(--role-neutral-line)}
+
+/* Inside the scroll region the log is the region, so it drops its own box. */
+.bd-chat-log--flow{max-height:none;overflow:visible;border:none;background:none;padding:0;margin-bottom:0}
+
+/* Stacked in a narrow editor there is no floor to pin to: let it all flow. */
+@media (max-width:620px){
+.bd-detail{overflow:visible}
+.bd-pane,.bd-scroll{overflow:visible;min-height:auto}
+.bd-composer{border-top:none}
+}
+
+/* Agent controls, the slash menu and the context meter. None of these are in
+   the design system yet; they use its tokens and belong back in Claude Design
+   as a Select, a Menu and a Meter. */
+.bd-agent-head{flex:none;align-items:center;margin-top:0;padding-bottom:var(--space-5);border-bottom:var(--border-width) solid var(--role-neutral-line);margin-bottom:var(--space-5)}
+.bd-controls{display:flex;gap:var(--space-3);align-items:center}
+.bd-model-idle{font-size:var(--text-micro);opacity:var(--dim-2);text-transform:none;letter-spacing:normal;font-weight:var(--weight-normal)}
+
+.bd-menu{max-height:260px;overflow-y:auto;border:var(--border-width) solid var(--role-neutral-line);border-radius:var(--radius);background:var(--role-neutral-wash);margin-bottom:var(--space-4)}
+.bd-menu-row{display:flex;align-items:baseline;gap:var(--space-4);padding:var(--space-3) var(--space-5);cursor:pointer;font-size:var(--text-body)}
+.bd-menu-row--on{background:var(--role-selected-wash)}
+.bd-menu-row:hover{background:var(--role-selected-wash)}
+.bd-menu-name{font-family:var(--font-mono);font-size:var(--text-meta);flex:none;font-weight:var(--weight-strong)}
+.bd-menu-hint{font-family:var(--font-mono);font-size:var(--text-micro);opacity:var(--dim-3);flex:none;max-width:140px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.bd-menu-desc{font-size:var(--text-meta);opacity:var(--dim-2);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+
+.bd-foot{display:flex;justify-content:space-between;align-items:center;gap:var(--space-5);margin-top:var(--space-2);font-size:var(--text-micro);opacity:var(--dim-2)}
+.bd-foot-left{display:flex;align-items:center;gap:var(--space-4)}
+.bd-meter{display:inline-block;width:70px;height:4px;border-radius:var(--radius-pill);background:var(--role-neutral-solid);overflow:hidden}
+.bd-meter-fill{display:block;height:100%;background:var(--role-running-solid)}
+.bd-meter-fill--warn{background:var(--role-attention-solid)}
+.bd-linkish{background:none;border:none;color:var(--role-attention-fg);font-family:inherit;font-size:var(--text-micro);cursor:pointer;padding:0;opacity:1}
+.bd-linkish:hover{text-decoration:underline}
+
+/* Activity, live text and stacked permission requests. */
+.bd-activity{display:flex;align-items:center;gap:var(--space-2)}
+.bd-dot{width:5px;height:5px;border-radius:var(--radius-pill);background:var(--role-running-solid);flex:none}
+.bd-elapsed{font-family:var(--font-mono)}
+.bd-streaming{border-left:var(--rail-width) solid var(--role-running-line);padding-left:var(--space-5);opacity:0.85}
+.bd-permission-line{margin-bottom:var(--space-5)}
+.bd-permission-line:last-of-type{margin-bottom:0}
+
+/* Where the ticket work lives, and whether it has landed. */
+.bd-worktree{display:flex;flex-wrap:wrap;align-items:center;gap:var(--space-4);margin-top:var(--space-5);font-size:var(--text-meta)}
+.bd-wt-branch{font-family:var(--font-mono);font-size:var(--text-meta);opacity:var(--dim-2)}
+.bd-wt-quiet{opacity:var(--dim-3)}
+.bd-wt-note{opacity:var(--dim-1)}
+.bd-wt-action{background:none;border:none;color:inherit;opacity:var(--dim-3);font-family:inherit;font-size:var(--text-meta);cursor:pointer;padding:0;text-decoration:underline}
+.bd-wt-action:hover{opacity:1}
+
+/* The handle between the board and the panel. Four pixels of target, one pixel
+   of line, so it is grabbable without drawing attention to itself. */
+.bd-resizer{flex:none;width:5px;cursor:col-resize;background:transparent;position:relative}
+.bd-resizer::after{content:"";position:absolute;top:0;bottom:0;left:2px;width:var(--border-width);background:var(--role-neutral-line)}
+.bd-resizer:hover::after,.bd-resizing .bd-resizer::after{background:var(--role-focus-line);left:1px;width:calc(var(--border-width) * 3)}
+.bd-resizing{cursor:col-resize;user-select:none}
+.bd-detail{border-left:none}
+
+/* A question the agent asked. It has no AskUserQuestion here, so this is it. */
+.bd-question{border:var(--border-width) solid var(--role-attention-line);border-radius:var(--radius);padding:var(--space-6);margin-bottom:var(--space-5);background:var(--role-attention-wash)}
+.bd-question-title{font-weight:var(--weight-strong);margin-bottom:var(--space-5)}
+.bd-choice{display:flex;align-items:baseline;gap:var(--space-4);width:100%;text-align:left;font:inherit;color:inherit;background:var(--board-bg-input);border:var(--border-width) solid var(--board-line-input);border-radius:var(--radius);padding:var(--space-4) var(--space-5);margin-bottom:var(--space-3);cursor:pointer}
+.bd-choice:hover{border-color:var(--role-focus-line)}
+.bd-choice--on{border-color:var(--role-attention-line);background:var(--role-attention-wash)}
+.bd-choice-mark{font-family:var(--font-mono);font-size:var(--text-micro);opacity:var(--dim-2);flex:none}
+.bd-choice-label{font-size:var(--text-body);font-weight:var(--weight-strong)}
+.bd-choice-desc{font-size:var(--text-meta);opacity:var(--dim-2)}
+
+/* Stacked, there is no vertical edge to drag. */
+@media (max-width:620px){
+.bd-resizer{display:none}
+.bd-detail{flex-basis:auto !important}
+}
