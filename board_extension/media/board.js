@@ -1745,6 +1745,62 @@
     window.addEventListener('mouseup', done);
   });
 
+  /**
+   * Right-drag pans the board. Six columns across several swimlanes is more
+   * than a screen holds, and reaching for a scrollbar to see the far column
+   * breaks the glance the board exists for. The left button already means drag
+   * a card, so panning takes the other one.
+   */
+  let panning = null;
+  let ateClick = false;
+
+  columnsEl.addEventListener('mousedown', (event) => {
+    if (event.button !== 2) {
+      return;
+    }
+    panning = {
+      x: event.clientX,
+      y: event.clientY,
+      left: columnsEl.scrollLeft,
+      top: columnsEl.scrollTop,
+      moved: false
+    };
+    document.body.classList.add('bd-panning');
+
+    const move = (at) => {
+      // Grab the board, not the scrollbar: the content follows the hand.
+      const dx = at.clientX - panning.x;
+      const dy = at.clientY - panning.y;
+      if (Math.abs(dx) > 3 || Math.abs(dy) > 3) {
+        panning.moved = true;
+      }
+      columnsEl.scrollLeft = panning.left - dx;
+      columnsEl.scrollTop = panning.top - dy;
+      at.preventDefault();
+    };
+
+    const done = () => {
+      // A right-click that panned must not also open a menu on the way up.
+      ateClick = panning.moved;
+      panning = null;
+      document.body.classList.remove('bd-panning');
+      window.removeEventListener('mousemove', move);
+      window.removeEventListener('mouseup', done);
+    };
+
+    window.addEventListener('mousemove', move);
+    window.addEventListener('mouseup', done);
+  });
+
+  columnsEl.addEventListener('contextmenu', (event) => {
+    // Windows raises this on the way up, everywhere else on the way down, so
+    // both "still panning" and "just panned" have to swallow it.
+    if (panning || ateClick) {
+      event.preventDefault();
+      ateClick = false;
+    }
+  });
+
   // Double-click the handle to go back to the default width.
   resizerEl.addEventListener('dblclick', () => {
     detailEl.style.flexBasis = '';

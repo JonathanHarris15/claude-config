@@ -18,9 +18,28 @@
     return node;
   }
 
-  /** Inline spans: code, links, bold, italic, strikethrough. */
+  /** Inline spans: code, links, bare URLs, bold, italic, strikethrough. */
   // A literal, not a built string: the escapes have to reach the regex engine.
-  const INLINE = /(`[^`]+`)|(\[[^\]]*\]\([^)]*\))|(\*\*[^*]+\*\*)|(\*[^*]+\*)|(~~[^~]+~~)/g;
+  // The bare URL comes last so a [label](url) is taken whole, not half-eaten.
+  const INLINE = /(`[^`]+`)|(\[[^\]]*\]\([^)]*\))|(\*\*[^*]+\*\*)|(\*[^*]+\*)|(~~[^~]+~~)|(https?:\/\/[^\s<>\[\]"'`]+)/g;
+
+  /**
+   * The only schemes a click may follow. This text is written by an agent, so
+   * a javascript: or data: href is not a hypothetical — anything else renders
+   * as the plain words it is. Relative links land here too, and correctly: the
+   * panel is a webview with no workspace to resolve them against.
+   */
+  const SAFE_SCHEME = /^(?:https?:|mailto:)/i;
+
+  function anchor(label, href) {
+    if (!SAFE_SCHEME.test(href)) {
+      return document.createTextNode(label);
+    }
+    const link = el('a', 'md-link', label);
+    link.href = href;
+    link.title = href;
+    return link;
+  }
 
   function inline(text, parent) {
     let last = 0;
@@ -32,6 +51,7 @@
         parent.append(document.createTextNode(text.slice(last, match.index)));
       }
       const token = match[0];
+      let consumed = token.length;
 
       if (token.startsWith(TICK)) {
         parent.append(el('code', 'md-code', token.slice(1, -1)));
@@ -39,10 +59,13 @@
         const split = token.indexOf('](');
         const label = token.slice(1, split);
         const href = token.slice(split + 2, -1);
-        const link = el('a', null, label || href);
-        link.href = href;
-        link.title = href;
-        parent.append(link);
+        parent.append(anchor(label || href, href));
+      } else if (token.startsWith('http')) {
+        // A URL ending a sentence must not swallow the full stop, and one in
+        // brackets must not swallow the bracket.
+        const url = token.replace(/[.,;:!?)\]}'"]+$/, '');
+        parent.append(anchor(url, url));
+        consumed = url.length;
       } else if (token.startsWith('**')) {
         parent.append(el('strong', null, token.slice(2, -2)));
       } else if (token.startsWith('~~')) {
@@ -50,7 +73,8 @@
       } else {
         parent.append(el('em', null, token.slice(1, -1)));
       }
-      last = match.index + token.length;
+      last = match.index + consumed;
+      INLINE.lastIndex = last;
     }
 
     if (last < text.length) {

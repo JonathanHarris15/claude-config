@@ -32,6 +32,37 @@ global.window = {};
 
 eval(fs.readFileSync(path.join(__dirname, '..', 'media', 'markdown.js'), 'utf8'));
 
+// Links, checked against fixed text rather than whatever JIRA happens to hold.
+// Agents hand over deploy URLs in prose, so a bare one has to be clickable, and
+// the text is machine-written, so the scheme has to be checked.
+(function links() {
+  const anchors = (md) => {
+    const found = [];
+    const walk = (n) => { if (n.tag === 'a') found.push(n); (n.children || []).forEach(walk); };
+    global.window.renderMarkdown(md).children.forEach(walk);
+    return found;
+  };
+  const fail = (why) => { console.error('FAILED:', why); process.exit(1); };
+
+  let a = anchors('deployed to https://method-preview.vercel.app/build/12 just now');
+  if (a.length !== 1) fail('a bare URL is not a link');
+  if (a[0].href !== 'https://method-preview.vercel.app/build/12') fail('bare URL href is ' + a[0].href);
+
+  a = anchors('it is live at https://example.com/x.');
+  if (a[0].href !== 'https://example.com/x') fail('the full stop was swallowed: ' + a[0].href);
+
+  a = anchors('see [the build](https://example.com/b) for logs');
+  if (a.length !== 1 || a[0].textContent !== 'the build') fail('a markdown link stopped working');
+
+  a = anchors('click [here](javascript:alert(1)) now');
+  if (a.length !== 0) fail('a javascript: href became a link');
+
+  a = anchors('run `curl https://example.com` first');
+  if (a.length !== 0) fail('a URL inside code became a link');
+
+  console.log('links: bare, trailing stop, markdown, javascript: refused, code left alone');
+})();
+
 (async () => {
   const { fetchDetail } = require('../out/board');
   const detail = await fetchDetail('METH-390');
