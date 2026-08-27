@@ -6,10 +6,14 @@
   const statusEl = document.getElementById('status');
   const errorEl = document.getElementById('error');
   const resizerEl = document.getElementById('resizer');
+  const searchEl = document.getElementById('search');
+  const railEl = document.getElementById('rail');
+  const countEl = document.getElementById('count');
+  const refreshEl = document.getElementById('refreshBtn');
 
   let selected = null;
   let byKey = {};
-  let agents = {};       // ticket -> agent state, for the card edge
+  let agents = {};       // ticket -> { state, since, doing }, for cards and the rail
   let snapshots = {};    // ticket -> agent chat snapshot
   let detail = null;     // the selected ticket's JIRA detail
   let tab = 'description';
@@ -22,22 +26,24 @@
   let menuHits = [];     // the filtered rows on screen
   let menuIndex = 0;
   let menuOpen = false;
-  let since = null;      // when the current burst of work started
   let wt = null;         // worktree status for the selected ticket
   let types = [];        // level-0 issue types for this space
   let epics = [];        // epics seen on this board, for grouping and parenting
   let composing = null;  // the column currently offering a new-ticket form
   let draftNew = { summary: '', type: '', epic: '' };
   let dragging = null;   // the card key currently under the cursor
+  let filter = '';       // the top-bar filter, lowercased
+  let errorTimer = null; // errors dismiss themselves after a while
 
   window.addEventListener('message', (event) => {
     const message = event.data;
     if (message.type === 'board') {
-      showError(null);
+      refreshEl.classList.remove('bd-iconbtn--busy');
       agents = message.agents || {};
       types = message.types || [];
       epics = message.epics || [];
       drawBoard(message.columns, message.tickets);
+      drawRail();
     } else if (message.type === 'detail') {
       if (message.detail.key === selected) {
         detail = message.detail;
@@ -47,6 +53,7 @@
       agents = message.agents || {};
       snapshots[message.snapshot.ticket] = message.snapshot;
       paintCards();
+      drawRail();
       if (message.snapshot.ticket === selected) {
         drawDetail();
       }
@@ -65,15 +72,126 @@
     }
   });
 
+  /**
+   * Errors announce themselves, offer a close button, and leave on their own.
+   * They used to be wiped by the next board refresh — which arrived right
+   * after the very action that failed, so "JIRA refused" flashed and vanished.
+   */
   function showError(text) {
-    errorEl.hidden = !text;
-    errorEl.textContent = text || '';
+    if (errorTimer) {
+      clearTimeout(errorTimer);
+      errorTimer = null;
+    }
+    if (!text) {
+      errorEl.hidden = true;
+      errorEl.replaceChildren();
+      return;
+    }
+    errorEl.hidden = false;
+    errorEl.replaceChildren();
+    errorEl.append(el('span', 'bd-error-text', text));
+    const close = el('button', 'bd-error-x', '×');
+    close.type = 'button';
+    close.title = 'Dismiss';
+    close.addEventListener('click', () => showError(null));
+    errorEl.append(close);
+    errorTimer = setTimeout(() => showError(null), 15000);
+  }
+
+  /* ---------- the top bar ---------- */
+
+  searchEl.addEventListener('input', () => {
+    filter = searchEl.value.trim().toLowerCase();
+    redrawSoon();
+  });
+  searchEl.addEventListener('keydown', (event) => {
+    if (event.key === 'Escape') {
+      event.stopPropagation();
+      searchEl.value = '';
+      filter = '';
+      searchEl.blur();
+      redrawSoon();
+    }
+  });
+
+  refreshEl.addEventListener('click', () => {
+    refreshEl.classList.add('bd-iconbtn--busy');
+    vscode.postMessage({ type: 'refresh' });
+  });
+
+  // Escape steps back out of the detail panel; / jumps to the filter. Neither
+  // fires while typing, where both keys already mean something.
+  window.addEventListener('keydown', (event) => {
+    const tag = event.target && event.target.tagName ? event.target.tagName.toLowerCase() : '';
+    if (tag === 'input' || tag === 'textarea' || tag === 'select') return;
+    if (event.key === 'Escape' && selected) {
+      selected = null;
+      detail = null;
+      drawDetail();
+      paintCards();
+    } else if (event.key === '/') {
+      event.preventDefault();
+      searchEl.focus();
+      searchEl.select();
+    }
+  });
+
+  function agentState(key) {
+    const info = agents[key];
+    return info ? info.state : undefined;
+  }
+
+  /**
+   * The agent rail: every live agent as one pill, "needs you" first and loudest.
+   * This is the board-wide answer to "what is waiting on me" — the question the
+   * whole board exists for — so it lives in the top bar, not inside a column.
+   */
+  const RAIL_ORDER = { asking: 0, thinking: 1, working: 1, error: 2, done: 3 };
+
+  function drawRail() {
+    railEl.replaceChildren();
+    const live = Object.keys(agents)
+      .filter((key) => agentState(key) && agentState(key) !== 'idle')
+      .sort((a, b) => (RAIL_ORDER[agentState(a)] ?? 9) - (RAIL_ORDER[agentState(b)] ?? 9));
+
+    for (const key of live) {
+      const info = agents[key];
+      const pill = el('button', 'bd-pill bd-pill--' + info.state);
+      pill.type = 'button';
+      const card = byKey[key];
+      pill.title = (card ? card.summary + ' — ' : '') + stateWord(info.state) +
+        (info.doing ? ' · ' + shortTool(info.doing) : '');
+      pill.append(el('span', 'bd-pill-dot'));
+      pill.append(el('span', 'bd-pill-key', key));
+      if (info.state === 'asking') {
+        pill.append(el('span', null, 'needs you'));
+      } else if (info.since && (info.state === 'thinking' || info.state === 'working')) {
+        const clock = el('span', 'bd-elapsed', fmtElapsed(info.since));
+        clock.dataset.since = String(info.since);
+        pill.append(clock);
+      }
+      pill.addEventListener('click', () => {
+        tab = 'agent';
+        select(key);
+      });
+      railEl.append(pill);
+    }
   }
 
   /* ---------- the board ---------- */
 
   let lastColumns = null;
   let lastBuckets = null;
+
+  /** Does a ticket survive the top-bar filter? Every word must land somewhere. */
+  function matches(ticket) {
+    if (!filter) return true;
+    const hay = (
+      ticket.key + ' ' + ticket.summary + ' ' + ticket.type + ' ' +
+      (ticket.labels || []).join(' ') + ' ' + (ticket.epicName || '') + ' ' + ticket.status
+    ).toLowerCase();
+    return filter.split(/\s+/).every((word) => hay.indexOf(word) >= 0);
+  }
 
   /**
    * Epics are swimlanes, not per-column groups: one row per epic running across
@@ -100,19 +218,40 @@
       }
     }
 
+    const visible = filter ? everything.filter(matches) : everything;
+
     columnsEl.replaceChildren();
+
+    if (!total) {
+      columnsEl.append(
+        el('div', 'bd-board-empty',
+          'Nothing on this board yet. Add a ticket from any column, or check the space in JIRA.')
+      );
+      statusEl.textContent = 'updated ' + new Date().toLocaleTimeString();
+      countEl.textContent = '';
+      return;
+    }
 
     // One header row for the whole board; the lanes below line up under it.
     const head = el('div', 'bd-headrow');
     for (const name of names) {
       const cell = el('div', 'bd-headcell');
       cell.append(el('span', null, name));
-      cell.append(el('span', null, String((buckets[name] || []).length)));
+      const shown = (filter ? visible : everything).filter((t) => t.status === name).length;
+      const badge = el('span', 'bd-headcount', String(shown));
+      if (filter) badge.title = (buckets[name] || []).length + ' before filtering';
+      cell.append(badge);
       head.append(cell);
     }
     columnsEl.append(head);
 
-    for (const lane of lanes(everything)) {
+    let drawn = 0;
+    for (const lane of lanes(visible)) {
+      // A lane the filter emptied is noise; a lane empty on its own merits
+      // still earns its row, because its add buttons are how it fills up.
+      if (filter && !lane.tickets.length) continue;
+      drawn++;
+
       const laneEl = el('div', 'bd-lane');
 
       const laneHead = el('div', 'bd-lane-head');
@@ -131,8 +270,14 @@
       columnsEl.append(laneEl);
     }
 
-    statusEl.textContent =
-      total + ' ticket' + (total === 1 ? '' : 's') + ' · updated ' + new Date().toLocaleTimeString();
+    if (filter && !drawn) {
+      columnsEl.append(el('div', 'bd-board-empty', 'Nothing matches "' + filter + '".'));
+    }
+
+    countEl.textContent = filter
+      ? visible.length + ' of ' + total
+      : total + ' ticket' + (total === 1 ? '' : 's');
+    statusEl.textContent = 'updated ' + new Date().toLocaleTimeString();
     paintCards();
   }
 
@@ -165,7 +310,9 @@
     for (const ticket of tickets) {
       node.append(card(ticket));
     }
-    node.append(composer(column, lane));
+    if (!filter) {
+      node.append(composer(column, lane));
+    }
 
     node.addEventListener('dragover', (event) => {
       if (!dragging) return;
@@ -192,16 +339,55 @@
     return node;
   }
 
+  /** Priority earns ink only when it is not Medium — which is nearly always is. */
+  function prioMark(priority) {
+    const map = {
+      Highest: ['▲▲', 'highest'],
+      High: ['▲', 'high'],
+      Low: ['▼', 'low'],
+      Lowest: ['▼▼', 'lowest']
+    };
+    const hit = map[priority];
+    if (!hit) return null;
+    const mark = el('span', 'bd-prio bd-prio--' + hit[1], hit[0]);
+    mark.title = priority + ' priority';
+    return mark;
+  }
+
   function card(ticket) {
     const node = el('button', 'bd-card');
     node.type = 'button';
     node.dataset.key = ticket.key;
 
     const key = el('div', 'bd-card-key');
-    key.append(el('span', null, ticket.key + ' · ' + ticket.type));
-    key.append(el('span', 'bd-chip', ''));
+    const left = el('span', 'bd-card-id');
+    left.append(el('span', null, ticket.key + ' · ' + ticket.type));
+    const prio = prioMark(ticket.priority);
+    if (prio) left.append(prio);
+    key.append(left);
+    const age = el('span', 'bd-card-age', fmtAge(ticket.updated));
+    age.title = ticket.updated ? 'updated ' + new Date(ticket.updated).toLocaleString() : '';
+    key.append(age);
     node.append(key);
     node.append(el('div', 'bd-card-summary', ticket.summary));
+
+    // The foot carries the quiet metadata and the loud agent state. Labels are
+    // capped so a well-tagged ticket stays one card, not a tag cloud.
+    const foot = el('div', 'bd-card-foot');
+    const tags = el('span', 'bd-card-tags');
+    const labels = ticket.labels || [];
+    for (const label of labels.slice(0, 2)) {
+      tags.append(el('span', 'bd-chip bd-chip--quiet', label));
+    }
+    if (labels.length > 2) {
+      const more = el('span', 'bd-chip bd-chip--quiet', '+' + (labels.length - 2));
+      more.title = labels.slice(2).join(', ');
+      tags.append(more);
+    }
+    foot.append(tags);
+    foot.append(el('span', 'bd-chip bd-card-state', ''));
+    foot.hidden = !labels.length;
+    node.append(foot);
 
     if (ticket.pending) {
       node.classList.add('bd-card--pending');
@@ -289,6 +475,7 @@
     box.addEventListener('keydown', (event) => {
       if (event.key === 'Escape') {
         event.preventDefault();
+        event.stopPropagation();
         composing = null;
         draftNew = { summary: '', type: '' };
         redrawSoon();
@@ -345,8 +532,8 @@
   function paintCards() {
     for (const node of document.querySelectorAll('.bd-card')) {
       const key = node.dataset.key;
-      const state = agents[key];
-      const chip = node.querySelector('.bd-chip');
+      const state = agentState(key);
+      const chip = node.querySelector('.bd-card-state');
       if (!chip) continue;
 
       const pending = node.classList.contains('bd-card--pending');
@@ -354,15 +541,19 @@
         'bd-card' +
         (key === selected ? ' bd-card--selected' : '') +
         (pending ? ' bd-card--pending' : '');
-      chip.className = 'bd-chip';
+      chip.className = 'bd-chip bd-card-state';
+      const foot = chip.parentElement;
+      const hasTags = Boolean(foot.querySelector('.bd-card-tags').childNodes.length);
       if (state && state !== 'idle') {
         node.classList.add('bd-card--' + state);
         chip.classList.add(chipRole(state));
         chip.textContent = stateWord(state);
         chip.hidden = false;
+        foot.hidden = false;
       } else {
         chip.textContent = '';
         chip.hidden = true;
+        foot.hidden = !hasTags;
       }
     }
   }
@@ -373,8 +564,12 @@
     descDraft = null;
     wt = null;
     // Open on the agent when one is running, otherwise on the spec.
-    const state = agents[key];
-    tab = state && state !== 'idle' ? 'agent' : 'description';
+    const state = agentState(key);
+    if (state && state !== 'idle') {
+      tab = 'agent';
+    } else if (tab !== 'agent') {
+      tab = 'description';
+    }
     paintCards();
     drawDetail();
     vscode.postMessage({ type: 'select', key: key });
@@ -397,7 +592,19 @@
     // The head stays put; only the pane below it scrolls. That is what lets
     // the chat composer sit on the floor of the panel.
     const head = el('div', 'bd-detail-head');
-    head.append(el('div', 'bd-detail-key', ticket.key + ' · ' + ticket.status));
+    const eyebrow = el('div', 'bd-detail-key');
+    eyebrow.append(el('span', null, ticket.key + ' · ' + ticket.status));
+    const close = el('button', 'bd-detail-x', '×');
+    close.type = 'button';
+    close.title = 'Close (Esc)';
+    close.addEventListener('click', () => {
+      selected = null;
+      detail = null;
+      drawDetail();
+      paintCards();
+    });
+    eyebrow.append(close);
+    head.append(eyebrow);
     head.append(el('h2', 'bd-detail-title', ticket.summary));
 
     const chips = el('div', 'bd-chips');
@@ -495,12 +702,12 @@
   }
 
   function actions(ticket) {
-    const state = agents[ticket.key];
+    const state = agentState(ticket.key);
     const live = state && state !== 'idle';
     const row = el('div', 'bd-actions');
 
-    // Plan and Implement are things you say to the agent now, so they are in
-    // the slash menu rather than up here. Only what you cannot say gets a
+    // Plan and Implement are just things you say to the agent now, so they are
+    // in the slash menu rather than up here. Only what you cannot say gets a
     // button.
     if (ticket.status === 'In Review') {
       row.append(button('Mark complete', () => post('complete', ticket.key)));
@@ -517,8 +724,7 @@
 
   function tabStrip() {
     const strip = el('div', 'bd-tabs');
-    const state = agents[selected];
-    const asking = state === 'asking';
+    const asking = agentState(selected) === 'asking';
 
     for (const name of ['description', 'agent', 'history']) {
       const node = el('button', 'bd-tab' + (tab === name ? ' bd-tab--active' : ''));
@@ -541,7 +747,7 @@
 
   function drawDescription(pane) {
     if (!detail) {
-      pane.append(el('div', 'bd-empty', 'loading...'));
+      pane.append(loading());
       return;
     }
 
@@ -606,7 +812,10 @@
     // Pinned above the transcript. State and the two pickers must stay
     // reachable in a long conversation, not scroll off the top of it.
     const head = el('div', 'bd-section-head bd-agent-head');
-    head.append(el('span', null, 'Agent · ' + stateWord(snap.state)));
+    const title = el('span', 'bd-agent-state bd-agent-state--' + snap.state);
+    title.append(el('span', 'bd-agent-dot'));
+    title.append(el('span', null, stateWord(snap.state)));
+    head.append(title);
     const controls = el('div', 'bd-controls');
     controls.append(modelPicker(snap));
     controls.append(permissionPicker(snap.permissionMode));
@@ -615,31 +824,68 @@
 
     const scroll = el('div', 'bd-scroll');
 
+    // Agent replies are Markdown; tool output and your own words are not.
+    // Runs of tool lines fold into one row, so a long build reads as one step
+    // and the words around it stay findable.
+    function chatEntry(entry) {
+      const line = el('div', 'bd-chat-entry');
+      const who = entry.role + (entry.images ? ' · ' + entry.images + ' image' + (entry.images === 1 ? '' : 's') : '');
+      line.append(el('div', 'bd-chat-who', who));
+      const text = el('div', 'bd-chat-text');
+      if (entry.role === 'agent') {
+        text.classList.add('bd-desc');
+        text.append(window.renderMarkdown(entry.text));
+      } else {
+        text.textContent = entry.text;
+      }
+      if (entry.role === 'tool') text.classList.add('bd-chat-text--tool');
+      if (entry.role === 'system') text.classList.add('bd-chat-text--system');
+      if (entry.role === 'you') text.classList.add('bd-quote');
+      line.append(text);
+      return line;
+    }
+
+    function toolLine(entry) {
+      const line = el('div', 'bd-chat-text bd-chat-text--tool bd-step');
+      line.textContent = entry.text;
+      return line;
+    }
+
     if (snap.transcript.length) {
       const log = el('div', 'bd-chat-log bd-chat-log--flow');
-      for (const entry of snap.transcript) {
-        const line = el('div', 'bd-chat-entry');
-        const who = entry.role + (entry.images ? ' · ' + entry.images + ' image' + (entry.images === 1 ? '' : 's') : '');
-        line.append(el('div', 'bd-chat-who', who));
-        // Agent replies are Markdown; tool output and your own words are not.
-        const text = el('div', 'bd-chat-text');
-        if (entry.role === 'agent') {
-          text.classList.add('bd-desc');
-          text.append(window.renderMarkdown(entry.text));
+      const busy = snap.state === 'thinking' || snap.state === 'working';
+      let run = [];
+      const flush = (last) => {
+        if (!run.length) return;
+        if (run.length < 3) {
+          for (const entry of run) log.append(chatEntry(entry));
         } else {
-          text.textContent = entry.text;
+          const fold = el('details', 'bd-steps');
+          // The latest run stays open while the agent is still in it.
+          if (last && busy) fold.open = true;
+          const sum = el('summary', null, run.length + ' steps');
+          fold.append(sum);
+          for (const entry of run) fold.append(toolLine(entry));
+          log.append(fold);
         }
-        if (entry.role === 'tool') text.classList.add('bd-chat-text--tool');
-        if (entry.role === 'system') text.classList.add('bd-chat-text--system');
-        if (entry.role === 'you') text.classList.add('bd-quote');
-        line.append(text);
-        log.append(line);
-      }
+        run = [];
+      };
+      snap.transcript.forEach((entry, index) => {
+        if (entry.role === 'tool') {
+          run.push(entry);
+          if (index === snap.transcript.length - 1) flush(true);
+        } else {
+          flush(false);
+          log.append(chatEntry(entry));
+        }
+      });
       scroll.append(log);
     } else {
-      scroll.append(
-        el('div', 'bd-empty', 'Nothing said yet. Type / for skills and commands.')
-      );
+      const blank = el('div', 'bd-hello');
+      blank.append(el('div', 'bd-hello-title', 'Nothing said yet.'));
+      blank.append(el('div', 'bd-hello-line', 'This ticket has its own Claude session; it starts on the first thing you say.'));
+      blank.append(el('div', 'bd-hello-line', 'Type / for skills — /plan-ticket specs it, /implement builds it.'));
+      scroll.append(blank);
     }
 
     // Claude asks for several tools at once; every one of them is shown,
@@ -681,6 +927,10 @@
       body.append(window.renderMarkdown(snap.streaming));
       live.append(body);
       scroll.append(live);
+    } else if (snap.state === 'thinking') {
+      const typing = el('div', 'bd-typing');
+      typing.append(el('i'), el('i'), el('i'));
+      scroll.append(typing);
     }
 
     pane.append(scroll);
@@ -794,16 +1044,15 @@
 
     const running = snap.state === 'thinking' || snap.state === 'working';
     if (running) {
-      since = snap.since || Date.now();
       const live = el('span', 'bd-activity');
       live.append(el('span', 'bd-dot'));
-      live.append(el('span', 'bd-elapsed', elapsed()));
+      const clock = el('span', 'bd-elapsed', fmtElapsed(snap.since || Date.now()));
+      clock.dataset.since = String(snap.since || Date.now());
+      live.append(clock);
       if (snap.doing) {
-        live.append(el('span', null, '· ' + snap.doing.replace(/^mcp__[^_]+__/, '')));
+        live.append(el('span', null, '· ' + shortTool(snap.doing)));
       }
       left.append(live);
-    } else {
-      since = null;
     }
 
     if (snap.context) {
@@ -815,7 +1064,7 @@
       bar.append(fill);
       left.append(bar);
       left.append(el('span', null, pct + '% of context'));
-    } else {
+    } else if (!running) {
       left.append(el('span', null, snap.started ? '' : 'starts when you speak'));
     }
     foot.append(left);
@@ -999,6 +1248,7 @@
         }
         if (event.key === 'Escape') {
           event.preventDefault();
+          event.stopPropagation();
           menuEl.hidden = true;
           menuOpen = false;
           return;
@@ -1007,6 +1257,7 @@
 
       if (event.key === 'Escape' && (snap.state === 'thinking' || snap.state === 'working')) {
         event.preventDefault();
+        event.stopPropagation();
         post('interrupt', selected);
         return;
       }
@@ -1056,7 +1307,7 @@
 
   function drawHistory(pane) {
     if (!detail) {
-      pane.append(el('div', 'bd-empty', 'loading...'));
+      pane.append(loading());
       return;
     }
 
@@ -1065,6 +1316,12 @@
       const head = el('div', 'bd-section-head');
       head.append(el('span', null, 'Sub-tasks'), el('span', null, done + ' / ' + detail.subtasks.length));
       pane.append(head);
+
+      const bar = el('div', 'bd-progress');
+      const fill = el('div', 'bd-progress-fill');
+      fill.style.width = Math.round((done / detail.subtasks.length) * 100) + '%';
+      bar.append(fill);
+      pane.append(bar);
 
       const list = el('div', 'bd-subtasks');
       for (const sub of detail.subtasks) {
@@ -1095,6 +1352,25 @@
 
   /* ---------- helpers ---------- */
 
+  /** The exact words the design brief fixed for each agent state. */
+  function stateWord(state) {
+    if (state === 'asking') return 'needs you';
+    if (state === 'error') return 'failed';
+    return state || 'idle';
+  }
+
+  /** Which chip colour carries each state. */
+  function chipRole(state) {
+    if (state === 'asking') return 'bd-chip--attention';
+    if (state === 'done') return 'bd-chip--settled';
+    if (state === 'error') return 'bd-chip--broken';
+    return 'bd-chip--running';
+  }
+
+  function shortTool(name) {
+    return String(name || '').replace(/^mcp__[^_]+__/, '');
+  }
+
   function answer(id, allow) {
     vscode.postMessage({ type: 'permission', key: selected, id: id, allow: allow });
   }
@@ -1103,11 +1379,24 @@
     vscode.postMessage({ type: 'permissionAll', key: selected, allow: allow });
   }
 
-  function elapsed() {
-    if (!since) return '';
-    const seconds = Math.max(0, Math.round((Date.now() - since) / 1000));
+  function fmtElapsed(since) {
+    const seconds = Math.max(0, Math.round((Date.now() - Number(since)) / 1000));
     if (seconds < 60) return seconds + 's';
     return Math.floor(seconds / 60) + 'm ' + (seconds % 60) + 's';
+  }
+
+  /** "3d" on a card answers "is this stale?" without a date to parse. */
+  function fmtAge(value) {
+    if (!value) return '';
+    const then = new Date(value).getTime();
+    if (isNaN(then)) return '';
+    const minutes = Math.floor((Date.now() - then) / 60000);
+    if (minutes < 60) return 'now';
+    const hours = Math.floor(minutes / 60);
+    if (hours < 24) return hours + 'h';
+    const days = Math.floor(hours / 24);
+    if (days < 14) return days + 'd';
+    return Math.floor(days / 7) + 'w';
   }
 
   function post(type, key) {
@@ -1127,6 +1416,16 @@
     return node;
   }
 
+  function loading() {
+    const box = el('div', 'bd-loading');
+    for (const width of ['60%', '95%', '85%', '40%']) {
+      const line = el('div', 'bd-skel bd-skel-line');
+      line.style.width = width;
+      box.append(line);
+    }
+    return box;
+  }
+
   function el(tag, className, text) {
     const node = document.createElement(tag);
     if (className) node.className = className;
@@ -1134,14 +1433,50 @@
     return node;
   }
 
-  // The clock ticks on its own so a long silence still looks alive, without
-  // repainting the panel once a second.
+  // Every clock on the page carries its own start time, so the rail and the
+  // composer tick together without repainting anything once a second.
   setInterval(() => {
-    if (!since) return;
-    for (const node of document.querySelectorAll('.bd-elapsed')) {
-      node.textContent = elapsed();
+    for (const node of document.querySelectorAll('.bd-elapsed[data-since]')) {
+      node.textContent = fmtElapsed(node.dataset.since);
     }
   }, 1000);
+
+  /* ---------- first paint: a skeleton, not a blank page ---------- */
+
+  function drawSkeleton() {
+    columnsEl.replaceChildren();
+    const head = el('div', 'bd-headrow');
+    for (let i = 0; i < 6; i++) {
+      const cell = el('div', 'bd-headcell');
+      const bone = el('span', 'bd-skel bd-skel-line');
+      bone.style.width = '70px';
+      cell.append(bone);
+      head.append(cell);
+    }
+    columnsEl.append(head);
+
+    for (const heights of [[52, 66, 44], [44, 52]]) {
+      const laneEl = el('div', 'bd-lane');
+      const laneHead = el('div', 'bd-lane-head');
+      const bone = el('span', 'bd-skel bd-skel-line');
+      bone.style.width = '110px';
+      laneHead.append(bone);
+      laneEl.append(laneHead);
+      const row = el('div', 'bd-lane-cols');
+      for (let column = 0; column < 6; column++) {
+        const cell = el('div', 'bd-lane-col');
+        for (const height of column === 0 ? heights : column === 3 ? heights.slice(1) : []) {
+          const card = el('div', 'bd-skel bd-skel-card');
+          card.style.height = height + 'px';
+          cell.append(card);
+        }
+        row.append(cell);
+      }
+      laneEl.append(row);
+      columnsEl.append(laneEl);
+    }
+    statusEl.textContent = 'loading…';
+  }
 
   /* ---------- panel width ---------- */
 
@@ -1190,5 +1525,6 @@
     vscode.setState(Object.assign({}, vscode.getState(), { panelWidth: null }));
   });
 
+  drawSkeleton();
   vscode.postMessage({ type: 'ready' });
 })();

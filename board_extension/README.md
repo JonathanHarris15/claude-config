@@ -30,6 +30,23 @@ skills it drives (`plan-ticket`, `implement`) are the ones already in
   optional epic, type a summary, press Enter. The card appears
   instantly and is replaced by the real one when JIRA answers. Where a new
   ticket lands is read from JIRA rather than assumed, then moved if needed. Issue types are read from the space, never hardcoded.
+- **A top bar over the board.** The space and its count on the left, a filter
+  box, then the **agent rail**: one pill per live agent, its state as a dot and
+  a running clock, "needs you" first, loudest, and pulsing amber. Click a pill
+  and you are in that ticket's conversation. This is the board-wide answer to
+  "what is waiting on me" — no hunting through six columns.
+- **Filter as you type.** Every word must land somewhere in the key, summary,
+  type, labels, epic or status. Lanes the filter empties disappear; counts
+  show what is left. `/` focuses the filter, Escape clears it or closes the
+  detail panel.
+- Cards carry their priority (only when it is not Medium), up to two labels,
+  and how long since they moved — "3d" answers "is this stale?" without a
+  date to parse.
+- Errors get a close button and leave on their own after fifteen seconds. They
+  used to be wiped by the next board refresh, which arrived right after the
+  very action that failed.
+- A loading skeleton instead of a blank page, motion only where it means
+  liveness, and none of it for anyone whose OS asks for reduced motion.
 - Only level-0 items are cards. Epics are grouping and sub-tasks render inside
   their parent, so the JQL excludes both. Column counts would otherwise lie.
 - Click a card for a detail panel: labels, sub-task progress, and a timeline
@@ -103,7 +120,10 @@ skills it drives (`plan-ticket`, `implement`) are the ones already in
 - The description editor writes Markdown; anything JIRA holds that Markdown
   cannot carry (tables, checklists) makes the tab read-only rather than risking
   the content.
-- Nobody has watched a real agent run through this UI end to end.
+- Nobody has watched a real agent run through this UI end to end. (It would
+  have crashed if they had: the agent tab called `stateWord()` before that
+  function existed. Fixed, and preflight now checks every call in `board.js`
+  resolves to a definition.)
 - The SDK offers more than the panel surfaces: subagent selection, MCP server
   toggles, thinking-token budget, file rewind and background tasks. All are
   reachable through the same `Query` handle when they are wanted.

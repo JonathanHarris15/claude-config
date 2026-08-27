@@ -74,6 +74,13 @@ export interface ContextUsage {
   maxTokens: number;
 }
 
+/** One agent as the board-wide rail sees it. */
+export interface AgentInfo {
+  state: AgentState;
+  since?: number;
+  doing?: string;
+}
+
 export interface AgentSnapshot {
   ticket: string;
   state: AgentState;
@@ -211,6 +218,20 @@ export class AgentSession {
     const out: Record<string, AgentState> = {};
     for (const [ticket, session] of AgentSession.live) {
       out[ticket] = session.state;
+    }
+    return out;
+  }
+
+  /**
+   * The board-wide view of every live agent: state, when the current burst of
+   * work started, and the tool running right now. This is what the agent rail
+   * in the top bar draws, so "what is waiting on me" is answered without
+   * hunting through six columns.
+   */
+  static details(): Record<string, AgentInfo> {
+    const out: Record<string, AgentInfo> = {};
+    for (const [ticket, session] of AgentSession.live) {
+      out[ticket] = { state: session.state, since: session.since, doing: session.doing };
     }
     return out;
   }

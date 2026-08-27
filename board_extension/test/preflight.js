@@ -628,6 +628,95 @@ function assert(condition, message) {
     return 'column and epic follow the drop; no rule check';
   });
 
+  console.log('\nTop bar and polish');
+  check('every function the panel calls is defined', () => {
+    // stateWord() was called for months without existing; the agent tab threw
+    // a ReferenceError on its first real render. Never again: every bare call
+    // in board.js must resolve to a definition or a known global.
+    const js = fs.readFileSync(path.join(root, 'media', 'board.js'), 'utf8');
+    const defined = new Set();
+    for (const m of js.matchAll(/function\s+([A-Za-z0-9_]+)\s*\(/g)) defined.add(m[1]);
+    for (const m of js.matchAll(/(?:const|let|var)\s+([A-Za-z0-9_]+)\s*=/g)) defined.add(m[1]);
+    // A parameter that is itself a function counts as defined — picker() takes
+    // an onChange callback and calls it.
+    for (const m of js.matchAll(/function[^(]*\(([^)]*)\)/g)) {
+      for (const param of m[1].split(',')) {
+        const name = param.trim();
+        if (/^[A-Za-z0-9_]+$/.test(name)) defined.add(name);
+      }
+    }
+    const keywords = new Set([
+      'if', 'for', 'while', 'switch', 'catch', 'return', 'function', 'typeof',
+      'new', 'in', 'of', 'else', 'do', 'void', 'delete', 'await'
+    ]);
+    const globals = new Set([
+      'acquireVsCodeApi', 'setTimeout', 'setInterval', 'clearTimeout',
+      'clearInterval', 'parseInt', 'parseFloat', 'isNaN', 'requestAnimationFrame'
+    ]);
+    const missing = new Set();
+    for (const m of js.matchAll(/(^|[^.\w'"`])([a-z][A-Za-z0-9_]*)\s*\(/gm)) {
+      const name = m[2];
+      if (!keywords.has(name) && !globals.has(name) && !defined.has(name)) {
+        missing.add(name);
+      }
+    }
+    assert(!missing.size, 'called but never defined: ' + [...missing].join(', '));
+    return defined.size + ' definitions, no dangling calls';
+  });
+
+  check('the top bar answers "what is waiting on me"', () => {
+    const ext = fs.readFileSync(path.join(root, 'src', 'extension.ts'), 'utf8');
+    const js = fs.readFileSync(path.join(root, 'media', 'board.js'), 'utf8');
+    assert(ext.indexOf('id="rail"') >= 0, 'no agent rail in the page');
+    assert(js.indexOf('function drawRail(') >= 0, 'nothing draws the rail');
+    // asking sorts first: the rail exists so "needs you" is findable without
+    // hunting through six columns.
+    assert(/asking:\s*0/.test(js), 'needs-you agents do not sort first');
+    assert(ext.indexOf('AgentSession.details()') >= 0, 'the rail is fed states only, no since/doing');
+    return 'rail drawn, needs-you first, fed by details()';
+  });
+
+  check('the board filters as you type', () => {
+    const ext = fs.readFileSync(path.join(root, 'src', 'extension.ts'), 'utf8');
+    const js = fs.readFileSync(path.join(root, 'media', 'board.js'), 'utf8');
+    assert(ext.indexOf('id="search"') >= 0, 'no filter box in the page');
+    assert(js.indexOf('function matches(') >= 0, 'nothing tests a ticket against the filter');
+    assert(js.indexOf('.every(') >= 0, 'multi-word filters do not require every word');
+    assert(js.indexOf('epicName') >= 0, 'the filter cannot see the epic');
+    return 'key, summary, type, labels, epic, status';
+  });
+
+  check('errors can be dismissed and dismiss themselves', () => {
+    const js = fs.readFileSync(path.join(root, 'media', 'board.js'), 'utf8');
+    assert(js.indexOf('bd-error-x') >= 0, 'no close button on the error banner');
+    assert(js.indexOf('showError(null), 15000') >= 0, 'errors never leave on their own');
+    // The old code cleared errors on every board refresh — which arrived right
+    // after the action that failed, so the message flashed and vanished.
+    const handler = js.slice(js.indexOf("message.type === 'board'"), js.indexOf("message.type === 'detail'"));
+    assert(handler.indexOf('showError') < 0, 'a board refresh still wipes the error');
+    return 'close button, 15s timeout, refresh leaves it alone';
+  });
+
+  check('agent states use the words the design fixed', () => {
+    const js = fs.readFileSync(path.join(root, 'media', 'board.js'), 'utf8');
+    const block = js.slice(js.indexOf('function stateWord('), js.indexOf('function shortTool('));
+    assert(block.indexOf("'needs you'") >= 0, 'asking does not read as "needs you"');
+    assert(block.indexOf("'failed'") >= 0, 'error does not read as "failed"');
+    assert(block.indexOf('bd-chip--attention') >= 0, 'asking is not the attention colour');
+    return 'needs you, failed, and the chip colours';
+  });
+
+  check('motion never loops except to mean liveness', () => {
+    const css = fs.readFileSync(path.join(root, 'media', 'board.css'), 'utf8');
+    assert(css.indexOf('prefers-reduced-motion') >= 0, 'no reduced-motion escape hatch');
+    // Looping animation is reserved for live state: pulses, the spinner, the
+    // typing dots, provisional cards. A new infinite anywhere else needs a
+    // reason and a place on this list.
+    const loops = (css.match(/infinite/g) || []).length;
+    assert(loops <= 12, loops + ' looping animations — that is a fairground, not a board');
+    return loops + ' loops, all liveness, reduced-motion honoured';
+  });
+
   console.log(
     failed ? `\n${failed} check(s) failed.\n` : '\nAll checks passed — the board is ready.\n'
   );

@@ -121,3 +121,20 @@ component, and Column reduced to a header cell.
 
 Still not in the system either: Tabs, the slash Menu, the Meter, the prose
 (`.md-*`) styles, the Question box, and the drag affordances.
+
+## Makeover layer (2026-08-27)
+
+A second appended layer, marked in `board.css`, that the system should absorb:
+
+- **Motion exists now.** The system said "none, deliberately"; the makeover
+  overrides that with two strict rules — state changes may ease (120ms), only
+  liveness may loop (pulse, spinner, typing dots, provisional cards) — and a
+  `prefers-reduced-motion` kill switch. Preflight counts the loops.
+- **New components:** TopBar, Search, AgentPill (the rail), IconButton,
+  Skeleton, Steps (folded tool runs), Typing, Progress, the error banner's
+  close affordance, and the card's Priority / Age / footer row.
+- **New bridge keys** parked at the top of the layer:
+  `--vscode-list-hoverBackground`, `--vscode-scrollbarSlider-background`,
+  `--vscode-scrollbarSlider-hoverBackground`, `--vscode-descriptionForeground`.
+- The design brief's open question 5 — "somewhere board-wide that answers
+  what is waiting on me" — is answered by the agent rail in the top bar.

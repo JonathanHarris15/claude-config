@@ -462,3 +462,151 @@ a:hover { color: var(--vscode-textLink-activeForeground, var(--board-hue-info));
 .bd-lane-col:hover .bd-add{opacity:var(--dim-2);border-color:var(--role-neutral-line)}
 .bd-add:hover{opacity:1;border-color:var(--role-focus-line);border-style:solid}
 .bd-new{margin-top:0}
+
+/* ===========================================================================
+   MAKEOVER LAYER (2026-08-27). Everything below overrides the generated
+   system rather than editing inside its markers; the divergence is logged in
+   docs/design/board-panel-export.md for design-sync to reconcile.
+   =========================================================================== */
+
+/* Bridge additions — the new keys this layer needs from the editor. These
+   belong in the generated theme-bridge and are parked here until design-sync
+   moves them. Every one has a token fallback; no raw colour. */
+:root{
+  --board-bg-hover: var(--vscode-list-hoverBackground, var(--board-bg-widget));
+  --board-scroll: var(--vscode-scrollbarSlider-background, var(--board-line));
+  --board-scroll-hover: var(--vscode-scrollbarSlider-hoverBackground, var(--board-line));
+  --board-fg-desc: var(--vscode-descriptionForeground, var(--board-fg));
+}
+
+/* Motion, reconsidered. The original system had none, but a board of live
+   agents reads as frozen without it. The rules stay strict: state changes may
+   ease, only liveness may loop (the pulse, the spinner, the typing dots), and
+   prefers-reduced-motion turns all of it off. */
+:root{
+  --motion-quick: 120ms;
+  --ease: cubic-bezier(0.2, 0, 0.1, 1);
+}
+@media (prefers-reduced-motion: reduce){
+  *, *::before, *::after{animation:none !important; transition:none !important}
+}
+@keyframes bd-pulse{0%,100%{opacity:1}50%{opacity:.35}}
+@keyframes bd-spin{to{transform:rotate(360deg)}}
+
+/* Scrollbars: the editor's, thin and quiet, instead of the browser's. */
+::-webkit-scrollbar{width:9px;height:9px}
+::-webkit-scrollbar-thumb{background:var(--board-scroll);border-radius:var(--radius-pill)}
+::-webkit-scrollbar-thumb:hover{background:var(--board-scroll-hover)}
+::-webkit-scrollbar-corner{background:transparent}
+
+/* ---------------------------------------------------------------------------
+   The top bar: identity on the left, the filter, then the agent rail — the
+   board-wide answer to "what is waiting on me". */
+.bd-topbar{flex:none;display:flex;align-items:center;gap:var(--space-8);padding:var(--space-5) var(--space-9);border-bottom:var(--border-width) solid var(--role-neutral-line)}
+.bd-topbar-title{display:flex;align-items:baseline;gap:var(--space-5);white-space:nowrap}
+.bd-topbar-space{font-weight:var(--weight-strong);font-size:var(--text-base);letter-spacing:var(--eyebrow-tracking-wide)}
+.bd-topbar-count{font-family:var(--font-mono);font-size:var(--text-label);color:var(--board-fg-desc);opacity:var(--dim-1)}
+.bd-search{flex:0 1 240px;min-width:110px;box-sizing:border-box;padding:var(--space-2) var(--space-6);border-radius:var(--radius-pill);border:var(--border-width) solid var(--board-line-input);background:var(--board-bg-input);color:var(--board-fg-input);font-family:inherit;font-size:var(--text-body);transition:border-color var(--motion-quick) var(--ease)}
+.bd-search:focus{outline:var(--border-width) solid var(--role-focus-line);outline-offset:-1px}
+.bd-rail{display:flex;align-items:center;gap:var(--space-3);flex:1;min-width:0;overflow-x:auto;justify-content:flex-end;scrollbar-width:none}
+.bd-rail::-webkit-scrollbar{display:none}
+.bd-iconbtn{flex:none;display:inline-flex;align-items:center;justify-content:center;width:24px;height:24px;background:none;border:var(--border-width) solid transparent;border-radius:var(--radius);color:inherit;opacity:var(--dim-2);font-size:var(--text-base);line-height:1;cursor:pointer;transition:opacity var(--motion-quick) var(--ease),background var(--motion-quick) var(--ease)}
+.bd-iconbtn:hover{opacity:1;background:var(--board-bg-hover);border-color:var(--role-neutral-line)}
+.bd-iconbtn--busy{animation:bd-spin 1s linear infinite;opacity:var(--dim-1)}
+
+/* One live agent, one pill. "needs you" is the loud one; everything else is
+   a dot and a clock. */
+.bd-pill{display:inline-flex;align-items:center;gap:var(--space-4);border-radius:var(--radius-pill);border:var(--border-width) solid var(--role-neutral-line);background:var(--role-neutral-wash);color:inherit;font-family:inherit;font-size:var(--text-label);padding:2px var(--space-6);cursor:pointer;white-space:nowrap;transition:border-color var(--motion-quick) var(--ease),background var(--motion-quick) var(--ease)}
+.bd-pill:hover{border-color:var(--role-focus-line)}
+.bd-pill-key{font-family:var(--font-mono)}
+.bd-pill-dot{width:7px;height:7px;border-radius:var(--radius-pill);background:var(--role-neutral-solid);flex:none}
+.bd-pill--thinking .bd-pill-dot,.bd-pill--working .bd-pill-dot{background:var(--state-working);animation:bd-pulse 1.6s var(--ease) infinite}
+.bd-pill--asking{border-color:var(--role-attention-line);background:var(--role-attention-wash);font-weight:var(--weight-strong)}
+.bd-pill--asking .bd-pill-dot{background:var(--state-asking);animation:bd-pulse .9s var(--ease) infinite}
+.bd-pill--done .bd-pill-dot{background:var(--state-done)}
+.bd-pill--error{border-color:var(--role-broken-line)}
+.bd-pill--error .bd-pill-dot{background:var(--state-error)}
+.bd-pill .bd-elapsed{font-family:var(--font-mono);opacity:var(--dim-2)}
+
+/* ---------------------------------------------------------------------------
+   Board polish: the header row gets a hairline, counts become quiet badges,
+   cards ease on hover, and drops light up without a jolt. */
+.bd-headrow{border-bottom:var(--border-width) solid var(--role-neutral-line);min-width:100%}
+.bd-headcount{font-family:var(--font-mono);font-weight:var(--weight-normal);opacity:var(--dim-2)}
+.bd-lane-col{transition:background var(--motion-quick) var(--ease)}
+.bd-card{transition:border-color var(--motion-quick) var(--ease),background var(--motion-quick) var(--ease)}
+.bd-card:hover{background:var(--board-bg-hover)}
+.bd-card--selected:hover{background:var(--role-selected-wash)}
+.bd-card--pending{animation:bd-pulse 1.4s var(--ease) infinite}
+.bd-card-id{display:flex;align-items:baseline;gap:var(--space-3);min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.bd-card-age{flex:none;font-family:var(--font-mono);font-size:var(--text-micro);opacity:var(--dim-3)}
+.bd-card-foot{display:flex;justify-content:space-between;align-items:center;gap:var(--space-4);margin-top:var(--space-4)}
+.bd-card-tags{display:flex;flex-wrap:wrap;gap:var(--gap-tag);min-width:0}
+.bd-prio{font-size:var(--text-micro);line-height:1;flex:none}
+.bd-prio--highest{color:var(--role-broken-fg)}
+.bd-prio--high{color:var(--role-attention-fg)}
+.bd-prio--low,.bd-prio--lowest{opacity:var(--dim-3)}
+
+.bd-board-empty{padding:var(--space-10);opacity:var(--dim-2);font-size:var(--text-body);max-width:420px}
+
+/* Loading reads as a page taking shape, not a blank editor. */
+.bd-skel{background:var(--role-neutral-wash);border-radius:var(--radius);animation:bd-pulse 1.4s var(--ease) infinite}
+.bd-skel-line{display:inline-block;height:0.9em}
+.bd-skel-card{border:var(--border-width) solid var(--role-neutral-line)}
+.bd-loading{display:flex;flex-direction:column;gap:var(--space-5);padding:var(--space-5) 0}
+
+/* Errors: still loud, no longer immortal and no longer unkillable. */
+.bd-error{display:flex;justify-content:space-between;align-items:flex-start;gap:var(--space-7)}
+.bd-error-text{white-space:pre-wrap;min-width:0}
+.bd-error-x{flex:none;background:none;border:none;color:inherit;font-family:inherit;font-size:var(--text-base);line-height:1;cursor:pointer;opacity:var(--dim-2);padding:0}
+.bd-error-x:hover{opacity:1}
+
+.bd-status-hint{opacity:var(--dim-3)}
+
+/* ---------------------------------------------------------------------------
+   Detail panel polish: a way out in the corner, a live state lamp on the
+   agent tab, folded tool runs, typing dots, and a real progress bar. */
+.bd-detail-key{display:flex;justify-content:space-between;align-items:center;gap:var(--space-4)}
+.bd-detail-x{flex:none;background:none;border:none;color:inherit;font-family:inherit;font-size:var(--text-title);line-height:1;cursor:pointer;opacity:var(--dim-3);padding:0 var(--space-2)}
+.bd-detail-x:hover{opacity:1}
+
+.bd-agent-state{display:inline-flex;align-items:center;gap:var(--space-4)}
+.bd-agent-dot{width:7px;height:7px;border-radius:var(--radius-pill);background:var(--role-neutral-solid);flex:none}
+.bd-agent-state--thinking .bd-agent-dot,.bd-agent-state--working .bd-agent-dot{background:var(--state-working);animation:bd-pulse 1.6s var(--ease) infinite}
+.bd-agent-state--asking .bd-agent-dot{background:var(--state-asking);animation:bd-pulse .9s var(--ease) infinite}
+.bd-agent-state--asking{color:var(--role-attention-fg);opacity:1}
+.bd-agent-state--done .bd-agent-dot{background:var(--state-done)}
+.bd-agent-state--error .bd-agent-dot{background:var(--state-error)}
+
+.bd-steps{margin-bottom:var(--space-6)}
+.bd-steps>summary{cursor:pointer;font-size:var(--text-micro);text-transform:var(--eyebrow-transform);letter-spacing:var(--eyebrow-tracking);opacity:var(--dim-3);list-style:none;display:flex;align-items:center;gap:var(--space-3);user-select:none}
+.bd-steps>summary::-webkit-details-marker{display:none}
+.bd-steps>summary::before{content:"\25B8";transition:transform var(--motion-quick) var(--ease)}
+.bd-steps[open]>summary::before{transform:rotate(90deg)}
+.bd-steps>summary:hover{opacity:var(--dim-1)}
+.bd-step{margin:var(--space-3) 0 0 var(--space-7);overflow-wrap:anywhere}
+
+.bd-typing{display:inline-flex;gap:3px;padding:var(--space-2) 0}
+.bd-typing i{width:5px;height:5px;border-radius:var(--radius-pill);background:var(--role-running-solid);animation:bd-pulse 1.2s var(--ease) infinite}
+.bd-typing i:nth-child(2){animation-delay:.2s}
+.bd-typing i:nth-child(3){animation-delay:.4s}
+
+.bd-hello{opacity:var(--dim-1);padding:var(--space-6) 0;display:flex;flex-direction:column;gap:var(--space-4)}
+.bd-hello-title{font-weight:var(--weight-strong)}
+.bd-hello-line{font-size:var(--text-body);opacity:var(--dim-1)}
+
+.bd-progress{height:4px;border-radius:var(--radius-pill);background:var(--role-neutral-solid);overflow:hidden;margin-bottom:var(--space-6)}
+.bd-progress-fill{height:100%;background:var(--role-settled-solid);transition:width var(--motion-quick) var(--ease)}
+
+/* Buttons and tabs ease instead of snapping. */
+.bd-btn{transition:background var(--motion-quick) var(--ease)}
+.bd-tab{transition:opacity var(--motion-quick) var(--ease),border-color var(--motion-quick) var(--ease)}
+.bd-tab-dot{animation:bd-pulse .9s var(--ease) infinite}
+.bd-choice{transition:border-color var(--motion-quick) var(--ease)}
+
+/* Stacked in a narrow editor, the top bar wraps instead of clipping. */
+@media (max-width:620px){
+.bd-topbar{flex-wrap:wrap;gap:var(--space-5)}
+.bd-search{flex:1 1 160px}
+.bd-rail{justify-content:flex-start}
+}

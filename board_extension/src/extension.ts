@@ -236,7 +236,7 @@ class BoardPanel {
         type: 'board',
         columns: COLUMNS,
         tickets: group(tickets),
-        agents: AgentSession.states(),
+        agents: AgentSession.details(),
         types: this.types,
         epics: [...epics].map(([key, name]) => ({ key, name }))
       });
@@ -470,7 +470,7 @@ class BoardPanel {
     void this.panel.webview.postMessage({
       type: 'agent',
       snapshot,
-      agents: AgentSession.states()
+      agents: AgentSession.details()
     });
 
     // The skills move tickets through JIRA themselves, so the board cannot
@@ -570,6 +570,16 @@ function render(webview: vscode.Webview, root: vscode.Uri, space: string): strin
 </head>
 <body>
   <div class="bd-shell">
+    <header class="bd-topbar">
+      <div class="bd-topbar-title">
+        <span class="bd-topbar-space">${space}</span>
+        <span id="count" class="bd-topbar-count"></span>
+      </div>
+      <input id="search" class="bd-search" type="text" placeholder="Filter tickets…"
+             spellcheck="false" aria-label="Filter tickets" />
+      <div id="rail" class="bd-rail" aria-label="Live agents"></div>
+      <button id="refreshBtn" class="bd-iconbtn" type="button" title="Refresh from JIRA">&#x21bb;</button>
+    </header>
     <div id="error" class="bd-error" hidden></div>
     <div class="bd-body">
       <div id="columns" class="bd-columns"></div>
@@ -578,7 +588,7 @@ function render(webview: vscode.Webview, root: vscode.Uri, space: string): strin
     </div>
     <footer class="bd-status">
       <span id="status"></span>
-      <span id="space">${space}</span>
+      <span id="space" class="bd-status-hint">drag a card to move it · click one to talk to it</span>
     </footer>
   </div>
   <script nonce="${nonce}" src="${md}"></script>
