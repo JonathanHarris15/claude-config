@@ -238,6 +238,48 @@ export function worktreeStatus(repo: string, ticket: string): WorktreeInfo {
   };
 }
 
+/**
+ * Would this branch merge into main cleanly? git merge-tree does the merge in
+ * memory and touches nothing, so it is safe to ask on every refresh. Undefined
+ * means git could not say (an older git, or no such branch).
+ */
+export function mergesCleanly(repo: string, branch: string): boolean | undefined {
+  const main = mainBranch(repo);
+  try {
+    execFileSync('git', ['merge-tree', '--write-tree', main, branch], {
+      cwd: repo,
+      encoding: 'utf8',
+      windowsHide: true,
+      stdio: ['ignore', 'pipe', 'pipe']
+    });
+    return true;
+  } catch (err) {
+    // Exit 1 is "conflicts"; anything else is git not being able to answer.
+    const status = (err as { status?: number }).status;
+    return status === 1 ? false : undefined;
+  }
+}
+
+/**
+ * The merge queue's own checkout: a worktree on an `integration` branch that
+ * is reset to main before every run. It never shares a branch with a ticket,
+ * and it never checks out main itself — that is the human's checkout.
+ */
+export function ensureIntegrationWorktree(repo: string): Worktree {
+  const found = listWorktrees(repo).find((tree) => tree.branch === 'integration');
+  if (found) {
+    return found;
+  }
+  const dir = path.join(worktreeRoot(repo), 'integration');
+  fs.mkdirSync(path.dirname(dir), { recursive: true });
+  if (tryGit(repo, ['rev-parse', '--verify', 'integration'])) {
+    git(repo, ['worktree', 'add', dir, 'integration']);
+  } else {
+    git(repo, ['worktree', 'add', dir, '-b', 'integration', mainBranch(repo)]);
+  }
+  return listWorktrees(repo).find((tree) => tree.branch === 'integration') ?? { path: dir, branch: 'integration' };
+}
+
 export interface CullResult {
   removed: boolean;
   reason?: string;

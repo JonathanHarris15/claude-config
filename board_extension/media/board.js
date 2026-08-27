@@ -39,12 +39,19 @@
   let storyCan = false;  // a repo is mapped, so a story has somewhere to live
   let storyWriting = false;
   let chatScale = 1;     // font size of the conversation, as a multiple of the editor's
+  let queueOn = false;   // a repo is mapped, so the merge queue has somewhere to run
+
+  // The merge queue is one conversation per space, not a ticket. It gets a
+  // synthetic card so the panel can open on it like any other.
+  const QUEUE = 'MERGE-QUEUE';
+  const queueCard = { key: QUEUE, summary: 'Merge queue', status: '', type: '', labels: [], url: '', queue: true };
 
   window.addEventListener('message', (event) => {
     const message = event.data;
     if (message.type === 'board') {
       refreshEl.classList.remove('bd-iconbtn--busy');
       agents = message.agents || {};
+      queueOn = Boolean(message.queue);
       types = message.types || [];
       epics = message.epics || [];
       drawBoard(message.columns, message.tickets);
@@ -165,10 +172,25 @@
    * This is the board-wide answer to "what is waiting on me" — the question the
    * whole board exists for — so it lives in the top bar, not inside a column.
    */
-  const RAIL_ORDER = { asking: 0, thinking: 1, working: 1, error: 2, done: 3 };
+  const RAIL_ORDER = { asking: 0, thinking: 1, working: 1, waiting: 1, error: 2, done: 3 };
 
   function drawRail() {
     railEl.replaceChildren();
+
+    // The door to the merge queue, with how much is waiting at it.
+    if (queueOn && !agentState(QUEUE)) {
+      const inReview = (lastBuckets && lastBuckets['In Review'] ? lastBuckets['In Review'].length : 0);
+      const door = el('button', 'bd-pill bd-pill--queue');
+      door.type = 'button';
+      door.title = 'The merge queue: threads In Review branches back into main.';
+      door.append(el('span', 'bd-pill-key', 'merge queue'));
+      if (inReview) door.append(el('span', null, inReview + ' waiting'));
+      door.addEventListener('click', () => {
+        tab = 'agent';
+        select(QUEUE);
+      });
+      railEl.append(door);
+    }
     const live = Object.keys(agents)
       .filter((key) => agentState(key) && agentState(key) !== 'idle')
       .sort((a, b) => (RAIL_ORDER[agentState(a)] ?? 9) - (RAIL_ORDER[agentState(b)] ?? 9));
@@ -181,9 +203,11 @@
       pill.title = (card ? card.summary + ' — ' : '') + stateWord(info.state) +
         (info.doing ? ' · ' + shortTool(info.doing) : '');
       pill.append(el('span', 'bd-pill-dot'));
-      pill.append(el('span', 'bd-pill-key', key));
+      pill.append(el('span', 'bd-pill-key', key === QUEUE ? 'merge queue' : key));
       if (info.state === 'asking') {
         pill.append(el('span', null, 'needs you'));
+      } else if (info.state === 'waiting') {
+        pill.append(el('span', null, 'waiting'));
       } else if (info.since && (info.state === 'thinking' || info.state === 'working')) {
         const clock = el('span', 'bd-elapsed', fmtElapsed(info.since));
         clock.dataset.since = String(info.since);
@@ -227,6 +251,7 @@
     }
 
     byKey = {};
+    byKey[QUEUE] = queueCard;
     let total = 0;
     const everything = [];
     for (const name of names) {
@@ -615,7 +640,7 @@
     // the chat composer sit on the floor of the panel.
     const head = el('div', 'bd-detail-head');
     const eyebrow = el('div', 'bd-detail-key');
-    eyebrow.append(el('span', null, ticket.key + ' · ' + ticket.status));
+    eyebrow.append(el('span', null, ticket.queue ? 'one per space · runs on the integration branch' : ticket.key + ' · ' + ticket.status));
     const close = el('button', 'bd-detail-x', '×');
     close.type = 'button';
     close.title = 'Close (Esc)';
@@ -640,14 +665,21 @@
       head.append(chips);
     }
 
-    head.append(worktreeLine());
+    if (!ticket.queue) {
+      head.append(worktreeLine());
+    }
     head.append(actions(ticket));
-    head.append(tabStrip());
+    if (!ticket.queue) {
+      head.append(tabStrip());
+    }
     detailEl.append(head);
 
     const pane = el('div', 'bd-pane');
     detailEl.append(pane);
 
+    if (ticket.queue) {
+      tab = 'agent';
+    }
     if (tab === 'agent') {
       drawAgent(pane);
     } else {
@@ -738,6 +770,9 @@
     }
     if (live) {
       row.append(button('Stop agent', () => post('stopAgent', ticket.key), true));
+    }
+    if (ticket.queue) {
+      return row;
     }
     row.append(
       button('Open in JIRA', () =>
@@ -921,9 +956,15 @@
       scroll.append(log);
     } else {
       const blank = el('div', 'bd-hello');
-      blank.append(el('div', 'bd-hello-title', 'Nothing said yet.'));
-      blank.append(el('div', 'bd-hello-line', 'This ticket has its own Claude session; it starts on the first thing you say.'));
-      blank.append(el('div', 'bd-hello-line', 'Type / for skills — /plan-ticket specs it, /implement builds it.'));
+      if (selected === QUEUE) {
+        blank.append(el('div', 'bd-hello-title', 'The merge queue is idle.'));
+        blank.append(el('div', 'bd-hello-line', 'It takes what is In Review, checks each branch against main, picks an order, merges, runs the tests, pushes, and marks each ticket Done. It can send a note into a ticket’s conversation when that branch needs its author.'));
+        blank.append(el('div', 'bd-hello-line', 'Say "plan" to see the order it would merge in. Say "go" to merge everything that is ready. A ticket labelled hold is left alone.'));
+      } else {
+        blank.append(el('div', 'bd-hello-title', 'Nothing said yet.'));
+        blank.append(el('div', 'bd-hello-line', 'This ticket has its own Claude session; it starts on the first thing you say.'));
+        blank.append(el('div', 'bd-hello-line', 'Type / for skills — /plan-ticket specs it, /implement builds it.'));
+      }
       scroll.append(blank);
     }
 
@@ -1082,7 +1123,7 @@
 
     const left = el('span', 'bd-foot-left');
 
-    const running = snap.state === 'thinking' || snap.state === 'working';
+    const running = snap.state === 'thinking' || snap.state === 'working' || snap.state === 'waiting';
     if (running) {
       const live = el('span', 'bd-activity');
       live.append(el('span', 'bd-dot'));
@@ -1109,7 +1150,7 @@
     }
     foot.append(left);
 
-    const busy = snap.state === 'thinking' || snap.state === 'working';
+    const busy = snap.state === 'thinking' || snap.state === 'working' || snap.state === 'waiting';
     if (busy) {
       const stop = el('button', 'bd-linkish', 'interrupt');
       stop.type = 'button';
@@ -1497,12 +1538,14 @@
   function stateWord(state) {
     if (state === 'asking') return 'needs you';
     if (state === 'error') return 'failed';
+    if (state === 'waiting') return 'waiting its turn';
     return state || 'idle';
   }
 
   /** Which chip colour carries each state. */
   function chipRole(state) {
     if (state === 'asking') return 'bd-chip--attention';
+    if (state === 'waiting') return 'bd-chip--quiet';
     if (state === 'done') return 'bd-chip--settled';
     if (state === 'error') return 'bd-chip--broken';
     return 'bd-chip--running';

@@ -64,6 +64,24 @@ skills it drives (`plan-ticket`, `implement`) are the ones already in
   Stop agent while one is running, and — when a ticket reaches In Review — a
   **Mark complete** button that transitions it to Done. That last one is
   deliberately a human action: agents are told to stop at In Review.
+- **The merge queue.** A dashed pill in the agent rail, showing how many
+  tickets are In Review. It is one conversation per space, running in its own
+  worktree on an `integration` branch. Say **plan** and it reads every In Review
+  branch against main (ahead, behind, merges cleanly or conflicts — checked
+  with `git merge-tree`, which touches nothing), looks at the PRs, and proposes
+  an order. Say **go** and it merges one at a time, runs the tests, pushes
+  main, and moves each ticket to Done — the one agent allowed to. A ticket
+  labelled `hold`, a PR with changes requested, or a failing check is skipped
+  and named. A conflict that needs the author is sent back as a **note** into
+  that ticket's conversation; the ticket's agent rebases in its own worktree.
+- **Agents take turns on shared resources — and cannot forget to.** Every
+  command an agent runs passes through the board. One that matches a shared
+  pattern (`board.sharedCommands`: the test suite, a build) waits until the
+  resource is free and holds it until the command ends, in every permission
+  mode. The card reads **waiting its turn** meanwhile. `claim` and `release`
+  tools cover anything the patterns do not know — a port, a database. Whatever
+  an agent holds is dropped when its turn ends or it is stopped, so a stuck
+  agent cannot block the rest.
 - **Delete** sits at the far end of the header, quiet until hovered. It asks
   through VS Code's own modal first, takes the sub-tasks with the ticket, stops
   any agent on it, and leaves the worktree on disk — deleting a ticket must
@@ -186,6 +204,7 @@ things without touching the copy you use day to day.
 | `board.conversationDir` | `.board/conversations` | Where conversations are written inside each repo |
 | `board.worktreeDir` | blank | Where per-ticket worktrees go; blank means a sibling folder |
 | `board.storyModel` | `claude-sonnet-5` | Model that writes the History tab's story; blank uses the session default |
+| `board.sharedCommands` | tests, build | Shared resources as name → regex over Bash commands; matching commands take turns |
 
 ## Checking it without the editor
 

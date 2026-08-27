@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import * as vscode from 'vscode';
 import { COLUMNS } from './board';
 import { Command, listSkills } from './skills';
 
@@ -16,8 +17,12 @@ export function sdk(): Promise<any> {
   return sdkPromise;
 }
 
-/** What an agent is doing right now. `asking` means the ticket is waiting on you. */
-export type AgentState = 'idle' | 'thinking' | 'working' | 'asking' | 'done' | 'error';
+/**
+ * What an agent is doing right now. `asking` means the ticket is waiting on
+ * you; `waiting` means it is queued behind another agent for something they
+ * cannot both use at once, like the test suite.
+ */
+export type AgentState = 'idle' | 'thinking' | 'working' | 'waiting' | 'asking' | 'done' | 'error';
 
 /**
  * The same four levels Claude Code offers. `plan` lets the agent read and think
@@ -106,6 +111,133 @@ export interface AgentSnapshot {
   context?: ContextUsage;
 }
 
+/* ---------------------------------------------------------------------------
+   Shared resources. Two agents running the test suite at once can bring the
+   machine to its knees, and an agent told to "take turns" forgets one time in
+   ten. So the board takes the turn for them: every tool call passes through
+   here, and one that touches a shared resource waits for it and holds it until
+   the call ends. claim/release exist for anything the patterns do not know.
+   --------------------------------------------------------------------------- */
+
+interface Held {
+  ticket: string;
+  why: string;
+  since: number;
+}
+
+interface Waiter {
+  ticket: string;
+  grant: () => void;
+  drop: () => void;
+}
+
+export class LockTable {
+  private readonly held = new Map<string, Held>();
+  private readonly waiting = new Map<string, Waiter[]>();
+
+  holder(resource: string): Held | undefined {
+    return this.held.get(resource);
+  }
+
+  /** Resolves once this ticket holds the resource. Re-entrant for the holder. */
+  acquire(resource: string, ticket: string, why: string, signal?: AbortSignal): Promise<void> {
+    const current = this.held.get(resource);
+    if (!current) {
+      this.held.set(resource, { ticket, why, since: Date.now() });
+      return Promise.resolve();
+    }
+    if (current.ticket === ticket) {
+      return Promise.resolve();
+    }
+    return new Promise<void>((resolve, reject) => {
+      const waiter: Waiter = {
+        ticket,
+        grant: () => {
+          this.held.set(resource, { ticket, why, since: Date.now() });
+          resolve();
+        },
+        drop: () => reject(new Error(`Stopped waiting for ${resource}.`))
+      };
+      const queue = this.waiting.get(resource) ?? [];
+      queue.push(waiter);
+      this.waiting.set(resource, queue);
+      signal?.addEventListener('abort', () => {
+        const index = queue.indexOf(waiter);
+        if (index >= 0) {
+          queue.splice(index, 1);
+          waiter.drop();
+        }
+      });
+    });
+  }
+
+  release(resource: string, ticket: string): boolean {
+    const current = this.held.get(resource);
+    if (!current || current.ticket !== ticket) {
+      return false;
+    }
+    this.held.delete(resource);
+    const next = this.waiting.get(resource)?.shift();
+    if (next) {
+      next.grant();
+    }
+    return true;
+  }
+
+  /** Everything a ticket holds or waits for goes, so a stopped agent cannot block the rest. */
+  releaseAll(ticket: string): void {
+    for (const [resource, held] of [...this.held]) {
+      if (held.ticket === ticket) {
+        this.release(resource, ticket);
+      }
+    }
+    for (const queue of this.waiting.values()) {
+      for (const waiter of queue.filter((entry) => entry.ticket === ticket)) {
+        queue.splice(queue.indexOf(waiter), 1);
+        waiter.drop();
+      }
+    }
+  }
+
+  snapshot(): { resource: string; ticket: string; why: string; since: number; queued: string[] }[] {
+    return [...this.held].map(([resource, held]) => ({
+      resource,
+      ...held,
+      queued: (this.waiting.get(resource) ?? []).map((waiter) => waiter.ticket)
+    }));
+  }
+}
+
+export const locks = new LockTable();
+
+/**
+ * Which shared resource a Bash command touches, if any. The patterns come from
+ * settings so a project with an unusual test runner can name it; the defaults
+ * cover the common ones.
+ */
+const DEFAULT_SHARED: Record<string, string> = {
+  tests: '\\b(pytest|npm (run )?test|pnpm test|yarn test|vitest|jest|dotnet test|cargo test|go test|mvn test|gradle test|rspec|phpunit)\\b',
+  build: '\\b(npm run build|pnpm build|yarn build|tsc\\b|cargo build|dotnet build|go build|pyinstaller|electron-builder|vsce package|docker build)\\b'
+};
+
+export function sharedResource(toolName: string, input: Record<string, unknown>): string | undefined {
+  if (toolName !== 'Bash' || typeof input.command !== 'string') {
+    return undefined;
+  }
+  const configured = vscode.workspace.getConfiguration('board').get<Record<string, string>>('sharedCommands');
+  const patterns = configured && Object.keys(configured).length ? configured : DEFAULT_SHARED;
+  for (const [resource, pattern] of Object.entries(patterns)) {
+    try {
+      if (pattern && new RegExp(pattern, 'i').test(input.command)) {
+        return resource;
+      }
+    } catch {
+      // A bad pattern in settings should not break every agent.
+    }
+  }
+  return undefined;
+}
+
 /**
  * Feeds typed messages into a running session. `query` takes an async iterable
  * as its prompt, so the session stays open and the box in the panel pushes
@@ -169,6 +301,8 @@ export function describeTool(name: string, input: Record<string, unknown>): stri
     (input.pattern as string) ??
     (input.column as string) ??
     (input.key as string) ??
+    (input.ticket as string) ??
+    (input.resource as string) ??
     '';
   const text = String(value).replace(/\s+/g, ' ').trim();
   return text ? `${short}: ${text.slice(0, 120)}` : short;
@@ -183,6 +317,15 @@ export const BOARD_COLUMNS = COLUMNS;
  */
 const TOUCHES_BOARD = /transition|move_ticket|jira|workitem/i;
 
+/** The pseudo-ticket the merge queue conversation lives under, per space. */
+export const MERGE_QUEUE = 'MERGE-QUEUE';
+
+/**
+ * A ticket agent builds one ticket. The integrator is the merge queue: one per
+ * space, it takes what is In Review and threads it back into main.
+ */
+export type AgentRole = 'ticket' | 'integrator';
+
 export interface AgentHooks {
   /** Fired whenever state or transcript changes, so the UI can repaint. */
   onChange(snapshot: AgentSnapshot): void;
@@ -192,6 +335,10 @@ export interface AgentHooks {
   persist(snapshot: AgentSnapshot): void;
   /** Re-read the board, because something just changed the ticket in JIRA. */
   refreshBoard(): void;
+  /** Put a note in front of another ticket's agent. Returns what happened. */
+  tell?(ticket: string, note: string): Promise<string>;
+  /** What is In Review, with each branch's state against main. */
+  queueState?(): Promise<string>;
 }
 
 export interface AgentContext {
@@ -200,6 +347,9 @@ export interface AgentContext {
   summary: string;
   status: string;
   cwd: string;
+  role?: AgentRole;
+  /** The trunk the merge queue threads into. */
+  mainBranch?: string;
 }
 
 /**
@@ -261,6 +411,8 @@ export class AgentSession {
   private since?: number;
   private doing?: string;
   private lastPaint = 0;
+  /** Resources taken on a tool call's behalf, released when that call ends. */
+  private readonly heldForTool = new Map<string, string>();
 
   constructor(
     private readonly context: AgentContext,
@@ -273,6 +425,10 @@ export class AgentSession {
 
   get ticket(): string {
     return this.context.ticket;
+  }
+
+  get role(): AgentRole {
+    return this.context.role ?? 'ticket';
   }
 
   /** Reopen a conversation written to the repo by an earlier window. */
@@ -327,6 +483,17 @@ export class AgentSession {
     this.setState('thinking');
   }
 
+  /**
+   * A note from another agent — the merge queue telling a ticket it conflicts,
+   * say. It is shown as a system line and handed to the model as a turn.
+   */
+  async receive(from: string, note: string) {
+    await this.ensureStream();
+    this.record('system', `${from}: ${note}`);
+    this.input.push(`[Note from ${from}] ${note}`);
+    this.setState('thinking');
+  }
+
   /** Plan and Implement are just things you say to an open conversation. */
   async runSkill(skill: string) {
     await this.send(`/${skill} ${this.context.ticket}`);
@@ -364,6 +531,8 @@ export class AgentSession {
     if (this.held) {
       this.answerQuestion(this.held.question.id, null);
     }
+    locks.releaseAll(this.context.ticket);
+    this.heldForTool.clear();
     try {
       await this.stream?.interrupt?.();
     } catch {
@@ -400,6 +569,8 @@ export class AgentSession {
     this.input.close();
     void this.stream?.interrupt?.();
     this.stream = undefined;
+    locks.releaseAll(this.context.ticket);
+    this.heldForTool.clear();
     AgentSession.live.delete(this.context.ticket);
     this.setState('idle');
   }
@@ -425,14 +596,64 @@ export class AgentSession {
         // Omitting settingSources loads user, project and local settings, which
         // is what makes the skills in ~/.claude/skills available here.
         skills: 'all',
-        canUseTool: (name: string, input: Record<string, unknown>) =>
-          this.requestPermission(name, input),
+        canUseTool: (name: string, input: Record<string, unknown>, options?: { signal?: AbortSignal }) =>
+          this.requestPermission(name, input, options),
+        // Hooks run in every permission mode, unlike the prompt above, so the
+        // turn-taking cannot be switched off by "never ask".
+        hooks: {
+          PreToolUse: [{ matcher: 'Bash', hooks: [this.beforeTool] }],
+          PostToolUse: [{ matcher: 'Bash', hooks: [this.afterTool] }],
+          PostToolUseFailure: [{ matcher: 'Bash', hooks: [this.afterTool] }]
+        },
         mcpServers: { board: await this.boardTools() }
       }
     });
 
     void this.consume();
   }
+
+  /** Wait for the shared resource this command needs, and hold it for the call. */
+  private readonly beforeTool = async (
+    input: any,
+    toolUseID: string | undefined,
+    options: { signal?: AbortSignal }
+  ) => {
+    const resource = sharedResource(input.tool_name, input.tool_input ?? {});
+    if (!resource || !toolUseID) {
+      return {};
+    }
+    const holder = locks.holder(resource);
+    if (holder && holder.ticket !== this.context.ticket) {
+      this.doing = `${resource} — ${holder.ticket} has it`;
+      this.record('system', `waiting for the ${resource}: ${holder.ticket} is using it (${holder.why})`);
+      this.setState('waiting');
+    }
+    try {
+      await locks.acquire(
+        resource,
+        this.context.ticket,
+        describeTool(input.tool_name, input.tool_input ?? {}),
+        options?.signal
+      );
+    } catch {
+      return {};
+    }
+    this.heldForTool.set(toolUseID, resource);
+    if (this.state === 'waiting') {
+      this.doing = input.tool_name;
+      this.setState('working');
+    }
+    return {};
+  };
+
+  private readonly afterTool = async (_input: any, toolUseID: string | undefined) => {
+    const resource = toolUseID ? this.heldForTool.get(toolUseID) : undefined;
+    if (resource) {
+      this.heldForTool.delete(toolUseID as string);
+      locks.release(resource, this.context.ticket);
+    }
+    return {};
+  };
 
   /**
    * Ask the running session what it actually offers, rather than hardcoding a
@@ -497,6 +718,9 @@ export class AgentSession {
     } catch (err) {
       this.record('system', err instanceof Error ? err.message : String(err));
       this.setState('error');
+    } finally {
+      locks.releaseAll(this.context.ticket);
+      this.heldForTool.clear();
     }
   }
 
@@ -535,6 +759,9 @@ export class AgentSession {
         }
         if (block.type === 'tool_use') {
           this.record('tool', describeTool(block.name, block.input ?? {}));
+          if (TOUCHES_BOARD.test(block.name)) {
+            this.boardDirty = true;
+          }
           this.setState('working');
         }
       }
@@ -545,6 +772,9 @@ export class AgentSession {
       if (message.subtype !== 'success') {
         this.record('system', `run ended: ${message.subtype}`);
       }
+      // A turn that ends still holding the test suite would block everyone.
+      locks.releaseAll(this.context.ticket);
+      this.heldForTool.clear();
       void this.readContextUsage();
       this.setState('done');
     }
@@ -621,122 +851,263 @@ export class AgentSession {
     const { createSdkMcpServer, tool } = await sdk();
     const columns = BOARD_COLUMNS as unknown as [string, ...string[]];
     const { ticket, space, summary, status } = this.context;
+    const integrator = this.role === 'integrator';
+
+    const shared = [
+      `SHARED RESOURCES`,
+      `Several agents run on this machine at once. The test suite, a build, a`,
+      `dev server port or a database cannot be used by two of them together.`,
+      `The board takes turns for you: any Bash command that matches the shared`,
+      `patterns (tests, builds) waits until the resource is free, then holds it`,
+      `until the command ends. You may see "waiting for the tests" — that is`,
+      `normal, do not retry or work around it. For anything the patterns do`,
+      `not know (a port, a database, a file lock) call claim(resource, why)`,
+      `before and release(resource) after. Claims are dropped when your turn`,
+      `ends, so a forgotten release cannot block anyone for long.`,
+      ``
+    ];
+
+    const panel = [
+      `WHAT THIS PANEL CAN AND CANNOT DO`,
+      `It is a chat panel in a sidebar, roughly 380 pixels wide by default,`,
+      `not a terminal. What works here:`,
+      `- Your replies render as Markdown: headings, lists, code, links.`,
+      `- ask() puts a real multiple-choice question in front of them.`,
+      `- Permission prompts appear on the card; several at once is fine.`,
+      `- They can paste images to you.`,
+      ``,
+      `What does NOT work here, so do not reach for it:`,
+      `- AskUserQuestion. The panel cannot render it and the call is wasted.`,
+      `  Use ask() instead.`,
+      `- Anything drawing a terminal UI: progress bars, spinners, cursor moves,`,
+      `  ANSI colour, box drawing. It is HTML, and it will look like noise.`,
+      `- Interactive commands that wait on stdin. Nothing can type into them.`,
+      `- Opening an editor, a pager, or a browser and expecting them to see it.`,
+      ``,
+      `Keep replies short. This is a narrow column beside a board, not a`,
+      `full-width terminal, and long prose is hard to read here.`
+    ];
+
+    const ticketInstructions = [
+      `You were opened from a ticket board inside VS Code, not a terminal.`,
+      `This conversation is bound to ${ticket} in the ${space} space:`,
+      `"${summary}", currently in ${status}.`,
+      ``,
+      `THE BOARD`,
+      `Six columns, left to right: ${BOARD_COLUMNS.join(' -> ')}.`,
+      `Only level-0 tickets appear; epics are grouping and sub-tasks render`,
+      `inside their parent. A ticket may not sit right of To Plan without a`,
+      `PRD on it. The full contract is in the plan-ticket skill BOARD.md file;`,
+      `read it before moving anything you are unsure about.`,
+      ``,
+      `MOVING THIS TICKET`,
+      `Call move_ticket the moment ${ticket} genuinely changes stage. You may`,
+      `also transition it through JIRA directly and the board will notice, but`,
+      `move_ticket repaints immediately, so prefer it.`,
+      ``,
+      `Do NOT move this ticket to Done. In Review is where your work ends: the`,
+      `merge queue — another agent on this board — threads In Review branches`,
+      `back into main and marks them Done. Leave your branch pushed, with the`,
+      `PR open, and stop. If the merge queue sends you a note (it appears as a`,
+      `system line, "Note from MERGE-QUEUE"), do what it asks in your own`,
+      `worktree — usually a rebase onto main to clear a conflict — then push`,
+      `and say so.`,
+      ``,
+      `THE HUMAN`,
+      `They are watching this conversation in a panel beside the board, and`,
+      `they drive you by typing here: /plan-ticket and /implement are things`,
+      `they say, not buttons. When you ask to run a tool they see it as a`,
+      `prompt on the card, so say plainly what you want and why.`,
+      `Use say for a line of progress that should not end your turn.`,
+      ``,
+      ...shared,
+      ...panel
+    ];
+
+    const integratorInstructions = [
+      `You are the MERGE QUEUE for the ${space} space, opened from a ticket`,
+      `board inside VS Code. Other agents build tickets, each in its own git`,
+      `worktree on its own branch, and move them to In Review with a PR open.`,
+      `Your job is to thread that work back into ${this.context.mainBranch ?? 'main'}:`,
+      `decide the order, merge each branch, make sure the result is green, push,`,
+      `and mark each ticket Done. You run in your own worktree on the`,
+      `"integration" branch; nobody else touches it.`,
+      ``,
+      `WHEN THE HUMAN SAYS "plan"`,
+      `Call queue_state, read each branch's state against main, look at the PRs`,
+      `with gh (approvals, checks, "changes requested"), and answer with the`,
+      `order you would merge in and why — smallest and cleanest first, a branch`,
+      `that another depends on before the dependant, conflicts last. Do not`,
+      `merge anything.`,
+      ``,
+      `WHEN THE HUMAN SAYS "go" (or "merge", or names tickets)`,
+      `For each ticket in your order:`,
+      `1. git fetch; reset your integration branch to origin/${this.context.mainBranch ?? 'main'}.`,
+      `2. Merge the ticket branch. If it conflicts and the fix is mechanical,`,
+      `   resolve it yourself and say what you chose. If the conflict needs the`,
+      `   author's judgment, do not guess: tell(ticket, what conflicts and where)`,
+      `   so its agent rebases, skip it this round, and carry on.`,
+      `3. Run the test suite. It is a shared resource; you will be made to wait`,
+      `   if another agent is in it. Red means stop for that ticket: tell() the`,
+      `   ticket what failed and skip it.`,
+      `4. Push: git push origin integration:${this.context.mainBranch ?? 'main'}. The PR closes as`,
+      `   merged on its own.`,
+      `5. move_ticket(ticket, "Done"). You are the one agent allowed to.`,
+      `Then bring the human's own checkout forward: in the main repo, if it is`,
+      `clean, git pull --ff-only; if not, say so and leave it.`,
+      ``,
+      `RULES`,
+      `- Never merge a ticket labelled "hold", one whose PR has changes`,
+      `  requested, or one with a failing check. Say which and why.`,
+      `- Never force-push, never rewrite ${this.context.mainBranch ?? 'main'}, never touch another ticket's worktree.`,
+      `- One ticket at a time. Green before push, every time.`,
+      `- Close with a short table: ticket, merged or skipped, one line why.`,
+      ``,
+      `TALKING TO OTHER AGENTS`,
+      `tell(ticket, note) puts a note in front of that ticket's agent. It wakes`,
+      `the agent, which costs money, so send one clear note with the file names`,
+      `and what you need — not a conversation.`,
+      ``,
+      ...shared,
+      ...panel
+    ];
+
+    const tools: any[] = [
+      tool(
+        'move_ticket',
+        integrator
+          ? 'Move a ticket to a different column on the board.'
+          : `Move ${ticket} to a different column on the board.`,
+        integrator ? { ticket: z.string(), column: z.enum(columns) } : { column: z.enum(columns) },
+        async ({ column, ticket: which }: { column: string; ticket?: string }) => {
+          const target = integrator ? String(which) : ticket;
+          await this.hooks.moveTicket(target, column);
+          this.record('tool', `moved ${target} to ${column}`);
+          return { content: [{ type: 'text', text: `${target} is now in ${column}.` }] };
+        }
+      ),
+      tool(
+        'ask',
+        'Ask the human a question with two to five concrete options. Use this ' +
+          'instead of AskUserQuestion, which this panel cannot render. Blocks ' +
+          'until they choose. Only for decisions you cannot make yourself.',
+        {
+          question: z.string(),
+          options: z
+            .array(z.object({ label: z.string(), description: z.string().optional() }))
+            .min(2)
+            .max(5),
+          multiple: z.boolean().optional()
+        },
+        async ({ question, options, multiple }: any) => {
+          if (this.held) {
+            return {
+              content: [
+                { type: 'text', text: 'A question is already waiting. Ask one at a time.' }
+              ]
+            };
+          }
+
+          const answers = await new Promise<string[] | null>((resolve) => {
+            this.held = {
+              question: {
+                id: `${ticket}-q${++this.askSeq}`,
+                question,
+                options,
+                multiple: Boolean(multiple)
+              },
+              resolve
+            };
+            this.record('agent', question);
+            this.setState('asking');
+          });
+
+          if (!answers) {
+            return {
+              content: [{ type: 'text', text: 'They did not answer. Decide it yourself and say why.' }]
+            };
+          }
+          this.record('you', answers.join(', '));
+          return { content: [{ type: 'text', text: 'They chose: ' + answers.join(', ') }] };
+        }
+      ),
+      tool(
+        'say',
+        'Post a short line to the human watching this ticket, without ending your turn.',
+        { note: z.string() },
+        async ({ note }: { note: string }) => {
+          this.record('agent', note);
+          return { content: [{ type: 'text', text: 'Shown on the board.' }] };
+        }
+      ),
+      tool(
+        'claim',
+        'Take a turn on a shared resource other agents might be using (a port, a ' +
+          'database, a file). Waits until it is free. Tests and builds are claimed ' +
+          'for you automatically; use this for anything else.',
+        { resource: z.string(), why: z.string() },
+        async ({ resource, why }: { resource: string; why: string }) => {
+          const holder = locks.holder(resource);
+          if (holder && holder.ticket !== ticket) {
+            this.doing = `${resource} — ${holder.ticket} has it`;
+            this.record('system', `waiting for ${resource}: ${holder.ticket} has it (${holder.why})`);
+            this.setState('waiting');
+          }
+          await locks.acquire(resource, ticket, why);
+          if (this.state === 'waiting') {
+            this.doing = undefined;
+            this.setState('working');
+          }
+          return { content: [{ type: 'text', text: `You hold ${resource}. Call release when done.` }] };
+        }
+      ),
+      tool(
+        'release',
+        'Give back a shared resource you claimed.',
+        { resource: z.string() },
+        async ({ resource }: { resource: string }) => {
+          const done = locks.release(resource, ticket);
+          return { content: [{ type: 'text', text: done ? `Released ${resource}.` : `You did not hold ${resource}.` }] };
+        }
+      )
+    ];
+
+    if (integrator) {
+      tools.push(
+        tool(
+          'queue_state',
+          'Every ticket In Review with its branch, how far ahead of and behind main it is, ' +
+            'whether it merges cleanly, and which shared resources are busy right now.',
+          {},
+          async () => {
+            const text = (await this.hooks.queueState?.()) ?? 'The board has no queue state hook.';
+            const busy = locks.snapshot();
+            const locksText = busy.length
+              ? '\n\nShared resources in use:\n' +
+                busy.map((held) => `- ${held.resource}: ${held.ticket} (${held.why})${held.queued.length ? ', waiting: ' + held.queued.join(', ') : ''}`).join('\n')
+              : '\n\nNo shared resource is in use right now.';
+            return { content: [{ type: 'text', text: text + locksText }] };
+          }
+        ),
+        tool(
+          'tell',
+          "Put a note in front of another ticket's agent. It wakes that agent, so be " +
+            'specific: which files, what to do, then stop.',
+          { ticket: z.string(), note: z.string() },
+          async ({ ticket: which, note }: { ticket: string; note: string }) => {
+            const outcome = (await this.hooks.tell?.(which, note)) ?? 'The board has no tell hook.';
+            this.record('tool', `told ${which}: ${note.slice(0, 120)}`);
+            return { content: [{ type: 'text', text: outcome }] };
+          }
+        )
+      );
+    }
 
     return createSdkMcpServer({
       name: 'board',
       version: '1.0.0',
-      instructions: [
-        `You were opened from a ticket board inside VS Code, not a terminal.`,
-        `This conversation is bound to ${ticket} in the ${space} space:`,
-        `"${summary}", currently in ${status}.`,
-        ``,
-        `THE BOARD`,
-        `Six columns, left to right: ${BOARD_COLUMNS.join(' -> ')}.`,
-        `Only level-0 tickets appear; epics are grouping and sub-tasks render`,
-        `inside their parent. A ticket may not sit right of To Plan without a`,
-        `PRD on it. The full contract is in the plan-ticket skill BOARD.md file;`,
-        `read it before moving anything you are unsure about.`,
-        ``,
-        `MOVING THIS TICKET`,
-        `Call move_ticket the moment ${ticket} genuinely changes stage. You may`,
-        `also transition it through JIRA directly and the board will notice, but`,
-        `move_ticket repaints immediately, so prefer it.`,
-        ``,
-        `Do NOT move this ticket to Done. In Review is where your work ends; a`,
-        `human marks it complete from the board once they have looked at it.`,
-        ``,
-        `THE HUMAN`,
-        `They are watching this conversation in a panel beside the board, and`,
-        `they drive you by typing here: /plan-ticket and /implement are things`,
-        `they say, not buttons. When you ask to run a tool they see it as a`,
-        `prompt on the card, so say plainly what you want and why.`,
-        `Use say for a line of progress that should not end your turn.`,
-        ``,
-        `WHAT THIS PANEL CAN AND CANNOT DO`,
-        `It is a chat panel in a sidebar, roughly 380 pixels wide by default,`,
-        `not a terminal. What works here:`,
-        `- Your replies render as Markdown: headings, lists, code, links.`,
-        `- ask() puts a real multiple-choice question in front of them.`,
-        `- Permission prompts appear on the card; several at once is fine.`,
-        `- They can paste images to you.`,
-        ``,
-        `What does NOT work here, so do not reach for it:`,
-        `- AskUserQuestion. The panel cannot render it and the call is wasted.`,
-        `  Use ask() instead.`,
-        `- Anything drawing a terminal UI: progress bars, spinners, cursor moves,`,
-        `  ANSI colour, box drawing. It is HTML, and it will look like noise.`,
-        `- Interactive commands that wait on stdin. Nothing can type into them.`,
-        `- Opening an editor, a pager, or a browser and expecting them to see it.`,
-        ``,
-        `Keep replies short. This is a narrow column beside a board, not a`,
-        `full-width terminal, and long prose is hard to read here.`
-      ].join('\n'),
-      tools: [
-        tool(
-          'move_ticket',
-          `Move ${ticket} to a different column on the board.`,
-          { column: z.enum(columns) },
-          async ({ column }: { column: string }) => {
-            await this.hooks.moveTicket(ticket, column);
-            this.record('tool', `moved ${ticket} to ${column}`);
-            return { content: [{ type: 'text', text: `${ticket} is now in ${column}.` }] };
-          }
-        ),
-        tool(
-          'ask',
-          'Ask the human a question with two to five concrete options. Use this ' +
-            'instead of AskUserQuestion, which this panel cannot render. Blocks ' +
-            'until they choose. Only for decisions you cannot make yourself.',
-          {
-            question: z.string(),
-            options: z
-              .array(z.object({ label: z.string(), description: z.string().optional() }))
-              .min(2)
-              .max(5),
-            multiple: z.boolean().optional()
-          },
-          async ({ question, options, multiple }: any) => {
-            if (this.held) {
-              return {
-                content: [
-                  { type: 'text', text: 'A question is already waiting. Ask one at a time.' }
-                ]
-              };
-            }
-
-            const answers = await new Promise<string[] | null>((resolve) => {
-              this.held = {
-                question: {
-                  id: `${ticket}-q${++this.askSeq}`,
-                  question,
-                  options,
-                  multiple: Boolean(multiple)
-                },
-                resolve
-              };
-              this.record('agent', question);
-              this.setState('asking');
-            });
-
-            if (!answers) {
-              return {
-                content: [{ type: 'text', text: 'They did not answer. Decide it yourself and say why.' }]
-              };
-            }
-            this.record('you', answers.join(', '));
-            return { content: [{ type: 'text', text: 'They chose: ' + answers.join(', ') }] };
-          }
-        ),
-        tool(
-          'say',
-          'Post a short line to the human watching this ticket, without ending your turn.',
-          { note: z.string() },
-          async ({ note }: { note: string }) => {
-            this.record('agent', note);
-            return { content: [{ type: 'text', text: 'Shown on the board.' }] };
-          }
-        )
-      ]
+      instructions: (integrator ? integratorInstructions : ticketInstructions).join('\n'),
+      tools
     });
   }
 
@@ -750,7 +1121,7 @@ export class AgentSession {
   }
 
   private setState(state: AgentState) {
-    const busy = state === 'thinking' || state === 'working';
+    const busy = state === 'thinking' || state === 'working' || state === 'waiting';
     if (busy && !this.since) {
       this.since = Date.now();
     }

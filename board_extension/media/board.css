@@ -634,6 +634,15 @@ a:hover { color: var(--vscode-textLink-activeForeground, var(--board-hue-info));
 .bd-permission-tool{font-size:var(--text-meta)}
 .bd-choice-label{font-size:inherit}
 
+/* Waiting its turn on a shared resource: alive, but not the one to watch. */
+.bd-card--waiting{border-left-color:var(--role-neutral-solid);background:var(--role-neutral-wash)}
+.bd-pill--waiting .bd-pill-dot{background:var(--role-neutral-solid);animation:bd-pulse 2.4s var(--ease) infinite}
+.bd-agent-state--waiting .bd-agent-dot{background:var(--role-neutral-solid);animation:bd-pulse 2.4s var(--ease) infinite}
+
+/* The door to the merge queue: a pill like the agents, dashed until it runs. */
+.bd-pill--queue{border-style:dashed;opacity:var(--dim-1)}
+.bd-pill--queue:hover{opacity:1;border-style:solid}
+
 /* The one destructive button: quiet until hovered, then unmistakable. */
 .bd-btn--danger{margin-left:auto;background:transparent;color:var(--role-broken-fg);border:var(--border-width) solid transparent;opacity:var(--dim-2)}
 .bd-btn--danger:hover{opacity:1;background:var(--role-broken-wash);border-color:var(--role-broken-line)}

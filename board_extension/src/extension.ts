@@ -1,6 +1,6 @@
 import * as vscode from 'vscode';
-import { AgentSession, AgentSnapshot, Attachment, PermissionLevel } from './agent';
-import { cullWorktree, ensureWorktree, worktreeStatus } from './git';
+import { AgentSession, AgentSnapshot, Attachment, MERGE_QUEUE, PermissionLevel } from './agent';
+import { cullWorktree, ensureIntegrationWorktree, ensureWorktree, mainBranch, mergesCleanly, worktreeStatus } from './git';
 import { listSkills } from './skills';
 import * as store from './store';
 import {
@@ -157,6 +157,10 @@ class BoardPanel {
         await this.pushBoard();
         break;
       case 'select':
+        // The merge queue is a conversation, not a ticket: JIRA has nothing on it.
+        if (message.key === MERGE_QUEUE) {
+          break;
+        }
         this.pushWorktree(message.key);
         await this.pushDetail(message.key);
         this.pushStory(message.key);
@@ -249,6 +253,7 @@ class BoardPanel {
         columns: COLUMNS,
         tickets: group(tickets),
         agents: AgentSession.details(),
+        queue: Boolean(repoFor(this.space)),
         types: this.types,
         epics: [...epics].map(([key, name]) => ({ key, name }))
       });
@@ -290,13 +295,14 @@ class BoardPanel {
     }
 
     const card = this.cards.get(ticket);
+    const integrator = ticket === MERGE_QUEUE;
 
     // Each ticket gets its own checkout, so two agents never tread on each
     // other. If git refuses, fall back to the repo and say so rather than
     // refusing to start.
     let workingDir = cwd;
     try {
-      workingDir = ensureWorktree(cwd, ticket).path;
+      workingDir = integrator ? ensureIntegrationWorktree(cwd).path : ensureWorktree(cwd, ticket).path;
     } catch (err) {
       void this.panel.webview.postMessage({
         type: 'error',
@@ -308,9 +314,11 @@ class BoardPanel {
       {
         ticket,
         space: this.space,
-        summary: card?.summary ?? '',
-        status: card?.status ?? 'unknown',
-        cwd: workingDir
+        summary: integrator ? 'Merge queue' : card?.summary ?? '',
+        status: integrator ? '' : card?.status ?? 'unknown',
+        cwd: workingDir,
+        role: integrator ? 'integrator' : 'ticket',
+        mainBranch: mainBranch(cwd)
       },
       {
         onChange: (snapshot) => this.pushAgent(snapshot),
@@ -320,7 +328,10 @@ class BoardPanel {
         moveTicket: async (key, column) => {
           await moveTicket(key, column);
           await this.pushBoard();
+          this.pushWorktree(key);
         },
+        tell: (key, note) => this.tell(key, note),
+        queueState: () => this.queueState(cwd),
         persist: (snapshot) =>
           store.save(cwd, {
             ticket,
@@ -344,6 +355,59 @@ class BoardPanel {
       );
     }
     return session;
+  }
+
+  /**
+   * A note from the merge queue to a ticket's agent. A running agent hears it
+   * now, as a turn. A stopped one gets it written into its conversation on
+   * disk, so the next person or agent to open it sees it first — waking a
+   * session just to deliver a note would cost real money.
+   */
+  private async tell(ticket: string, note: string): Promise<string> {
+    const live = AgentSession.get(ticket);
+    if (live) {
+      await live.receive(MERGE_QUEUE, note);
+      return `${ticket}'s agent is running and has the note.`;
+    }
+    const repo = repoFor(this.space);
+    if (!repo || !this.cards.has(ticket)) {
+      return `${ticket} is not on this board; nothing was told.`;
+    }
+    const stored = store.load(repo, ticket) ?? {
+      ticket,
+      space: this.space,
+      permissionMode: 'default',
+      transcript: [],
+      updatedAt: ''
+    };
+    stored.transcript.push({ role: 'system', text: `${MERGE_QUEUE}: ${note}`, at: new Date().toISOString() });
+    store.save(repo, stored);
+    return `${ticket}'s agent is not running. The note is in its conversation and will be seen when it is next opened; tell the human if it cannot wait.`;
+  }
+
+  /** What the merge queue needs to decide an order: every In Review branch against main. */
+  private async queueState(repo: string): Promise<string> {
+    const main = mainBranch(repo);
+    const waiting = [...this.cards.values()].filter((card) => card.status === 'In Review');
+    if (!waiting.length) {
+      return 'Nothing is In Review.';
+    }
+    const lines = waiting.map((card) => {
+      const status = worktreeStatus(repo, card.key);
+      const clean = status.branch ? mergesCleanly(repo, status.branch) : undefined;
+      const hold = card.labels.includes('hold') ? ' · LABELLED hold — do not merge' : '';
+      if (!status.exists || !status.branch) {
+        return `- ${card.key} "${card.summary}": no branch or worktree found locally — fetch, or ask the human${hold}`;
+      }
+      return (
+        `- ${card.key} "${card.summary}": branch ${status.branch}, ${status.ahead} ahead / ${status.behind} behind ${main}, ` +
+        (status.dirty ? `${status.dirtyFiles} files UNCOMMITTED in its worktree, ` : '') +
+        (status.merged ? 'already merged' : clean === undefined ? 'merge check unavailable' : clean ? 'merges cleanly' : 'CONFLICTS with ' + main) +
+        (AgentSession.get(card.key) ? ' · its agent is running' : '') +
+        hold
+      );
+    });
+    return `In Review, trunk ${main}:\n${lines.join('\n')}`;
   }
 
   /**
@@ -508,7 +572,7 @@ class BoardPanel {
   /** Branch, drift and merge state for the selected ticket. */
   private pushWorktree(ticket: string) {
     const repo = repoFor(this.space);
-    if (!repo) {
+    if (!repo || ticket === MERGE_QUEUE) {
       return;
     }
     try {

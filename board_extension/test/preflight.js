@@ -372,7 +372,7 @@ function assert(condition, message) {
 
   check('the agent is told what the board is', () => {
     const agent = fs.readFileSync(path.join(root, 'src', 'agent.ts'), 'utf8');
-    const block = agent.slice(agent.indexOf('instructions: ['), agent.indexOf('].join('));
+    const block = agent.slice(agent.indexOf('const ticketInstructions = ['), agent.indexOf('const integratorInstructions'));
     assert(block.indexOf('BOARD_COLUMNS.join') >= 0, 'the columns are not named to the agent');
     assert(block.indexOf('Do NOT move this ticket to Done') >= 0, 'the agent is not told Done is the human call');
     assert(block.indexOf('move_ticket') >= 0, 'move_ticket is not explained');
@@ -527,7 +527,7 @@ function assert(condition, message) {
 
   check('the agent is told what this panel cannot do', () => {
     const agent = fs.readFileSync(path.join(root, 'src', 'agent.ts'), 'utf8');
-    const block = agent.slice(agent.indexOf('instructions: ['), agent.indexOf('].join('));
+    const block = agent.slice(agent.indexOf('const panel = ['), agent.indexOf('const ticketInstructions'));
     assert(block.indexOf('AskUserQuestion') >= 0, 'it is not warned off AskUserQuestion');
     assert(block.indexOf('ask()') >= 0, 'it is not pointed at the tool that works');
     assert(block.indexOf('CANNOT DO') >= 0, 'there is no list of what does not work here');
@@ -749,6 +749,53 @@ function assert(condition, message) {
     assert(body.indexOf('cullWorktree') < 0, 'deleting a ticket deletes work on disk');
     assert(src.indexOf("'delete', key, '--delete-subtasks', 'true'") >= 0, 'sub-tasks would be orphaned');
     return 'modal confirm, sub-tasks go with it, worktree stays';
+  });
+
+  await checkAsync('agents take turns on a shared resource, and cannot forget to', async () => {
+    const { LockTable, sharedResource } = require(path.join(root, 'out', 'agent.js'));
+    const locks = new LockTable();
+    await locks.acquire('tests', 'METH-1', 'pytest');
+    let secondGot = false;
+    const second = locks.acquire('tests', 'METH-2', 'npm test').then(() => { secondGot = true; });
+    await new Promise((resolve) => setTimeout(resolve, 20));
+    assert(!secondGot, 'two agents held the test suite at once');
+    assert(locks.holder('tests').ticket === 'METH-1', 'wrong holder');
+    locks.release('tests', 'METH-1');
+    await second;
+    assert(secondGot && locks.holder('tests').ticket === 'METH-2', 'the turn did not pass on');
+    // A stopped agent must not keep the queue blocked.
+    const third = locks.acquire('tests', 'METH-3', 'jest');
+    locks.releaseAll('METH-2');
+    await third;
+    assert(locks.holder('tests').ticket === 'METH-3', 'releaseAll did not hand the resource on');
+    // Taken by the board, not by the agent remembering: the patterns decide.
+    assert(sharedResource('Bash', { command: 'python -m pytest tests -q' }) === 'tests', 'pytest is not a shared command');
+    assert(sharedResource('Bash', { command: 'git status' }) === undefined, 'git status is treated as shared');
+    const agent = fs.readFileSync(path.join(root, 'src', 'agent.ts'), 'utf8');
+    assert(agent.indexOf('PreToolUse') >= 0 && agent.indexOf('PostToolUse') >= 0, 'the lock is not tied to the tool call');
+    assert(agent.indexOf('hooks: {') >= 0, 'hooks are not passed to the session — bypass mode would skip the turn-taking');
+    return 'queued, handed on, dropped on stop; pytest matched, git not';
+  });
+
+  check('the merge queue is an agent with its own worktree and its own rules', () => {
+    const agent = fs.readFileSync(path.join(root, 'src', 'agent.ts'), 'utf8');
+    const ext = fs.readFileSync(path.join(root, 'src', 'extension.ts'), 'utf8');
+    const git = fs.readFileSync(path.join(root, 'src', 'git.ts'), 'utf8');
+    const js = fs.readFileSync(path.join(root, 'media', 'board.js'), 'utf8');
+    assert(agent.indexOf("MERGE_QUEUE = 'MERGE-QUEUE'") >= 0, 'no merge queue identity');
+    const rules = agent.slice(agent.indexOf('const integratorInstructions'), agent.indexOf('const tools: any[]'));
+    for (const rule of ['"hold"', 'changes', 'Never force-push', 'One ticket at a time', 'tell(ticket']) {
+      assert(rules.indexOf(rule) >= 0, 'the merge queue is not told: ' + rule);
+    }
+    const ticketRules = agent.slice(agent.indexOf('const ticketInstructions'), agent.indexOf('const integratorInstructions'));
+    assert(ticketRules.indexOf('Do NOT move this ticket to Done') >= 0, 'ticket agents may now move to Done');
+    assert(git.indexOf("'merge-tree', '--write-tree'") >= 0, 'conflicts are not checked without touching anything');
+    assert(git.indexOf('function ensureIntegrationWorktree(') >= 0, 'the queue has no worktree of its own');
+    assert(ext.indexOf('ensureIntegrationWorktree(cwd)') >= 0, 'the queue is not started in it');
+    assert(ext.indexOf('private async tell(') >= 0 && ext.indexOf('live.receive(') >= 0, 'the queue cannot talk to a ticket agent');
+    assert(ext.indexOf('store.save(repo, stored)') >= 0, 'a note to a stopped agent is lost');
+    assert(js.indexOf("bd-pill--queue") >= 0, 'no door to the queue in the rail');
+    return 'integration worktree, merge-tree, tell(), hold/changes/force-push rules';
   });
 
   check('hidden beats display', () => {

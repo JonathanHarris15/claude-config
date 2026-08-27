@@ -40,7 +40,7 @@ To Plan  →  To Do  →  On Deck  →  In Progress  →  In Review  →  Done
 | **On Deck** | Ready, **and the next step in it needs you.** A design call, a taste call, something needing your eyes. **Yours to do.** | `plan-ticket` |
 | **In Progress** | Being built right now. | `implement` |
 | **In Review** | PR open. | `implement` |
-| **Done** | Merged. | `implement` |
+| **Done** | Merged. | The merge queue, or you |
 
 The board order you see in JIRA is cosmetic. What matters is the contract below.
 
@@ -132,6 +132,27 @@ reach, and when it hits a genuine decision it stops and asks rather than guessin
                               │
                    [In Progress] → [In Review] → [Done]
 ```
+
+## The merge queue
+
+`implement` ends at **In Review**: branch pushed, PR open. It does not merge, and it
+does not move a ticket to Done. That is the **merge queue's** job — one agent per
+space, opened from the board, running in its own worktree on an `integration`
+branch. It reads what is In Review, checks each branch against main, picks an
+order (smallest and cleanest first, dependencies before dependants, conflicts
+last), merges one at a time, runs the tests, pushes main, and moves the ticket to
+**Done**. It is the only agent allowed to.
+
+- A ticket labelled **`hold`** stays out of the queue until the label goes.
+- A PR with changes requested or a failing check is skipped, and the queue says why.
+- A conflict that needs the author's judgment goes back to the ticket's agent as a
+  **note** — the queue can put a line into another ticket's conversation. The
+  author rebases in its own worktree, pushes, and the queue tries again next round.
+
+**Shared resources.** Several agents run on one machine. The board takes turns for
+them: a command that matches a shared pattern (the test suite, a build) waits until
+the resource is free and holds it until the command ends. Agents can `claim` and
+`release` anything else by name. The card reads **waiting its turn** while it waits.
 
 ## Bugs
 

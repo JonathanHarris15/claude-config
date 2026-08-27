@@ -86,6 +86,14 @@
           "type": "string",
           "default": "claude-sonnet-5",
           "markdownDescription": "Model that writes the History tab's story of a ticket. One turn, no tools, so a small model is the right choice. Blank uses the session default."
+        },
+        "board.sharedCommands": {
+          "type": "object",
+          "default": {
+            "tests": "\b(pytest|npm (run )?test|pnpm test|yarn test|vitest|jest|dotnet test|cargo test|go test|mvn test|gradle test|rspec|phpunit)\b",
+            "build": "\b(npm run build|pnpm build|yarn build|tsc\b|cargo build|dotnet build|go build|pyinstaller|electron-builder|vsce package|docker build)\b"
+          },
+          "markdownDescription": "Shared resources agents must take turns on, as a name and a regular expression matched against every Bash command. A command that matches waits until the resource is free, then holds it until the command ends. Add a key for anything else two agents must not run at once."
         }
       }
     },
