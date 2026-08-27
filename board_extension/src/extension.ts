@@ -128,7 +128,12 @@ class BoardPanel {
   /** The last detail fetched per ticket, so a story can be written without a second round trip. */
   private readonly details = new Map<string, TicketDetail>();
 
-  private constructor(private readonly space: string, extensionUri: vscode.Uri) {
+  private mood = '';
+
+  private constructor(
+    private readonly space: string,
+    private readonly extensionUri: vscode.Uri
+  ) {
     this.panel = vscode.window.createWebviewPanel(
       'board',
       `Board · ${space}`,
@@ -140,6 +145,7 @@ class BoardPanel {
       }
     );
 
+    this.paintTab({});
     this.panel.webview.html = render(this.panel.webview, extensionUri, space);
     this.panel.webview.onDidReceiveMessage((message) => this.handle(message));
     this.panel.onDidDispose(() => {
@@ -252,7 +258,7 @@ class BoardPanel {
         type: 'board',
         columns: COLUMNS,
         tickets: group(tickets),
-        agents: AgentSession.details(),
+        agents: this.paintTab(AgentSession.details(this.space)),
         queue: Boolean(repoFor(this.space)),
         types: this.types,
         epics: [...epics].map(([key, name]) => ({ key, name }))
@@ -624,11 +630,43 @@ class BoardPanel {
       void this.panel.webview.postMessage({ type: 'error', message: describe(err) });
     }
   }
+  /**
+   * The tab is the only part of the board you can see while you are reading
+   * code, so it carries the one fact worth interrupting for: whether anything
+   * wants you. Grey is nothing happening, blue is busy, green is finished,
+   * amber is a question, red is a crash.
+   *
+   * The order is the rail's order. A question outranks a crash because a
+   * question is the thing that is actually blocked on you; a crashed agent has
+   * already stopped and will still be stopped in a minute.
+   *
+   * Returns what it was given, so the push sites read as one line.
+   */
+  private paintTab<T extends Record<string, { state: string }>>(agents: T): T {
+    const states = Object.values(agents).map((info) => info.state);
+    const mood =
+      states.includes('asking') ? 'asking'
+        : states.includes('error') ? 'error'
+          : states.includes('done') ? 'done'
+            : states.some((s) => s === 'thinking' || s === 'working' || s === 'waiting')
+              ? 'working'
+              : 'idle';
+
+    // Reassigning iconPath redraws the tab, so only do it when it changed.
+    if (mood !== this.mood) {
+      this.mood = mood;
+      this.panel.iconPath = vscode.Uri.joinPath(
+        this.extensionUri, 'media', `board-icon-${mood}.svg`
+      );
+    }
+    return agents;
+  }
+
   private pushAgent(snapshot: AgentSnapshot) {
     void this.panel.webview.postMessage({
       type: 'agent',
       snapshot,
-      agents: AgentSession.details()
+      agents: this.paintTab(AgentSession.details(this.space))
     });
 
     // The skills move tickets through JIRA themselves, so the board cannot
@@ -737,6 +775,7 @@ function render(webview: vscode.Webview, root: vscode.Uri, space: string): strin
              spellcheck="false" aria-label="Filter tickets" />
       <div id="rail" class="bd-rail" aria-label="Live agents"></div>
       <button id="refreshBtn" class="bd-iconbtn" type="button" title="Refresh from JIRA">&#x21bb;</button>
+      <div id="queue" class="bd-queue" aria-label="Merge queue" hidden></div>
     </header>
     <div id="error" class="bd-error" hidden></div>
     <div class="bd-body">

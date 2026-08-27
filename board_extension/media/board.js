@@ -8,6 +8,7 @@
   const resizerEl = document.getElementById('resizer');
   const searchEl = document.getElementById('search');
   const railEl = document.getElementById('rail');
+  const queueEl = document.getElementById('queue');
   const countEl = document.getElementById('count');
   const refreshEl = document.getElementById('refreshBtn');
 
@@ -176,23 +177,12 @@
 
   function drawRail() {
     railEl.replaceChildren();
+    drawQueue();
 
-    // The door to the merge queue, with how much is waiting at it.
-    if (queueOn && !agentState(QUEUE)) {
-      const inReview = (lastBuckets && lastBuckets['In Review'] ? lastBuckets['In Review'].length : 0);
-      const door = el('button', 'bd-pill bd-pill--queue');
-      door.type = 'button';
-      door.title = 'The merge queue: threads In Review branches back into main.';
-      door.append(el('span', 'bd-pill-key', 'merge queue'));
-      if (inReview) door.append(el('span', null, inReview + ' waiting'));
-      door.addEventListener('click', () => {
-        tab = 'agent';
-        select(QUEUE);
-      });
-      railEl.append(door);
-    }
+    // The queue holds the end of the bar in its own right, so it is not one of
+    // the pills that shuffle when a state changes.
     const live = Object.keys(agents)
-      .filter((key) => agentState(key) && agentState(key) !== 'idle')
+      .filter((key) => key !== QUEUE && agentState(key) && agentState(key) !== 'idle')
       .sort((a, b) => (RAIL_ORDER[agentState(a)] ?? 9) - (RAIL_ORDER[agentState(b)] ?? 9));
 
     for (const key of live) {
@@ -203,7 +193,7 @@
       pill.title = (card ? card.summary + ' — ' : '') + stateWord(info.state) +
         (info.doing ? ' · ' + shortTool(info.doing) : '');
       pill.append(el('span', 'bd-pill-dot'));
-      pill.append(el('span', 'bd-pill-key', key === QUEUE ? 'merge queue' : key));
+      pill.append(el('span', 'bd-pill-key', key));
       if (info.state === 'asking') {
         pill.append(el('span', null, 'needs you'));
       } else if (info.state === 'waiting') {
@@ -219,6 +209,52 @@
       });
       railEl.append(pill);
     }
+  }
+
+  /**
+   * The merge queue is not one agent among many: it is the one door every
+   * branch leaves by. So it holds the end of the bar and keeps it whether or
+   * not it is running — the way out of In Review is always in the same place,
+   * and you never hunt for it among the pills.
+   */
+  function drawQueue() {
+    queueEl.replaceChildren();
+    queueEl.hidden = !queueOn;
+    if (!queueOn) return;
+
+    const info = agents[QUEUE];
+    const state = info && info.state !== 'idle' ? info.state : null;
+    queueEl.className = 'bd-queue' + (state ? '' : ' bd-queue--shut');
+
+    // The state classes are the rail's own, so the dot means here what it
+    // means there without a second set of rules to keep in step.
+    const door = el('button', 'bd-queue-door' + (state ? ' bd-pill--' + state : ''));
+    door.type = 'button';
+    door.title = state
+      ? 'The merge queue — ' + stateWord(state) + (info.doing ? ' · ' + shortTool(info.doing) : '')
+      : 'The merge queue: threads In Review branches back into main.';
+    door.append(el('span', 'bd-pill-dot'));
+    door.append(el('span', 'bd-pill-key', 'merge queue'));
+
+    if (state === 'asking') {
+      door.append(el('span', null, 'needs you'));
+    } else if (state === 'waiting') {
+      door.append(el('span', null, 'waiting'));
+    } else if (state && info.since) {
+      const clock = el('span', 'bd-elapsed', fmtElapsed(info.since));
+      clock.dataset.since = String(info.since);
+      door.append(clock);
+    } else if (!state) {
+      // Shut, so the useful thing to say is how much is piled up against it.
+      const inReview = (lastBuckets && lastBuckets['In Review'] ? lastBuckets['In Review'].length : 0);
+      door.append(el('span', 'bd-queue-count', inReview ? inReview + ' waiting' : 'empty'));
+    }
+
+    door.addEventListener('click', () => {
+      tab = 'agent';
+      select(QUEUE);
+    });
+    queueEl.append(door);
   }
 
   /* ---------- the board ---------- */
@@ -882,7 +918,10 @@
 
     // Pinned above the transcript. State and the two pickers must stay
     // reachable in a long conversation, not scroll off the top of it.
+    // It reads at the same distance as the conversation, so it takes the same
+    // size: turning the words up has to turn the header up with them.
     const head = el('div', 'bd-section-head bd-agent-head');
+    head.style.fontSize = chatScale + 'em';
     const title = el('span', 'bd-agent-state bd-agent-state--' + snap.state);
     title.append(el('span', 'bd-agent-dot'));
     title.append(el('span', null, stateWord(snap.state)));
@@ -895,7 +934,7 @@
     pane.append(head);
 
     const scroll = el('div', 'bd-scroll');
-    // The conversation scales as one piece; the pinned header does not.
+    // The conversation scales as one piece, header included.
     scroll.style.fontSize = chatScale + 'em';
 
     // Agent replies are Markdown; tool output and your own words are not.
