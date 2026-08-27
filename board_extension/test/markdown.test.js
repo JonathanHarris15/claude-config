@@ -60,7 +60,19 @@ eval(fs.readFileSync(path.join(__dirname, '..', 'media', 'markdown.js'), 'utf8')
   a = anchors('run `curl https://example.com` first');
   if (a.length !== 0) fail('a URL inside code became a link');
 
-  console.log('links: bare, trailing stop, markdown, javascript: refused, code left alone');
+  // Agents bold the thing they want you to see, which is exactly the URL.
+  a = anchors('Here it is: **https://mosaic-hymn-database--ms-279.web.app**');
+  if (a.length !== 1) fail('a URL inside bold is not a link');
+  if (a[0].href !== 'https://mosaic-hymn-database--ms-279.web.app') fail('bold URL href is ' + a[0].href);
+
+  a = anchors('*see https://example.com/a* and then https://example.com/b');
+  if (a.length !== 2) fail('emphasis ate the links around it: ' + a.length);
+
+  const tree = global.window.renderMarkdown('**bold** and *thin* and ~~gone~~');
+  const text = tree.children.map((n) => n.textContent).join('');
+  if (text !== 'bold and thin and gone') fail('emphasis lost its words: ' + JSON.stringify(text));
+
+  console.log('links: bare, trailing stop, markdown, bold, javascript: refused, code left alone');
 })();
 
 (async () => {

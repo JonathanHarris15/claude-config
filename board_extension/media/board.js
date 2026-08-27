@@ -21,6 +21,10 @@
   let chatDraft = '';
   let descDraft = null;  // non-null means the description is being edited
   let titleDraft = null; // non-null means the title is being renamed
+  // Renames JIRA has been told about but has not read back yet. JIRA's search
+  // index trails its own writes by a moment, so a refresh landing in that gap
+  // returns the old name — this holds the new one until the index catches up.
+  let renaming = {};
   let pending = [];      // images pasted or dropped, waiting to be sent
   let stick = true;      // follow the bottom of the transcript
   let menuEl = null;     // the slash menu element for the current render
@@ -61,6 +65,9 @@
     } else if (message.type === 'detail') {
       if (message.detail.key === selected) {
         detail = message.detail;
+        if (renaming[detail.key] !== undefined && detail.summary !== renaming[detail.key]) {
+          detail.summary = renaming[detail.key];
+        }
         drawDetail();
       }
     } else if (message.type === 'agent') {
@@ -82,6 +89,10 @@
     } else if (message.type === 'saved') {
       descDraft = null;
       titleDraft = null;
+    } else if (message.type === 'renameFailed') {
+      // JIRA would not take it, so its name is the true one again.
+      delete renaming[message.key];
+      drawDetail();
     } else if (message.type === 'deleted') {
       if (message.key === selected) {
         selected = null;
@@ -282,6 +293,7 @@
   function drawBoard(columns, buckets) {
     lastColumns = columns;
     lastBuckets = buckets;
+    applyRenames(buckets);
 
     const names = columns.slice();
     if (buckets.Other && buckets.Other.length) {
@@ -826,6 +838,31 @@
   }
 
   /**
+   * Hold a rename over the top of what JIRA just said, until JIRA says it too.
+   * Once it comes back with the new name the entry is dropped and JIRA is the
+   * only source again — including if someone renames it somewhere else.
+   */
+  function applyRenames(buckets) {
+    const pending = Object.keys(renaming);
+    if (!pending.length) {
+      return;
+    }
+    for (const name of Object.keys(buckets)) {
+      for (const ticket of buckets[name] || []) {
+        const wanted = renaming[ticket.key];
+        if (wanted === undefined) {
+          continue;
+        }
+        if (ticket.summary === wanted) {
+          delete renaming[ticket.key];
+        } else {
+          ticket.summary = wanted;
+        }
+      }
+    }
+  }
+
+  /**
    * The title, and the way you rename it. A summary is one line, so it edits in
    * place rather than behind a button: click the words, type, Enter. Escape
    * puts back what was there. The merge queue is not a JIRA ticket and has no
@@ -859,11 +896,24 @@
         return;
       }
       saved = true;
+      // Trimmed, because that is what gets sent — so what you see now is what
+      // JIRA will hold, not what you happened to type.
       const next = box.value.trim();
       titleDraft = null;
       // Nothing typed, or nothing changed: no round trip to JIRA.
       if (next && next !== ticket.summary) {
         vscode.postMessage({ type: 'saveSummary', key: ticket.key, summary: next });
+        // Show it now. The round trip takes a moment and the panel should not
+        // spend that moment showing a name you have already replaced.
+        renaming[ticket.key] = next;
+        ticket.summary = next;
+        if (detail && detail.key === ticket.key) {
+          detail.summary = next;
+        }
+        if (lastColumns) {
+          drawBoard(lastColumns, lastBuckets);
+          drawRail();
+        }
       }
       drawDetail();
     };

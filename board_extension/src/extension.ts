@@ -723,6 +723,7 @@ class BoardPanel {
       void this.panel.webview.postMessage({
         type: 'error', message: 'A ticket needs a title. The rename was not saved.'
       });
+      void this.panel.webview.postMessage({ type: 'renameFailed', key: ticket });
       await this.pushDetail(ticket);
       return;
     }
@@ -733,8 +734,11 @@ class BoardPanel {
       await this.pushBoard();
     } catch (err) {
       void this.panel.webview.postMessage({ type: 'error', message: describe(err) });
-      // The panel is showing a name JIRA rejected; put the real one back.
+      // The panel is showing a name JIRA rejected; put the real one back, on
+      // the card as well as in the panel.
+      void this.panel.webview.postMessage({ type: 'renameFailed', key: ticket });
       await this.pushDetail(ticket);
+      await this.pushBoard();
     }
   }
 

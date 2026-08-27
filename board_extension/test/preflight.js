@@ -786,7 +786,16 @@ function assert(condition, message) {
     assert(js.indexOf('function titleNode(') >= 0, 'the title is not editable');
     const node = js.slice(js.indexOf('function titleNode('), js.indexOf('function tabStrip('));
     assert(node.indexOf('ticket.queue') >= 0, 'the merge queue offers a rename it cannot do');
-    return 'inline rename, empty refused, queue left alone';
+
+    // The new name shows at once, and survives the gap between JIRA's write
+    // and its search index catching up — otherwise a refresh landing in that
+    // gap puts the old name back for a second.
+    assert(js.indexOf('function applyRenames(') >= 0, 'a rename waits for the round trip');
+    assert(js.slice(js.indexOf('function drawBoard(')).indexOf('applyRenames(buckets)') < 200,
+      'a board push can overwrite a rename JIRA has not read back yet');
+    assert(js.indexOf("'renameFailed'") >= 0 && ext.indexOf("type: 'renameFailed'") >= 0,
+      'a refused rename would be held on screen for ever');
+    return 'inline rename, shown at once, empty refused, queue left alone';
   });
 
   check('a ticket can be deleted, but only through the editor\'s modal', () => {

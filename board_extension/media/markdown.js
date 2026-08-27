@@ -42,11 +42,13 @@
   }
 
   function inline(text, parent) {
+    // A cursor per call, not a shared one: bold and italic recurse into this
+    // function, and an inner scan would otherwise move the outer scan's place.
+    const scan = new RegExp(INLINE.source, 'g');
     let last = 0;
     let match;
-    INLINE.lastIndex = 0;
 
-    while ((match = INLINE.exec(text)) !== null) {
+    while ((match = scan.exec(text)) !== null) {
       if (match.index > last) {
         parent.append(document.createTextNode(text.slice(last, match.index)));
       }
@@ -67,14 +69,14 @@
         parent.append(anchor(url, url));
         consumed = url.length;
       } else if (token.startsWith('**')) {
-        parent.append(el('strong', null, token.slice(2, -2)));
+        parent.append(inline(token.slice(2, -2), el('strong')));
       } else if (token.startsWith('~~')) {
-        parent.append(el('del', null, token.slice(2, -2)));
+        parent.append(inline(token.slice(2, -2), el('del')));
       } else {
-        parent.append(el('em', null, token.slice(1, -1)));
+        parent.append(inline(token.slice(1, -1), el('em')));
       }
       last = match.index + consumed;
-      INLINE.lastIndex = last;
+      scan.lastIndex = last;
     }
 
     if (last < text.length) {
