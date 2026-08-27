@@ -737,6 +737,12 @@ function assert(condition, message) {
     return 'STE voice, glossary, four headings, one-shot, stamped';
   });
 
+  check('hidden beats display', () => {
+    const css = fs.readFileSync(path.join(root, 'media', 'board.css'), 'utf8');
+    assert(css.indexOf('[hidden]{display:none !important}') >= 0, 'a flex element can ignore its hidden attribute');
+    return 'error banner, detail panel and state chip all obey hidden';
+  });
+
   check('motion never loops except to mean liveness', () => {
     const css = fs.readFileSync(path.join(root, 'media', 'board.css'), 'utf8');
     assert(css.indexOf('prefers-reduced-motion') >= 0, 'no reduced-motion escape hatch');

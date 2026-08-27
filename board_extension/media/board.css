@@ -493,6 +493,11 @@ a:hover { color: var(--vscode-textLink-activeForeground, var(--board-hue-info));
 @keyframes bd-pulse{0%,100%{opacity:1}50%{opacity:.35}}
 @keyframes bd-spin{to{transform:rotate(360deg)}}
 
+/* hidden means hidden. Any element that sets its own display would otherwise
+   win over the attribute: the empty error banner drew as a red bar, the closed
+   detail panel kept drawing, and every idle card showed an empty state chip. */
+[hidden]{display:none !important}
+
 /* Scrollbars: the editor's, thin and quiet, instead of the browser's. */
 ::-webkit-scrollbar{width:9px;height:9px}
 ::-webkit-scrollbar-thumb{background:var(--board-scroll);border-radius:var(--radius-pill)}
