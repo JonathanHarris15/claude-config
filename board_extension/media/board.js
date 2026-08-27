@@ -47,6 +47,7 @@
   let chatScale = 1;     // font size of the conversation, as a multiple of the editor's
   let boardZoom = 1;     // how far in the board canvas is zoomed
   let queueOn = false;   // a repo is mapped, so the merge queue has somewhere to run
+  let queued = [];       // tickets lined up at the merge queue, in its order
 
   // The merge queue is one conversation per space, not a ticket. It gets a
   // synthetic card so the panel can open on it like any other.
@@ -59,6 +60,7 @@
       refreshEl.classList.remove('bd-iconbtn--busy');
       agents = message.agents || {};
       queueOn = Boolean(message.queue);
+      queued = message.queued || [];
       types = message.types || [];
       epics = message.epics || [];
       drawBoard(message.columns, message.tickets);
@@ -200,8 +202,10 @@
 
     // The queue holds the end of the bar in its own right, so it is not one of
     // the pills that shuffle when a state changes.
+    const inLine = new Set(queued);
     const live = Object.keys(agents)
-      .filter((key) => key !== QUEUE && agentState(key) && agentState(key) !== 'idle')
+      .filter((key) =>
+        key !== QUEUE && !inLine.has(key) && agentState(key) && agentState(key) !== 'idle')
       .sort((a, b) => (RAIL_ORDER[agentState(a)] ?? 9) - (RAIL_ORDER[agentState(b)] ?? 9));
 
     for (const key of live) {
@@ -228,6 +232,39 @@
       });
       railEl.append(pill);
     }
+
+    drawLine();
+  }
+
+  /**
+   * The tickets the merge queue has taken, in the order it will merge them.
+   * They leave the run of working agents and stand in their own group at the
+   * end of the rail, next to the door they are waiting at — because they are
+   * not being worked on any more, they are being merged.
+   */
+  function drawLine() {
+    if (!queued.length) {
+      return;
+    }
+    const group = el('div', 'bd-line');
+    group.title = 'Lined up at the merge queue, in the order it will merge them.';
+    group.append(el('span', 'bd-line-label', 'merging'));
+
+    for (const key of queued) {
+      const state = agentState(key);
+      const pill = el('button', 'bd-pill bd-pill--inline' + (state && state !== 'idle' ? ' bd-pill--' + state : ''));
+      pill.type = 'button';
+      const card = byKey[key];
+      pill.title = (card ? card.summary + ' — ' : '') + 'waiting on the merge queue';
+      pill.append(el('span', 'bd-pill-dot'));
+      pill.append(el('span', 'bd-pill-key', key));
+      pill.addEventListener('click', () => {
+        tab = 'agent';
+        select(key);
+      });
+      group.append(pill);
+    }
+    railEl.append(group);
   }
 
   /**

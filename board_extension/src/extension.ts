@@ -154,6 +154,8 @@ class BoardPanel {
   private readonly details = new Map<string, TicketDetail>();
 
   private mood = '';
+  /** Tickets the merge queue has lined up, in the order it will merge them. */
+  private queued: string[] = [];
 
   private constructor(
     private readonly space: string,
@@ -280,6 +282,10 @@ class BoardPanel {
       for (const ticket of tickets) {
         this.cards.set(ticket.key, ticket);
       }
+      // A ticket that has left In Review is through the door, whether the queue
+      // merged it or you moved it yourself. Nothing else clears the line.
+      this.queued = this.queued.filter((key) => this.cards.get(key)?.status === 'In Review');
+
       // Epics are grouping, never cards, so they ride alongside the columns.
       const epics = new Map<string, string>();
       for (const ticket of tickets) {
@@ -294,6 +300,7 @@ class BoardPanel {
         tickets: group(tickets),
         agents: this.paintTab(AgentSession.details(this.space)),
         queue: Boolean(repoFor(this.space)),
+        queued: this.queued,
         types: this.types,
         epics: [...epics].map(([key, name]) => ({ key, name }))
       });
@@ -363,6 +370,17 @@ class BoardPanel {
       {
         onChange: (snapshot) => this.pushAgent(snapshot),
         refreshBoard: () => {
+          void this.pushBoard();
+        },
+        setQueue: (tickets) => {
+          this.queued = tickets.filter((key) => this.cards.has(key));
+          void this.pushBoard();
+        },
+        closeAgent: (key) => {
+          if (key === MERGE_QUEUE) {
+            return;
+          }
+          AgentSession.get(key)?.stop();
           void this.pushBoard();
         },
         moveTicket: async (key, column) => {
@@ -479,6 +497,10 @@ class BoardPanel {
     const session = await this.openAgent(MERGE_QUEUE);
     if (!session) {
       return;
+    }
+    if (!this.queued.includes(ticket)) {
+      this.queued.push(ticket);
+      void this.pushBoard();
     }
     try {
       await session.send(`merge ${ticket}`);

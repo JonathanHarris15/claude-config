@@ -343,6 +343,10 @@ export interface AgentHooks {
   tell?(ticket: string, note: string): Promise<string>;
   /** What is In Review, with each branch's state against main. */
   queueState?(): Promise<string>;
+  /** The order the queue is about to work, so the board can show the line. */
+  setQueue?(tickets: string[]): void;
+  /** The merge landed, so this ticket's agent has nothing left to do. */
+  closeAgent?(ticket: string): void;
 }
 
 export interface AgentContext {
@@ -1025,7 +1029,10 @@ export class AgentSession {
       `merge anything.`,
       ``,
       `WHEN THE HUMAN SAYS "go" (or "merge", or names tickets)`,
-      `For each ticket in your order:`,
+      `First call queue_line with the order you are about to work, so the human`,
+      `can see the line forming. Update it whenever the order changes, and call`,
+      `it with an empty list when you finish.`,
+      `Then, for each ticket in your order:`,
       `1. git fetch; reset your integration branch to origin/${this.context.mainBranch ?? 'main'}.`,
       `2. Merge the ticket branch. If it conflicts and the fix is mechanical,`,
       `   resolve it yourself and say what you chose. If the conflict needs the`,
@@ -1037,6 +1044,8 @@ export class AgentSession {
       `4. Push: git push origin integration:${this.context.mainBranch ?? 'main'}. The PR closes as`,
       `   merged on its own.`,
       `5. move_ticket(ticket, "Done"). You are the one agent allowed to.`,
+      `6. close_agent(ticket). Its branch has landed, so its agent has nothing`,
+      `   left to build. The conversation is kept; it just stops running.`,
       `Then bring the human's own checkout forward: in the main repo, if it is`,
       `clean, git pull --ff-only; if not, say so and leave it.`,
       ``,
@@ -1158,6 +1167,35 @@ export class AgentSession {
 
     if (integrator) {
       tools.push(
+        tool(
+          'queue_line',
+          'Show the human which tickets you are about to merge, in the order you will ' +
+            'merge them. Call it when you start and again whenever the order changes; ' +
+            'call it with an empty list when you are finished.',
+          { tickets: z.array(z.string()) },
+          async ({ tickets }: { tickets: string[] }) => {
+            this.hooks.setQueue?.(tickets);
+            return {
+              content: [{
+                type: 'text',
+                text: tickets.length
+                  ? `The board is showing the line: ${tickets.join(', ')}.`
+                  : 'The board is showing an empty line.'
+              }]
+            };
+          }
+        ),
+        tool(
+          'close_agent',
+          "Shut down a ticket's agent once its branch has landed. Its conversation is " +
+            'kept; it just stops running. Only call this after the merge is pushed and ' +
+            'the ticket is Done.',
+          { ticket: z.string() },
+          async ({ ticket: done }: { ticket: string }) => {
+            this.hooks.closeAgent?.(done);
+            return { content: [{ type: 'text', text: `${done}'s agent is closed.` }] };
+          }
+        ),
         tool(
           'queue_state',
           'Every ticket In Review with its branch, how far ahead of and behind main it is, ' +

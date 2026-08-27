@@ -559,6 +559,13 @@ a:hover { color: var(--vscode-textLink-activeForeground, var(--board-hue-info));
 .bd-pill--error{border-color:var(--role-broken-line)}
 .bd-pill--error .bd-pill-dot{background:var(--state-error)}
 .bd-pill .bd-elapsed{font-family:var(--font-mono);opacity:var(--dim-2)}
+/* The line at the merge queue's door. Set apart from the working agents, and
+   sitting next to the door itself, because these are not being worked on any
+   more — they are being merged. */
+.bd-line{display:inline-flex;align-items:center;gap:var(--space-3);flex:none;padding-left:var(--space-6);border-left:var(--border-width) solid var(--role-neutral-line)}
+.bd-line-label{font-size:var(--text-label);text-transform:var(--eyebrow-transform);letter-spacing:var(--eyebrow-tracking);opacity:var(--dim-2)}
+.bd-pill--inline{border-style:dashed;opacity:var(--dim-1)}
+.bd-pill--inline:hover{opacity:1;border-style:solid}
 
 /* ---------------------------------------------------------------------------
    Board polish: the header row gets a hairline, counts become quiet badges,

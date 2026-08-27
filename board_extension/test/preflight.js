@@ -894,7 +894,13 @@ function assert(condition, message) {
     // so it is never one of the pills that shuffle when a state changes.
     assert(ext.indexOf('id="queue"') >= 0, 'no permanent slot for the queue in the top bar');
     assert(js.indexOf('function drawQueue(') >= 0, 'nothing draws the door to the queue');
-    assert(js.indexOf("key !== QUEUE && agentState(key)") >= 0, 'the queue is back among the rail pills');
+    assert(js.indexOf('key !== QUEUE && !inLine.has(key)') >= 0, 'the queue is back among the rail pills');
+    // Tickets the queue has taken leave the run of working agents and stand in
+    // their own group: they are not being built any more, they are being merged.
+    assert(js.indexOf('function drawLine(') >= 0, 'the line at the queue is not drawn');
+    assert(agent.indexOf("'queue_line'") >= 0, 'the queue cannot show its order');
+    assert(agent.indexOf("'close_agent'") >= 0, "the queue cannot close a merged ticket's agent");
+    assert(agent.indexOf('close_agent(ticket)') >= 0, 'the queue is not told to close them');
     return 'integration worktree, merge-tree, tell(), hold/changes/force-push rules, its own slot';
   });
 
