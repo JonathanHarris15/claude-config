@@ -170,9 +170,16 @@ body.vscode-high-contrast-light {
 
 /* ============ tokens/layout.css ============ */
 :root {
-  --column-width: 260px;
+  /* The zoom multiplies the base; nothing else needs to know it exists. */
+  --column-width-base: 260px;
+  --column-width: var(--column-width-base);
+  /* Room past the last lane and the last column, so there is somewhere to pan
+     to. A canvas you can only drag until the content stops is not a canvas. */
+  --canvas-pad-x: 320px;
+  --canvas-pad-y: 220px;
   --detail-width: 380px;
   --chat-log-max: 340px;
+  --jump-offset: 128px;
   --subtask-mark-width: 32px;
   --stack-breakpoint: 620px;
 }
@@ -346,10 +353,15 @@ a:hover { color: var(--vscode-textLink-activeForeground, var(--board-hue-info));
    agent tab — a composer resting on the floor while the transcript scrolls
    above it. Same shape as a terminal chat, which is what it is. */
 .bd-detail-head{flex:none}
-.bd-pane{flex:1;min-height:0;display:flex;flex-direction:column}
+.bd-pane{flex:1;min-height:0;display:flex;flex-direction:column;position:relative}
 .bd-pane--scroll{overflow-y:auto}
 .bd-scroll{flex:1;min-height:0;overflow-y:auto;padding-right:var(--space-2);padding-bottom:var(--space-7)}
 .bd-composer{flex:none;padding-top:var(--space-9);border-top:var(--border-width) solid var(--role-neutral-line)}
+/* Sits just above the composer, over the last line of the transcript. Only
+   drawn while you are away from the bottom, so it never covers what you are
+   reading when you are already there. */
+.bd-jump{position:absolute;left:50%;transform:translateX(-50%);bottom:var(--jump-offset);z-index:3;border:var(--border-width) solid var(--role-neutral-line);border-radius:var(--radius-pill);background:var(--board-bg-widget);color:inherit;font-family:inherit;font-size:var(--text-label);padding:var(--space-2) var(--space-7);cursor:pointer;white-space:nowrap;opacity:0.92}
+.bd-jump:hover{opacity:1;border-color:var(--role-focus-line)}
 
 /* Inside the scroll region the log is the region, so it drops its own box. */
 .bd-chat-log--flow{max-height:none;overflow:visible;border:none;background:none;padding:0;margin-bottom:0}
@@ -377,6 +389,9 @@ a:hover { color: var(--vscode-textLink-activeForeground, var(--board-hue-info));
 .bd-menu-desc{font-size:var(--text-meta);opacity:var(--dim-2);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 
 .bd-foot{display:flex;justify-content:space-between;align-items:center;gap:var(--space-5);margin-top:var(--space-2);font-size:var(--text-label);opacity:var(--dim-2)}
+.bd-foot-right{display:inline-flex;align-items:center;gap:var(--space-6);flex:none}
+/* Resume is the one that starts something, so it reads as the way forward. */
+.bd-linkish--go{color:var(--role-settled-fg);font-weight:var(--weight-strong)}
 .bd-foot-left{display:flex;align-items:center;gap:var(--space-4)}
 .bd-meter{display:inline-block;width:70px;height:4px;border-radius:var(--radius-pill);background:var(--role-neutral-solid);overflow:hidden}
 .bd-meter-fill{display:block;height:100%;background:var(--role-running-solid)}
@@ -454,17 +469,17 @@ a:hover { color: var(--vscode-textLink-activeForeground, var(--board-hue-info));
    each column, so one glance shows an epic's progress. One header row at the
    top; every lane below lines up under it because the cell width is fixed.
    --------------------------------------------------------------------------- */
-.bd-columns{flex:1;min-width:0;min-height:0;display:block;overflow:auto;padding:var(--gap) var(--space-9)}
+.bd-columns{flex:1;min-width:0;min-height:0;display:block;overflow:auto;padding:var(--gap) var(--canvas-pad-x) var(--canvas-pad-y) var(--space-9);--column-width:calc(var(--column-width-base) * var(--zoom, 1));font-size:calc(1em * var(--zoom, 1))}
 
-.bd-headrow{display:flex;gap:var(--gap);position:sticky;top:0;z-index:2;background:var(--board-bg-editor);padding-bottom:var(--space-5);width:max-content}
+.bd-headrow{display:flex;gap:calc(var(--gap) * var(--zoom, 1));position:sticky;top:0;z-index:2;background:var(--board-bg-editor);padding-bottom:var(--space-5);width:max-content}
 .bd-headcell{flex:0 0 var(--column-width);min-width:0;display:flex;justify-content:space-between;align-items:baseline;gap:var(--space-4);font-weight:var(--weight-strong);font-size:var(--text-label);text-transform:var(--eyebrow-transform);letter-spacing:var(--eyebrow-tracking-wide);opacity:var(--dim-1);padding:0 var(--space-2)}
 
-.bd-lane{margin-bottom:var(--space-10);width:max-content}
+.bd-lane{margin-bottom:calc(var(--space-10) * var(--zoom, 1));width:max-content}
 .bd-lane-head{position:sticky;left:0;display:flex;align-items:baseline;gap:var(--space-4);font-size:var(--text-label);text-transform:var(--eyebrow-transform);letter-spacing:var(--eyebrow-tracking);opacity:var(--dim-2);padding:0 var(--space-2) var(--space-4);max-width:var(--column-width)}
 .bd-lane-name{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .bd-lane-count{flex:none}
 
-.bd-lane-cols{display:flex;gap:var(--gap);align-items:flex-start}
+.bd-lane-cols{display:flex;gap:calc(var(--gap) * var(--zoom, 1));align-items:flex-start}
 .bd-lane-col{flex:0 0 var(--column-width);min-width:0;display:flex;flex-direction:column;gap:var(--gap-card);min-height:52px;border-radius:var(--radius);padding:var(--space-1)}
 .bd-lane-col--over{background:var(--role-selected-wash);outline:var(--border-width) dashed var(--role-focus-line)}
 
@@ -650,6 +665,7 @@ a:hover { color: var(--vscode-textLink-activeForeground, var(--board-hue-info));
 .bd-card--waiting{border-left-color:var(--role-neutral-solid);background:var(--role-neutral-wash)}
 .bd-pill--waiting .bd-pill-dot{background:var(--role-neutral-solid);animation:bd-pulse 2.4s var(--ease) infinite}
 .bd-agent-state--waiting .bd-agent-dot{background:var(--role-neutral-solid);animation:bd-pulse 2.4s var(--ease) infinite}
+.bd-agent-state--paused .bd-agent-dot,.bd-pill--paused .bd-pill-dot,.bd-queue--paused .bd-pill-dot{background:var(--role-neutral-solid);animation:none}
 
 /* The door to the merge queue: a pill like the agents, dashed until it runs. */
 /* The merge queue holds the end of the top bar rather than floating in it as

@@ -45,6 +45,7 @@
   let storyCan = false;  // a repo is mapped, so a story has somewhere to live
   let storyWriting = false;
   let chatScale = 1;     // font size of the conversation, as a multiple of the editor's
+  let boardZoom = 1;     // how far in the board canvas is zoomed
   let queueOn = false;   // a repo is mapped, so the merge queue has somewhere to run
 
   // The merge queue is one conversation per space, not a ticket. It gets a
@@ -164,6 +165,11 @@
   window.addEventListener('keydown', (event) => {
     const tag = event.target && event.target.tagName ? event.target.tagName.toLowerCase() : '';
     if (tag === 'input' || tag === 'textarea' || tag === 'select') return;
+    if ((event.ctrlKey || event.metaKey) && event.key === '0') {
+      event.preventDefault();
+      setBoardZoom(1);
+      return;
+    }
     if (event.key === 'Escape' && selected) {
       selected = null;
       detail = null;
@@ -186,7 +192,7 @@
    * This is the board-wide answer to "what is waiting on me" — the question the
    * whole board exists for — so it lives in the top bar, not inside a column.
    */
-  const RAIL_ORDER = { asking: 0, thinking: 1, working: 1, waiting: 1, error: 2, done: 3 };
+  const RAIL_ORDER = { asking: 0, thinking: 1, working: 1, waiting: 1, error: 2, paused: 3, done: 4 };
 
   function drawRail() {
     railEl.replaceChildren();
@@ -1208,11 +1214,28 @@
     composer.append(composerFoot(snap));
     pane.append(composer);
 
+    // Reading back through a long run means scrolling up, which stops the
+    // transcript following the agent. This is the way back down, and it only
+    // exists while you are actually away from the bottom.
+    const jump = el('button', 'bd-jump', 'jump to newest ↓');
+    jump.type = 'button';
+    jump.hidden = true;
+    jump.addEventListener('click', () => {
+      scroll.scrollTop = scroll.scrollHeight;
+      stick = true;
+      jump.hidden = true;
+    });
+    pane.append(jump);
+
+    const atBottom = () => scroll.scrollHeight - scroll.scrollTop - scroll.clientHeight < 40;
     scroll.addEventListener('scroll', () => {
-      stick = scroll.scrollHeight - scroll.scrollTop - scroll.clientHeight < 40;
+      stick = atBottom();
+      jump.hidden = stick;
     });
     if (stick) {
       scroll.scrollTop = scroll.scrollHeight;
+    } else {
+      jump.hidden = false;
     }
   }
 
@@ -1316,11 +1339,33 @@
     foot.append(left);
 
     const busy = snap.state === 'thinking' || snap.state === 'working' || snap.state === 'waiting';
-    if (busy) {
+    const controls = el('span', 'bd-foot-right');
+
+    // Pause parks it at the next step and keeps the work; interrupt throws the
+    // current step away. Two different things, so they sit side by side.
+    if (snap.state === 'paused') {
+      const go = el('button', 'bd-linkish bd-linkish--go', 'resume');
+      go.type = 'button';
+      go.title = 'Let it carry on from where it stopped.';
+      go.addEventListener('click', () => post('resume', selected));
+      controls.append(go);
+    } else if (busy) {
+      const hold = el('button', 'bd-linkish', 'pause');
+      hold.type = 'button';
+      hold.title = 'Stop at the next step and wait. Nothing is thrown away.';
+      hold.addEventListener('click', () => post('pause', selected));
+      controls.append(hold);
+    }
+
+    if (busy || snap.state === 'paused') {
       const stop = el('button', 'bd-linkish', 'interrupt');
       stop.type = 'button';
+      stop.title = 'Abandon what it is doing. The conversation stays.';
       stop.addEventListener('click', () => post('interrupt', selected));
-      foot.append(stop);
+      controls.append(stop);
+    }
+    if (controls.childNodes.length) {
+      foot.append(controls);
     }
     return foot;
   }
@@ -1704,6 +1749,7 @@
     if (state === 'asking') return 'needs you';
     if (state === 'error') return 'failed';
     if (state === 'waiting') return 'waiting its turn';
+    if (state === 'paused') return 'paused';
     return state || 'idle';
   }
 
@@ -1713,6 +1759,7 @@
     if (state === 'waiting') return 'bd-chip--quiet';
     if (state === 'done') return 'bd-chip--settled';
     if (state === 'error') return 'bd-chip--broken';
+    if (state === 'paused') return 'bd-chip--quiet';
     return 'bd-chip--running';
   }
 
@@ -1847,6 +1894,9 @@
   if (saved.chatScale) {
     chatScale = saved.chatScale;
   }
+  if (saved.boardZoom) {
+    setBoardZoom(saved.boardZoom);
+  }
 
   resizerEl.addEventListener('mousedown', (event) => {
     event.preventDefault();
@@ -1870,6 +1920,49 @@
     window.addEventListener('mousemove', move);
     window.addEventListener('mouseup', done);
   });
+
+  /**
+   * Zoom is a layout change, not a transform: the column width and the text
+   * size both scale, so nothing blurs, the sticky header stays stuck, and a
+   * card is exactly where it looks like it is. Ctrl and the wheel, the way
+   * every canvas does it.
+   *
+   * Pass the wheel event to keep the point under the pointer where it is —
+   * without that, zooming walks the board out from under you.
+   */
+  function setBoardZoom(next, at) {
+    const before = boardZoom;
+    boardZoom = Math.max(0.5, Math.min(2, next));
+    if (boardZoom === before && at) {
+      return;
+    }
+
+    const box = columnsEl.getBoundingClientRect();
+    const x = at ? at.clientX - box.left : box.width / 2;
+    const y = at ? at.clientY - box.top : box.height / 2;
+    const onBoardX = columnsEl.scrollLeft + x;
+    const onBoardY = columnsEl.scrollTop + y;
+
+    columnsEl.style.setProperty('--zoom', String(boardZoom));
+    // Read a layout value to make the new size real before moving the scroll.
+    void columnsEl.scrollWidth;
+
+    const ratio = boardZoom / before;
+    columnsEl.scrollLeft = onBoardX * ratio - x;
+    columnsEl.scrollTop = onBoardY * ratio - y;
+
+    vscode.setState(Object.assign({}, vscode.getState(), { boardZoom: boardZoom }));
+  }
+
+  columnsEl.addEventListener('wheel', (event) => {
+    if (!event.ctrlKey && !event.metaKey) {
+      return;
+    }
+    // Taken from the editor, which would otherwise zoom the whole window.
+    event.preventDefault();
+    // Continuous rather than stepped, so a trackpad feels like a trackpad.
+    setBoardZoom(boardZoom * Math.pow(1.0015, -event.deltaY), event);
+  }, { passive: false });
 
   /**
    * Right-drag pans the board. Six columns across several swimlanes is more

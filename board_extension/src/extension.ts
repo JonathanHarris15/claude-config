@@ -222,6 +222,12 @@ class BoardPanel {
       case 'model':
         await (await this.openAgent(message.key))?.setModel(message.model);
         break;
+      case 'pause':
+        AgentSession.get(message.key)?.pause();
+        break;
+      case 'resume':
+        AgentSession.get(message.key)?.resume();
+        break;
       case 'interrupt':
         await AgentSession.get(message.key)?.interrupt();
         break;

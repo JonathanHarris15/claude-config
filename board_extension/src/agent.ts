@@ -22,7 +22,8 @@ export function sdk(): Promise<any> {
  * you; `waiting` means it is queued behind another agent for something they
  * cannot both use at once, like the test suite.
  */
-export type AgentState = 'idle' | 'thinking' | 'working' | 'waiting' | 'asking' | 'done' | 'error';
+export type AgentState =
+  'idle' | 'thinking' | 'working' | 'waiting' | 'asking' | 'paused' | 'done' | 'error';
 
 /**
  * The same four levels Claude Code offers. `plan` lets the agent read and think
@@ -408,6 +409,10 @@ export class AgentSession {
   private queue: { ask: PendingAsk; decide: (allow: boolean) => void }[] = [];
   private askSeq = 0;
   private held?: { question: PendingQuestion; resolve: (answers: string[] | null) => void };
+  /** Parked. Set by you; released by you. */
+  private paused = false;
+  /** Tool calls parked by the pause, released in order when it lifts. */
+  private parked: (() => void)[] = [];
   private sessionId?: string;
   private stream?: any;
   private mode: PermissionLevel = 'default';
@@ -545,10 +550,46 @@ export class AgentSession {
     this.changed();
   }
 
+  /**
+   * Park the agent at its next step. Not an interrupt: nothing is thrown away
+   * and nothing has to be redone — the run stops at the next tool call and
+   * stands there until you let it go. What it is doing right now finishes,
+   * because killing a half-written file to honour a button is worse than
+   * waiting a second for it.
+   */
+  pause() {
+    if (this.paused) {
+      return;
+    }
+    this.paused = true;
+    this.setState('paused');
+  }
+
+  resume() {
+    if (!this.paused) {
+      return;
+    }
+    this.paused = false;
+    const waiting = this.parked;
+    this.parked = [];
+    for (const release of waiting) {
+      release();
+    }
+    this.setState(waiting.length ? 'working' : this.state === 'paused' ? 'idle' : this.state);
+  }
+
+  get isPaused() {
+    return this.paused;
+  }
+
   /** Stop what it is doing without ending the conversation. */
   async interrupt() {
     // Anything still held must be released, or its promise outlives the run.
     this.answerAll(false);
+    this.paused = false;
+    for (const release of this.parked.splice(0)) {
+      release();
+    }
     if (this.held) {
       this.answerQuestion(this.held.question.id, null);
     }
@@ -814,6 +855,17 @@ export class AgentSession {
     // The board's own tools are ours; asking about them is noise.
     if (name.startsWith('mcp__board__')) {
       return Promise.resolve({ behavior: 'allow', updatedInput: input });
+    }
+
+    // Parked before anything else is decided, including "never ask": a pause
+    // you can talk your way past is not a pause. The wait resolves when you
+    // resume, and the call then goes on to be judged as it would have been.
+    if (this.paused) {
+      return new Promise<void>((release) => {
+        this.parked.push(release);
+        this.setState('paused');
+        options?.signal?.addEventListener('abort', () => release());
+      }).then(() => this.requestPermission(name, input, options));
     }
 
     // The mode is read here, on every call, rather than trusted to the session
@@ -1161,6 +1213,11 @@ export class AgentSession {
     // tell. Failing and stopping still win: both end the wait.
     if ((this.queue.length || this.held) && state !== 'error' && state !== 'idle') {
       state = 'asking';
+    }
+    // Parked outranks progress for the same reason a question does: the panel
+    // must not report movement that is not happening.
+    if (this.paused && state !== 'error' && state !== 'idle' && state !== 'asking') {
+      state = 'paused';
     }
     const busy = state === 'thinking' || state === 'working' || state === 'waiting';
     if (busy && !this.since) {
