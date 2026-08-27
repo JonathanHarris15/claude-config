@@ -28,6 +28,9 @@ export interface Ticket {
   created: string;
   updated: string;
   labels: string[];
+  /** The epic this ticket belongs to. Epics are grouping; they are never cards. */
+  epicKey?: string;
+  epicName?: string;
 }
 
 interface RawIssue {
@@ -91,7 +94,7 @@ export async function fetchBoard(project: string): Promise<Ticket[]> {
     '200'
   ]);
 
-  return (result.issues ?? []).map(normalise);
+  return enrich((result.issues ?? []).map(normalise));
 }
 
 export interface TimelineEntry {
@@ -276,4 +279,130 @@ export async function updateDescription(key: string, markdown: string): Promise<
     '--description-format',
     'markdown'
   ]);
+}
+
+/**
+ * The board query returns a lean field set with no parent and no labels. One
+ * bulk fetch fills both in for every card at once, which is cheap enough to do
+ * on every refresh and saves a call per ticket.
+ */
+async function enrich(tickets: Ticket[]): Promise<Ticket[]> {
+  if (!tickets.length) {
+    return tickets;
+  }
+  let raw: any;
+  try {
+    raw = await twgJson<any>([
+      'jira',
+      'workitem',
+      'bulk-get',
+      ...tickets.map((ticket) => ticket.key),
+      '--fields',
+      'summary,labels,parent'
+    ]);
+  } catch {
+    // A board without epics is still a board.
+    return tickets;
+  }
+
+  const byKey = new Map<string, any>();
+  for (const row of raw?.items ?? []) {
+    if (row?.ok && row.data?.key) {
+      byKey.set(row.data.key, row.data);
+    }
+  }
+
+  return tickets.map((ticket) => {
+    const data = byKey.get(ticket.key);
+    if (!data) {
+      return ticket;
+    }
+    const parent = data.parent;
+    return {
+      ...ticket,
+      labels: data.labels ?? ticket.labels,
+      epicKey: parent?.key,
+      epicName: parent?.fields?.summary ?? parent?.key
+    };
+  });
+}
+
+/** The level-0 issue types this space actually has. Never hardcode these. */
+export async function issueTypes(space: string): Promise<string[]> {
+  try {
+    const raw = await twgJson<any>(['jira', 'space', 'issue-types', '--id-or-key', space]);
+    const list: any[] = Array.isArray(raw)
+      ? raw
+      : raw.issueTypes ?? raw.values ?? Object.values(raw).find(Array.isArray) ?? [];
+    const level0 = list
+      .filter((type) => type.hierarchyLevel === 0 || type.hierarchyLevel === undefined)
+      .map((type) => type.name)
+      .filter(Boolean);
+    return level0.length ? level0 : ['Task'];
+  } catch {
+    return ['Task'];
+  }
+}
+
+/**
+ * Make a ticket. Everything lands in the inbox first, then moves to the column
+ * it was asked for, because that is the transition JIRA actually offers.
+ */
+export async function createTicket(options: {
+  space: string;
+  type: string;
+  summary: string;
+  epic?: string;
+  column?: string;
+}): Promise<string> {
+  const args = [
+    'jira',
+    'workitem',
+    'create',
+    '--space',
+    options.space,
+    '--type',
+    options.type,
+    '--summary',
+    options.summary
+  ];
+  if (options.epic) {
+    args.push('--parent', options.epic);
+  }
+
+  const created = await twgJson<any>(args);
+  const key: string | undefined = created?.key ?? created?.issue?.key ?? created?.data?.key;
+  if (!key) {
+    throw new Error('JIRA did not return a key for the new ticket.');
+  }
+
+  // Never assume where a new ticket lands. The workflow decides that, and this
+  // project drops them in To Do, not the inbox. Read it back and move it only
+  // if it is not already where it was asked for.
+  if (options.column) {
+    const landed = await statusOf(key);
+    if (landed && landed !== options.column) {
+      await moveTicket(key, options.column);
+    }
+  }
+  return key;
+}
+
+/** Where a ticket actually is, straight from JIRA. */
+async function statusOf(key: string): Promise<string | undefined> {
+  try {
+    const raw = await twgJson<any>(['jira', 'workitem', 'get', key, '--fields', 'status']);
+    const issue = Array.isArray(raw) ? raw[0] : raw.issues ? raw.issues[0] : raw;
+    return issue?.status?.name ?? issue?.fields?.status?.name;
+  } catch {
+    return undefined;
+  }
+}
+
+/**
+ * Move a ticket into a different epic, or out of one entirely. Dragging a card
+ * to another swimlane means exactly this.
+ */
+export async function setEpic(key: string, epic: string | null): Promise<void> {
+  await twgJson(['jira', 'workitem', 'update', '--id', key, '--parent', epic ?? 'none']);
 }

@@ -17,6 +17,19 @@ skills it drives (`plan-ticket`, `implement`) are the ones already in
   door and the board itself lives in the main editor where it has room.
 - Six columns — To Plan, To Do, On Deck, In Progress, In Review, Done — read
   live from JIRA through the `twg` CLI, refreshed every 30 seconds.
+- **Epics are swimlanes.** One row per epic running across all six columns,
+  biggest epic first and unparented last, under a single shared header row. An
+  epic's whole progress reads in one glance. Epics stay grouping and never
+  become cards.
+- **Dragging a card into another lane reparents it** to that epic, or out of
+  one entirely in the No epic lane. Where you dropped it is what you meant.
+- **Drag a card to any column.** This is the human overruling the board: no PRD
+  check, no agent opinion, no confirmation. JIRA is the only thing that gets a
+  veto, and if it refuses, the card snaps back and says why.
+- **A `+ ticket` button at the foot of every column.** Pick a type and an
+  optional epic, type a summary, press Enter. The card appears
+  instantly and is replaced by the real one when JIRA answers. Where a new
+  ticket lands is read from JIRA rather than assumed, then moved if needed. Issue types are read from the space, never hardcoded.
 - Only level-0 items are cards. Epics are grouping and sub-tasks render inside
   their parent, so the JQL excludes both. Column counts would otherwise lie.
 - Click a card for a detail panel: labels, sub-task progress, and a timeline

@@ -106,3 +106,18 @@ system yet.
 shim and asserts no raw syntax survives. It caught a genuine bug on the first
 run — the inline regex had lost its escapes — so it is wired into
 `npm run preflight`.
+
+## Divergence from the design system (2026-08-27)
+
+The board moved to **swimlanes**: epics run across all columns instead of
+grouping inside each one. The design system's `Column` component and its
+`.bd-column` / `.bd-column-head` / `.bd-column-body` classes no longer describe
+what the app draws. The code now uses `.bd-headrow`, `.bd-lane`,
+`.bd-lane-cols` and `.bd-lane-col`.
+
+`design-sync` treats components as "whoever changed last", with the code as the
+check. The code changed last, so the system should be updated to match — a Lane
+component, and Column reduced to a header cell.
+
+Still not in the system either: Tabs, the slash Menu, the Meter, the prose
+(`.md-*`) styles, the Question box, and the drag affordances.

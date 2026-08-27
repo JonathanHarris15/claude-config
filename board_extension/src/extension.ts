@@ -11,6 +11,9 @@ import {
   moveTicket,
   repoFor,
   Ticket,
+  createTicket,
+  issueTypes,
+  setEpic,
   updateDescription
 } from './board';
 import { fetchSpaces, Space } from './spaces';
@@ -118,6 +121,7 @@ class BoardPanel {
 
   private readonly panel: vscode.WebviewPanel;
   private readonly cards = new Map<string, Ticket>();
+  private types: string[] = [];
 
   private constructor(private readonly space: string, extensionUri: vscode.Uri) {
     this.panel = vscode.window.createWebviewPanel(
@@ -177,6 +181,12 @@ class BoardPanel {
       case 'complete':
         await this.complete(message.key);
         break;
+      case 'createTicket':
+        await this.create(message.summary, message.issueType, message.column, message.epic);
+        break;
+      case 'moveTicket':
+        await this.drag(message.key, message.column, message.epic);
+        break;
       case 'worktree':
         this.pushWorktree(message.key);
         break;
@@ -206,16 +216,29 @@ class BoardPanel {
 
   private async pushBoard() {
     try {
+      if (!this.types.length) {
+        this.types = await issueTypes(this.space);
+      }
       const tickets = await fetchBoard(this.space);
       this.cards.clear();
       for (const ticket of tickets) {
         this.cards.set(ticket.key, ticket);
       }
+      // Epics are grouping, never cards, so they ride alongside the columns.
+      const epics = new Map<string, string>();
+      for (const ticket of tickets) {
+        if (ticket.epicKey) {
+          epics.set(ticket.epicKey, ticket.epicName ?? ticket.epicKey);
+        }
+      }
+
       void this.panel.webview.postMessage({
         type: 'board',
         columns: COLUMNS,
         tickets: group(tickets),
-        agents: AgentSession.states()
+        agents: AgentSession.states(),
+        types: this.types,
+        epics: [...epics].map(([key, name]) => ({ key, name }))
       });
     } catch (err) {
       void this.panel.webview.postMessage({ type: 'error', message: describe(err) });
@@ -334,6 +357,55 @@ class BoardPanel {
       await this.pushBoard();
       await this.pushDetail(ticket);
       this.pushWorktree(ticket);
+    } catch (err) {
+      void this.panel.webview.postMessage({ type: 'error', message: describe(err) });
+    }
+  }
+
+  /**
+   * A card dragged to another column. This is the human overruling everything:
+   * no PRD check, no agent opinion. If JIRA refuses the transition we say so
+   * and re-read, which snaps the card back to the truth.
+   */
+  private async drag(ticket: string, column: string, epic?: string | null) {
+    const card = this.cards.get(ticket);
+
+    try {
+      if (card && card.status !== column) {
+        await moveTicket(ticket, column);
+      }
+      // Dropping into another swimlane means what it looks like: a new epic,
+      // or none at all in the unparented lane.
+      if (epic !== undefined && card && (card.epicKey ?? null) !== epic) {
+        await setEpic(ticket, epic);
+      }
+    } catch (err) {
+      void this.panel.webview.postMessage({
+        type: 'error',
+        message: `JIRA would not move ${ticket}: ${describe(err)}`
+      });
+    }
+
+    await this.pushBoard();
+    this.pushWorktree(ticket);
+  }
+
+  /** Make a ticket straight into a column. */
+  private async create(summary: string, type: string, column: string, epic?: string) {
+    const text = String(summary ?? '').trim();
+    if (!text) {
+      return;
+    }
+    try {
+      const key = await createTicket({
+        space: this.space,
+        type: type || this.types[0] || 'Task',
+        summary: text,
+        epic: epic || undefined,
+        column
+      });
+      await this.pushBoard();
+      void this.panel.webview.postMessage({ type: 'created', key });
     } catch (err) {
       void this.panel.webview.postMessage({ type: 'error', message: describe(err) });
     }

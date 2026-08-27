@@ -414,3 +414,51 @@ a:hover { color: var(--vscode-textLink-activeForeground, var(--board-hue-info));
 .bd-resizer{display:none}
 .bd-detail{flex-basis:auto !important}
 }
+
+/* Epic headings inside a column. Grouping, not status, so they stay quiet. */
+.bd-epic{display:flex;justify-content:space-between;align-items:baseline;gap:var(--space-4);font-size:var(--text-micro);text-transform:var(--eyebrow-transform);letter-spacing:var(--eyebrow-tracking);opacity:var(--dim-3);padding:var(--space-4) var(--space-2) var(--space-1)}
+.bd-epic:first-child{padding-top:0}
+.bd-epic-name{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+
+/* The bottom of a column: add a ticket without leaving the board. */
+.bd-add{width:100%;background:none;border:var(--border-width) dashed var(--role-neutral-line);border-radius:var(--radius);color:inherit;opacity:var(--dim-3);font-family:inherit;font-size:var(--text-meta);padding:var(--space-4);cursor:pointer;margin-top:var(--space-2)}
+.bd-add:hover{opacity:var(--dim-1);border-style:solid;border-color:var(--role-focus-line)}
+.bd-new{border:var(--border-width) solid var(--role-focus-line);border-radius:var(--radius);padding:var(--space-4);margin-top:var(--space-2);background:var(--role-neutral-wash)}
+.bd-new-row{display:flex;gap:var(--space-3);margin-bottom:var(--space-3)}
+.bd-new-row .bd-mode{flex:1;min-width:0}
+.bd-new-summary{width:100%;box-sizing:border-box;min-height:52px;resize:vertical;padding:var(--space-3) var(--space-4);border-radius:var(--radius-inline);border:var(--border-width) solid var(--board-line-input);background:var(--board-bg-input);color:var(--board-fg-input);font-family:inherit;font-size:var(--text-body)}
+.bd-new-summary:focus{outline:var(--border-width) solid var(--role-focus-line)}
+
+/* Dragging a card is the human overruling the board, so it is unfussy: the
+   card lifts, the target column lights up, and the move shows before JIRA
+   has been asked. */
+.bd-card--dragging{opacity:var(--dim-3)}
+.bd-column-body--over{background:var(--role-selected-wash);border-radius:var(--radius);outline:var(--border-width) dashed var(--role-focus-line)}
+.bd-card--pending{opacity:var(--dim-3);border-style:dashed;cursor:default}
+.bd-card--pending:hover{border-color:var(--role-neutral-line)}
+
+/* ---------------------------------------------------------------------------
+   SWIMLANES. Epics run across the whole board rather than repeating inside
+   each column, so one glance shows an epic's progress. One header row at the
+   top; every lane below lines up under it because the cell width is fixed.
+   --------------------------------------------------------------------------- */
+.bd-columns{flex:1;min-width:0;min-height:0;display:block;overflow:auto;padding:var(--gap) var(--space-9)}
+
+.bd-headrow{display:flex;gap:var(--gap);position:sticky;top:0;z-index:2;background:var(--board-bg-editor);padding-bottom:var(--space-5);width:max-content}
+.bd-headcell{flex:0 0 var(--column-width);display:flex;justify-content:space-between;align-items:baseline;gap:var(--space-4);font-weight:var(--weight-strong);font-size:var(--text-label);text-transform:var(--eyebrow-transform);letter-spacing:var(--eyebrow-tracking-wide);opacity:var(--dim-1);padding:0 var(--space-2)}
+
+.bd-lane{margin-bottom:var(--space-10);width:max-content}
+.bd-lane-head{position:sticky;left:0;display:flex;align-items:baseline;gap:var(--space-4);font-size:var(--text-micro);text-transform:var(--eyebrow-transform);letter-spacing:var(--eyebrow-tracking);opacity:var(--dim-3);padding:0 var(--space-2) var(--space-4);max-width:var(--column-width)}
+.bd-lane-name{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.bd-lane-count{flex:none}
+
+.bd-lane-cols{display:flex;gap:var(--gap);align-items:flex-start}
+.bd-lane-col{flex:0 0 var(--column-width);display:flex;flex-direction:column;gap:var(--gap-card);min-height:52px;border-radius:var(--radius);padding:var(--space-1)}
+.bd-lane-col--over{background:var(--role-selected-wash);outline:var(--border-width) dashed var(--role-focus-line)}
+
+/* The add button is a quiet plus that only asserts itself on hover. With a
+   cell per lane per column there are a lot of them; they must not shout. */
+.bd-add{width:100%;background:none;border:var(--border-width) dashed transparent;border-radius:var(--radius);color:inherit;opacity:0.25;font-family:inherit;font-size:var(--text-body);padding:var(--space-2);cursor:pointer}
+.bd-lane-col:hover .bd-add{opacity:var(--dim-2);border-color:var(--role-neutral-line)}
+.bd-add:hover{opacity:1;border-color:var(--role-focus-line);border-style:solid}
+.bd-new{margin-top:0}

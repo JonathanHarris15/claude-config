@@ -534,6 +534,100 @@ function assert(condition, message) {
     return 'named the gap and the replacement';
   });
 
+  console.log('\nEpics and new tickets');
+  await checkAsync('the board carries epics and labels', async () => {
+    const { fetchBoard } = require(path.join(root, 'out', 'board.js'));
+    const all = await fetchBoard(process.env.BOARD_PROJECT || 'METH');
+    const parented = all.filter((t) => t.epicKey);
+    const labelled = all.filter((t) => (t.labels || []).length);
+    // The lean board query returns neither; a bulk fetch fills both in.
+    assert(parented.length, 'no ticket came back with an epic');
+    assert(labelled.length, 'no ticket came back with labels');
+    assert(parented[0].epicName, 'the epic has a key but no name to show');
+    const epics = new Set(parented.map((t) => t.epicKey));
+    return epics.size + ' epics over ' + parented.length + ' of ' + all.length + ' tickets';
+  });
+
+  await checkAsync('only level-0 types are offered for a new ticket', async () => {
+    const { issueTypes } = require(path.join(root, 'out', 'board.js'));
+    const list = await issueTypes(process.env.BOARD_PROJECT || 'METH');
+    assert(list.length, 'no issue types returned');
+    // Epics are grouping and sub-tasks live inside a parent; neither is a card.
+    assert(list.indexOf('Epic') < 0, 'Epic is offered as a card type');
+    assert(list.indexOf('Subtask') < 0, 'Subtask is offered as a card type');
+    return list.join(', ');
+  });
+
+  check('epics are swimlanes across the whole board', () => {
+    const js = fs.readFileSync(path.join(root, 'media', 'board.js'), 'utf8');
+    const block = js.slice(js.indexOf('function lanes('), js.indexOf('function cell('));
+    assert(block.indexOf('if (!a.key) return 1;') >= 0, 'no-epic is not pushed to the end');
+    assert(block.indexOf("'No epic'") >= 0, 'unparented tickets have no lane');
+    const draw = js.slice(js.indexOf('function drawBoard('), js.indexOf('function lanes('));
+    // One header row for the board, then a lane per epic under it - not epic
+    // headings repeated inside every column.
+    assert(draw.indexOf('bd-headrow') >= 0, 'there is no shared column header row');
+    assert(draw.indexOf('bd-lane-cols') >= 0, 'lanes do not span the columns');
+    assert(js.indexOf('function byEpic(') < 0, 'the old per-column grouping is still there');
+    return 'one header row, one lane per epic, no-epic last';
+  });
+
+  check('a column can make a ticket', () => {
+    const js = fs.readFileSync(path.join(root, 'media', 'board.js'), 'utf8');
+    const ext = fs.readFileSync(path.join(root, 'src', 'extension.ts'), 'utf8');
+    assert(js.indexOf('function composer(') >= 0, 'no new-ticket affordance');
+    assert(js.indexOf("type: 'createTicket'") >= 0, 'the panel never asks for a ticket');
+    assert(ext.indexOf("case 'createTicket'") >= 0, 'the extension never handles it');
+    assert(js.indexOf('column: column') >= 0, 'the ticket does not land in the column it was made from');
+    assert(js.indexOf("event.key === 'Escape'") >= 0, 'no way to cancel');
+    return 'type, epic, summary, into the column it was made in';
+  });
+
+  check('creating a ticket does not assume where it lands', () => {
+    const src = fs.readFileSync(path.join(root, 'src', 'board.ts'), 'utf8');
+    const body = src.slice(src.indexOf('export async function createTicket('), src.indexOf('async function statusOf('));
+    // This project drops new tickets in To Do, not the inbox. Assuming the
+    // landing column left every new ticket in the wrong place.
+    assert(body.indexOf("!== 'To Plan'") < 0, 'the landing column is still assumed');
+    assert(body.indexOf('statusOf(key)') >= 0, 'the real status is never read back');
+    assert(src.indexOf('async function statusOf(') >= 0, 'no status read-back exists');
+    return 'reads the real status, then moves if needed';
+  });
+
+  await checkAsync('the status read-back works against a real ticket', async () => {
+    const { fetchBoard } = require(path.join(root, 'out', 'board.js'));
+    const { twgJson } = require(path.join(root, 'out', 'twg.js'));
+    const all = await fetchBoard(process.env.BOARD_PROJECT || 'METH');
+    const sample = all[0];
+    const raw = await twgJson(['jira', 'workitem', 'get', sample.key, '--fields', 'status']);
+    const issue = Array.isArray(raw) ? raw[0] : raw.issues ? raw.issues[0] : raw;
+    const status = (issue && issue.status && issue.status.name) || (issue && issue.fields && issue.fields.status.name);
+    assert(status === sample.status, 'read back ' + status + ', board says ' + sample.status);
+    return sample.key + ' reads back as ' + status;
+  });
+
+  check('a new card appears before JIRA answers', () => {
+    const js = fs.readFileSync(path.join(root, 'media', 'board.js'), 'utf8');
+    assert(js.indexOf('pending: true') >= 0, 'nothing is shown until JIRA replies');
+    assert(js.indexOf('bd-card--pending') >= 0, 'a provisional card is not marked as one');
+    return 'provisional card, replaced on the next push';
+  });
+
+  check('cards drag anywhere, overruling everything', () => {
+    const js = fs.readFileSync(path.join(root, 'media', 'board.js'), 'utf8');
+    const ext = fs.readFileSync(path.join(root, 'src', 'extension.ts'), 'utf8');
+    assert(js.indexOf('node.draggable = true') >= 0, 'cards are not draggable');
+    assert(js.indexOf("addEventListener('drop'") >= 0, 'cells do not accept a drop');
+    assert(js.indexOf('moveLocally(key, column, lane)') >= 0, 'the move waits on JIRA');
+    assert(ext.indexOf("case 'moveTicket'") >= 0, 'the extension never handles a drag');
+    // Dropping into another lane means a new epic, which is a second change.
+    assert(js.indexOf('epic: lane.key') >= 0, 'a cross-lane drop does not carry the epic');
+    assert(ext.indexOf('setEpic(ticket, epic)') >= 0, 'the extension never reparents');
+    const drag = ext.slice(ext.indexOf('private async drag('), ext.indexOf('/** Make a ticket'));
+    assert(drag.indexOf('hasPrd') < 0 && drag.indexOf('BOARD') < 0, 'the drag path second-guesses the human');
+    return 'column and epic follow the drop; no rule check';
+  });
+
   console.log(
     failed ? `\n${failed} check(s) failed.\n` : '\nAll checks passed — the board is ready.\n'
   );

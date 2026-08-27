@@ -24,12 +24,19 @@
   let menuOpen = false;
   let since = null;      // when the current burst of work started
   let wt = null;         // worktree status for the selected ticket
+  let types = [];        // level-0 issue types for this space
+  let epics = [];        // epics seen on this board, for grouping and parenting
+  let composing = null;  // the column currently offering a new-ticket form
+  let draftNew = { summary: '', type: '', epic: '' };
+  let dragging = null;   // the card key currently under the cursor
 
   window.addEventListener('message', (event) => {
     const message = event.data;
     if (message.type === 'board') {
       showError(null);
       agents = message.agents || {};
+      types = message.types || [];
+      epics = message.epics || [];
       drawBoard(message.columns, message.tickets);
     } else if (message.type === 'detail') {
       if (message.detail.key === selected) {
@@ -43,6 +50,9 @@
       if (message.snapshot.ticket === selected) {
         drawDetail();
       }
+    } else if (message.type === 'created') {
+      composing = null;
+      draftNew = { summary: '', type: '', epic: '' };
     } else if (message.type === 'worktree') {
       if (message.status.ticket === selected) {
         wt = message.status;
@@ -62,40 +72,124 @@
 
   /* ---------- the board ---------- */
 
+  let lastColumns = null;
+  let lastBuckets = null;
+
+  /**
+   * Epics are swimlanes, not per-column groups: one row per epic running across
+   * every column, so you can see a whole epic's progress in one glance instead
+   * of hunting for its name six times.
+   */
   function drawBoard(columns, buckets) {
+    lastColumns = columns;
+    lastBuckets = buckets;
+
     const names = columns.slice();
     if (buckets.Other && buckets.Other.length) {
       names.push('Other');
     }
 
     byKey = {};
+    let total = 0;
+    const everything = [];
+    for (const name of names) {
+      for (const ticket of buckets[name] || []) {
+        byKey[ticket.key] = ticket;
+        everything.push(ticket);
+        total++;
+      }
+    }
+
     columnsEl.replaceChildren();
 
-    let total = 0;
+    // One header row for the whole board; the lanes below line up under it.
+    const head = el('div', 'bd-headrow');
     for (const name of names) {
-      const tickets = buckets[name] || [];
-      total += tickets.length;
+      const cell = el('div', 'bd-headcell');
+      cell.append(el('span', null, name));
+      cell.append(el('span', null, String((buckets[name] || []).length)));
+      head.append(cell);
+    }
+    columnsEl.append(head);
 
-      const column = el('div', 'bd-column');
-      const head = el('div', 'bd-column-head');
-      head.append(el('span', null, name), el('span', null, String(tickets.length)));
-      column.append(head);
+    for (const lane of lanes(everything)) {
+      const laneEl = el('div', 'bd-lane');
 
-      const body = el('div', 'bd-column-body');
-      if (!tickets.length) {
-        body.append(el('div', 'bd-empty', 'empty'));
+      const laneHead = el('div', 'bd-lane-head');
+      laneHead.append(el('span', 'bd-lane-name', lane.label));
+      laneHead.append(el('span', 'bd-lane-count', String(lane.tickets.length)));
+      if (lane.key) {
+        laneHead.title = lane.key;
       }
-      for (const ticket of tickets) {
-        byKey[ticket.key] = ticket;
-        body.append(card(ticket));
+      laneEl.append(laneHead);
+
+      const row = el('div', 'bd-lane-cols');
+      for (const name of names) {
+        row.append(cell(lane, name, lane.tickets.filter((t) => t.status === name)));
       }
-      column.append(body);
-      columnsEl.append(column);
+      laneEl.append(row);
+      columnsEl.append(laneEl);
     }
 
     statusEl.textContent =
       total + ' ticket' + (total === 1 ? '' : 's') + ' · updated ' + new Date().toLocaleTimeString();
     paintCards();
+  }
+
+  /** Lanes ordered by size, with the unparented tickets last. */
+  function lanes(tickets) {
+    const groups = new Map();
+    for (const ticket of tickets) {
+      const key = ticket.epicKey || '';
+      if (!groups.has(key)) {
+        groups.set(key, { key: key || null, label: ticket.epicName || 'No epic', tickets: [] });
+      }
+      groups.get(key).tickets.push(ticket);
+    }
+    if (!groups.size) {
+      groups.set('', { key: null, label: 'No epic', tickets: [] });
+    }
+
+    const out = [...groups.values()];
+    out.sort((a, b) => {
+      if (!a.key) return 1;
+      if (!b.key) return -1;
+      return b.tickets.length - a.tickets.length;
+    });
+    return out;
+  }
+
+  /** One lane's slice of one column: its cards, its add button, its drop zone. */
+  function cell(lane, column, tickets) {
+    const node = el('div', 'bd-lane-col');
+    for (const ticket of tickets) {
+      node.append(card(ticket));
+    }
+    node.append(composer(column, lane));
+
+    node.addEventListener('dragover', (event) => {
+      if (!dragging) return;
+      event.preventDefault();
+      event.dataTransfer.dropEffect = 'move';
+      node.classList.add('bd-lane-col--over');
+    });
+    node.addEventListener('dragleave', () => node.classList.remove('bd-lane-col--over'));
+    node.addEventListener('drop', (event) => {
+      event.preventDefault();
+      node.classList.remove('bd-lane-col--over');
+      const key = (event.dataTransfer && event.dataTransfer.getData('text/plain')) || dragging;
+      dragging = null;
+      const ticket = byKey[key];
+      if (!ticket) return;
+      const sameColumn = ticket.status === column;
+      const sameLane = (ticket.epicKey || null) === lane.key;
+      if (sameColumn && sameLane) return;
+      // Where you dropped it is what you meant: that column, that epic.
+      moveLocally(key, column, lane);
+      vscode.postMessage({ type: 'moveTicket', key: key, column: column, epic: lane.key });
+    });
+
+    return node;
   }
 
   function card(ticket) {
@@ -109,8 +203,139 @@
     node.append(key);
     node.append(el('div', 'bd-card-summary', ticket.summary));
 
+    if (ticket.pending) {
+      node.classList.add('bd-card--pending');
+      node.disabled = true;
+      return node;
+    }
+
+    // Dragging is the human overruling the board. Nothing here checks whether
+    // the move is allowed; JIRA is the only thing that gets a veto.
+    node.draggable = true;
+    node.addEventListener('dragstart', (event) => {
+      dragging = ticket.key;
+      event.dataTransfer.setData('text/plain', ticket.key);
+      event.dataTransfer.effectAllowed = 'move';
+      node.classList.add('bd-card--dragging');
+    });
+    node.addEventListener('dragend', () => {
+      dragging = null;
+      node.classList.remove('bd-card--dragging');
+    });
+
     node.addEventListener('click', () => select(ticket.key));
     return node;
+  }
+
+  /** Move a card locally so the board answers before JIRA does. */
+  function moveLocally(key, column, lane) {
+    if (!lastBuckets) return;
+    let moved = null;
+    for (const name of Object.keys(lastBuckets)) {
+      const index = lastBuckets[name].findIndex((t) => t.key === key);
+      if (index >= 0) {
+        moved = lastBuckets[name].splice(index, 1)[0];
+        break;
+      }
+    }
+    if (!moved) return;
+    moved.status = column;
+    if (lane) {
+      moved.epicKey = lane.key || undefined;
+      moved.epicName = lane.key ? lane.label : undefined;
+    }
+    (lastBuckets[column] = lastBuckets[column] || []).unshift(moved);
+    if (selected === key) byKey[key] = moved;
+    drawBoard(lastColumns, lastBuckets);
+  }
+
+  /**
+   * The foot of one cell. A quiet plus until you use it, then a summary box.
+   * Creating here means this column and this epic, which is the whole point of
+   * having the lane.
+   */
+  function composer(column, lane) {
+    const slot = column + '|' + (lane.key || '');
+
+    if (composing !== slot) {
+      const add = el('button', 'bd-add', '+');
+      add.type = 'button';
+      add.title = 'New ticket in ' + column + (lane.key ? ' under ' + lane.label : '');
+      add.addEventListener('click', () => {
+        composing = slot;
+        draftNew = { summary: '', type: types[0] || 'Task' };
+        redrawSoon();
+      });
+      return add;
+    }
+
+    const form = el('div', 'bd-new');
+    if (types.length > 1) {
+      const row = el('div', 'bd-new-row');
+      row.append(
+        picker('bd-mode', types.map((t) => [t, t]), draftNew.type || types[0], (value) => {
+          draftNew.type = value;
+        })
+      );
+      form.append(row);
+    }
+
+    const box = el('textarea', 'bd-new-summary');
+    box.placeholder = 'Summary, then Enter.';
+    box.value = draftNew.summary;
+    box.addEventListener('input', () => {
+      draftNew.summary = box.value;
+    });
+    box.addEventListener('keydown', (event) => {
+      if (event.key === 'Escape') {
+        event.preventDefault();
+        composing = null;
+        draftNew = { summary: '', type: '' };
+        redrawSoon();
+        return;
+      }
+      if (event.key !== 'Enter' || event.shiftKey) return;
+      event.preventDefault();
+      const summary = box.value.trim();
+      if (!summary) return;
+
+      const issueType = draftNew.type || types[0] || 'Task';
+      // Put it on the board now; JIRA replaces it with the real card shortly.
+      if (lastBuckets) {
+        (lastBuckets[column] = lastBuckets[column] || []).unshift({
+          key: 'new',
+          summary: summary,
+          type: issueType,
+          status: column,
+          labels: [],
+          url: '',
+          epicKey: lane.key || undefined,
+          epicName: lane.key ? lane.label : undefined,
+          pending: true
+        });
+      }
+
+      vscode.postMessage({
+        type: 'createTicket',
+        summary: summary,
+        issueType: issueType,
+        epic: lane.key || '',
+        column: column
+      });
+
+      composing = null;
+      draftNew = { summary: '', type: '' };
+      redrawSoon();
+    });
+    form.append(box);
+    setTimeout(() => box.focus(), 0);
+    return form;
+  }
+
+  function redrawSoon() {
+    if (lastColumns && lastBuckets) {
+      drawBoard(lastColumns, lastBuckets);
+    }
   }
 
   /**
@@ -122,8 +347,13 @@
       const key = node.dataset.key;
       const state = agents[key];
       const chip = node.querySelector('.bd-chip');
+      if (!chip) continue;
 
-      node.className = 'bd-card' + (key === selected ? ' bd-card--selected' : '');
+      const pending = node.classList.contains('bd-card--pending');
+      node.className =
+        'bd-card' +
+        (key === selected ? ' bd-card--selected' : '') +
+        (pending ? ' bd-card--pending' : '');
       chip.className = 'bd-chip';
       if (state && state !== 'idle') {
         node.classList.add('bd-card--' + state);
@@ -135,17 +365,6 @@
         chip.hidden = true;
       }
     }
-  }
-
-  function stateWord(state) {
-    return { thinking: 'thinking', working: 'working', asking: 'needs you', done: 'done', error: 'failed' }[state] || state;
-  }
-
-  function chipRole(state) {
-    if (state === 'asking') return 'bd-chip--attention';
-    if (state === 'error') return 'bd-chip--broken';
-    if (state === 'done') return 'bd-chip--settled';
-    return 'bd-chip--running';
   }
 
   function select(key) {
