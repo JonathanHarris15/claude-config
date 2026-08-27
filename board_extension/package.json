@@ -81,6 +81,11 @@
           "type": "string",
           "default": "",
           "markdownDescription": "Where per-ticket worktrees are created. Blank puts them in a sibling folder next to each repo (`Method-worktrees`), which keeps them out of the working tree."
+        },
+        "board.storyModel": {
+          "type": "string",
+          "default": "claude-sonnet-5",
+          "markdownDescription": "Model that writes the History tab's story of a ticket. One turn, no tools, so a small model is the right choice. Blank uses the session default."
         }
       }
     },

@@ -604,6 +604,20 @@ a:hover { color: var(--vscode-textLink-activeForeground, var(--board-hue-info));
 .bd-tab-dot{animation:bd-pulse .9s var(--ease) infinite}
 .bd-choice{transition:border-color var(--motion-quick) var(--ease)}
 
+/* The sticky header must own the space above it. The scroller's own top
+   padding used to sit above the header, and cards showed through the gap as
+   they scrolled under; the padding now belongs to the header itself. */
+.bd-columns{padding-top:0}
+.bd-headrow{padding-top:var(--gap);margin-bottom:var(--space-5)}
+
+/* The story: prose, a dateline, and one chip when the log has outrun it. */
+.bd-story-foot{display:flex;align-items:center;gap:var(--space-5);margin-top:var(--space-8);padding-top:var(--space-6);border-top:var(--border-width) solid var(--role-neutral-line)}
+.bd-story-when{font-size:var(--text-micro);opacity:var(--dim-3);flex:1}
+.bd-story-wait{display:flex;align-items:center;gap:var(--space-5);font-size:var(--text-body);opacity:var(--dim-1);margin-bottom:var(--space-6)}
+.bd-subtask-box{margin-bottom:var(--space-10);padding-bottom:var(--space-6);border-bottom:var(--border-width) solid var(--role-neutral-line)}
+.bd-subtask-box .bd-section-head{margin-top:0}
+.bd-subtask-box .bd-subtasks{margin-bottom:0}
+
 /* Stacked in a narrow editor, the top bar wraps instead of clipping. */
 @media (max-width:620px){
 .bd-topbar{flex-wrap:wrap;gap:var(--space-5)}

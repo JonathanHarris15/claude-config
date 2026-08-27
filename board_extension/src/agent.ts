@@ -11,7 +11,7 @@ const esmImport = new Function('spec', 'return import(spec)') as (spec: string) 
 
 let sdkPromise: Promise<any> | undefined;
 
-function sdk(): Promise<any> {
+export function sdk(): Promise<any> {
   sdkPromise ??= esmImport('@anthropic-ai/claude-agent-sdk');
   return sdkPromise;
 }

@@ -49,8 +49,15 @@ skills it drives (`plan-ticket`, `implement`) are the ones already in
   liveness, and none of it for anyone whose OS asks for reduced motion.
 - Only level-0 items are cards. Epics are grouping and sub-tasks render inside
   their parent, so the JQL excludes both. Column counts would otherwise lie.
-- Click a card for a detail panel: labels, sub-task progress, and a timeline
-  built from the ticket's changelog and comments.
+- Click a card for a detail panel with four tabs. **Description** is the spec,
+  with sub-task progress above it so a 16,000-character PRD never buries "how
+  far along is it". **Agent** is the conversation. **Log** is the raw record:
+  every transition and comment from JIRA. **History** is the story — Claude
+  reads the log, the spec and the conversation and tells what happened, what
+  was decided and why, in the plain voice of the `/wait-what` skill using the
+  repo's `CONTEXT.md` words. Written only when you ask (one turn, no tools,
+  `board.storyModel`), kept in the repo as `.board/history/<TICKET>.md`, and
+  flagged when the log has moved on since.
 - A **no PRD** badge on any ticket sitting right of `To Plan` without one —
   the integrity rule, checked rather than trusted.
 - **The header carries only what you cannot say to an agent**: Open in JIRA,
@@ -171,6 +178,7 @@ things without touching the copy you use day to day.
 | `board.repos` | three spaces | Where an agent runs per space; unmapped spaces are read-only |
 | `board.conversationDir` | `.board/conversations` | Where conversations are written inside each repo |
 | `board.worktreeDir` | blank | Where per-ticket worktrees go; blank means a sibling folder |
+| `board.storyModel` | `claude-sonnet-5` | Model that writes the History tab's story; blank uses the session default |
 
 ## Checking it without the editor
 

@@ -11,12 +11,14 @@ import {
   moveTicket,
   repoFor,
   Ticket,
+  TicketDetail,
   createTicket,
   issueTypes,
   setEpic,
   updateDescription
 } from './board';
 import { fetchSpaces, Space } from './spaces';
+import { loadStory, saveStory, tellStory } from './story';
 import { TwgError } from './twg';
 
 /**
@@ -122,6 +124,8 @@ class BoardPanel {
   private readonly panel: vscode.WebviewPanel;
   private readonly cards = new Map<string, Ticket>();
   private types: string[] = [];
+  /** The last detail fetched per ticket, so a story can be written without a second round trip. */
+  private readonly details = new Map<string, TicketDetail>();
 
   private constructor(private readonly space: string, extensionUri: vscode.Uri) {
     this.panel = vscode.window.createWebviewPanel(
@@ -154,6 +158,10 @@ class BoardPanel {
       case 'select':
         this.pushWorktree(message.key);
         await this.pushDetail(message.key);
+        this.pushStory(message.key);
+        break;
+      case 'tellStory':
+        await this.writeStory(message.key);
         break;
       case 'openInJira':
         if (message.url) {
@@ -248,6 +256,7 @@ class BoardPanel {
   private async pushDetail(key: string) {
     try {
       const detail = await fetchDetail(key);
+      this.details.set(key, detail);
       void this.panel.webview.postMessage({ type: 'detail', detail });
     } catch (err) {
       void this.panel.webview.postMessage({ type: 'error', message: describe(err) });
@@ -408,6 +417,53 @@ class BoardPanel {
       void this.panel.webview.postMessage({ type: 'created', key });
     } catch (err) {
       void this.panel.webview.postMessage({ type: 'error', message: describe(err) });
+    }
+  }
+
+  /**
+   * The story on disk, if one has been written. Stale means the log has moved
+   * on since; the panel offers a rewrite rather than doing one unasked, because
+   * a story costs a model call.
+   */
+  private pushStory(ticket: string) {
+    const repo = repoFor(this.space);
+    const story = repo ? loadStory(repo, ticket) : undefined;
+    const entries = this.details.get(ticket)?.timeline.length ?? 0;
+    void this.panel.webview.postMessage({
+      type: 'story',
+      key: ticket,
+      story: story ?? null,
+      stale: Boolean(story && entries > story.entries),
+      canWrite: Boolean(repo),
+      writing: false
+    });
+  }
+
+  /** Ask Claude for the retelling, save it in the repo, show it. */
+  private async writeStory(ticket: string) {
+    const repo = repoFor(this.space);
+    const card = this.cards.get(ticket);
+    if (!repo || !card) {
+      void this.panel.webview.postMessage({
+        type: 'error',
+        message:
+          `No repo is configured for ${this.space}, so there is nowhere to keep ${ticket}'s story. ` +
+          'Set "board.repos" in settings to point it at a checkout.'
+      });
+      return;
+    }
+    void this.panel.webview.postMessage({ type: 'story', key: ticket, story: null, stale: false, canWrite: true, writing: true });
+    try {
+      const detail = this.details.get(ticket) ?? (await fetchDetail(ticket));
+      this.details.set(ticket, detail);
+      const transcript =
+        AgentSession.get(ticket)?.snapshot().transcript ?? store.load(repo, ticket)?.transcript ?? [];
+      const story = await tellStory({ ticket: card, detail, transcript, repo });
+      saveStory(repo, story);
+      void this.panel.webview.postMessage({ type: 'story', key: ticket, story, stale: false, canWrite: true, writing: false });
+    } catch (err) {
+      void this.panel.webview.postMessage({ type: 'error', message: describe(err) });
+      this.pushStory(ticket);
     }
   }
 

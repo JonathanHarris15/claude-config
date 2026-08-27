@@ -138,3 +138,8 @@ A second appended layer, marked in `board.css`, that the system should absorb:
   `--vscode-scrollbarSlider-hoverBackground`, `--vscode-descriptionForeground`.
 - The design brief's open question 5 — "somewhere board-wide that answers
   what is waiting on me" — is answered by the agent rail in the top bar.
+- **Tabs are now four**, not three: Description (with sub-tasks above the
+  spec), Agent, History (Claude's written story), Log (the raw JIRA record).
+  The brief's "History" tab became Log; the name History moved to the story.
+- The sticky column header owns the scroller's top padding; the scroller has
+  none. Cards used to show through the gap above the header.

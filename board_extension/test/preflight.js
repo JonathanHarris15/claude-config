@@ -706,6 +706,37 @@ function assert(condition, message) {
     return 'needs you, failed, and the chip colours';
   });
 
+  check('history is the story, log is the record, sub-tasks sit with the spec', () => {
+    const js = fs.readFileSync(path.join(root, 'media', 'board.js'), 'utf8');
+    const ext = fs.readFileSync(path.join(root, 'src', 'extension.ts'), 'utf8');
+    assert(js.indexOf("'description', 'agent', 'history', 'log'") >= 0, 'the four tabs are not description, agent, history, log');
+    assert(js.indexOf('function drawLog(') >= 0, 'no log tab');
+    const desc = js.slice(js.indexOf('function drawDescription('), js.indexOf('function drawAgent('));
+    assert(desc.indexOf('subtaskBlock(') >= 0, 'sub-tasks are not on the description tab');
+    const hist = js.slice(js.indexOf('function drawHistory('), js.indexOf('function drawLog('));
+    assert(hist.indexOf('renderMarkdown(story.markdown)') >= 0, 'the story is not rendered');
+    assert(hist.indexOf("post('tellStory'") >= 0, 'nothing asks for a story');
+    assert(hist.indexOf('storyWriting') >= 0, 'no state while Claude writes');
+    assert(ext.indexOf("case 'tellStory'") >= 0, 'the extension never writes a story');
+    return 'four tabs, story on request, sub-tasks above the PRD';
+  });
+
+  check('the story is told in the /wait-what voice and kept in the repo', () => {
+    const src = fs.readFileSync(path.join(root, 'src', 'story.ts'), 'utf8');
+    assert(src.indexOf('ASD-STE100') >= 0, 'the voice is not Simplified Technical English');
+    assert(src.indexOf('CONTEXT.md') >= 0, 'the glossary is not read from CONTEXT.md');
+    for (const heading of ['## Where it stands', '## What happened', '## Decisions', '## Open']) {
+      assert(src.indexOf(heading) >= 0, 'template lacks ' + heading);
+    }
+    // One turn, no tools: a story must cost cents, never a session.
+    assert(src.indexOf('tools: []') >= 0 && src.indexOf('maxTurns: 1') >= 0, 'the story call is not a cheap one-shot');
+    assert(src.indexOf('board-story written=') >= 0, 'stories are not stamped with when they were written');
+    const story = require(path.join(root, 'out', 'story.js'));
+    assert(typeof story.tellStory === 'function' && typeof story.loadStory === 'function', 'story module incomplete');
+    assert(story.loadStory(path.join(root, 'nope'), 'METH-1') === undefined, 'a missing story should be undefined');
+    return 'STE voice, glossary, four headings, one-shot, stamped';
+  });
+
   check('motion never loops except to mean liveness', () => {
     const css = fs.readFileSync(path.join(root, 'media', 'board.css'), 'utf8');
     assert(css.indexOf('prefers-reduced-motion') >= 0, 'no reduced-motion escape hatch');

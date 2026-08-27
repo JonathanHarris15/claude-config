@@ -34,6 +34,10 @@
   let dragging = null;   // the card key currently under the cursor
   let filter = '';       // the top-bar filter, lowercased
   let errorTimer = null; // errors dismiss themselves after a while
+  let story = null;      // the selected ticket's written history, if any
+  let storyStale = false;
+  let storyCan = false;  // a repo is mapped, so a story has somewhere to live
+  let storyWriting = false;
 
   window.addEventListener('message', (event) => {
     const message = event.data;
@@ -67,6 +71,14 @@
       }
     } else if (message.type === 'saved') {
       descDraft = null;
+    } else if (message.type === 'story') {
+      if (message.key === selected) {
+        story = message.story || null;
+        storyStale = Boolean(message.stale);
+        storyCan = Boolean(message.canWrite);
+        storyWriting = Boolean(message.writing);
+        if (tab === 'history') drawDetail();
+      }
     } else if (message.type === 'error') {
       showError(message.message);
     }
@@ -563,6 +575,9 @@
     detail = null;
     descDraft = null;
     wt = null;
+    story = null;
+    storyStale = false;
+    storyWriting = false;
     // Open on the agent when one is running, otherwise on the spec.
     const state = agentState(key);
     if (state && state !== 'idle') {
@@ -632,8 +647,10 @@
       pane.classList.add('bd-pane--scroll');
       if (tab === 'description') {
         drawDescription(pane);
-      } else {
+      } else if (tab === 'history') {
         drawHistory(pane);
+      } else {
+        drawLog(pane);
       }
     }
   }
@@ -726,7 +743,8 @@
     const strip = el('div', 'bd-tabs');
     const asking = agentState(selected) === 'asking';
 
-    for (const name of ['description', 'agent', 'history']) {
+    // Description is the spec, history is the story, log is the raw record.
+    for (const name of ['description', 'agent', 'history', 'log']) {
       const node = el('button', 'bd-tab' + (tab === name ? ' bd-tab--active' : ''));
       node.type = 'button';
       node.append(el('span', null, name));
@@ -760,6 +778,12 @@
           detail.descriptionUnsupported.join(', ') +
           ', which cannot survive the trip through Markdown. Edit it in JIRA.')
       );
+    }
+
+    // Sub-tasks sit above the spec: a PRD can run to 16,000 characters, and
+    // "how far along is it" must not be buried under it.
+    if (descDraft === null && detail.subtasks.length) {
+      pane.append(subtaskBlock(detail.subtasks));
     }
 
     if (descDraft === null) {
@@ -1303,37 +1327,97 @@
     drawDetail();
   }
 
-  /* ---------- history: what JIRA already knows ---------- */
+  /** Progress first, then the list. Shown on the description tab. */
+  function subtaskBlock(subtasks) {
+    const box = el('div', 'bd-subtask-box');
+    const done = subtasks.filter((s) => s.done).length;
+    const head = el('div', 'bd-section-head');
+    head.append(el('span', null, 'Sub-tasks'), el('span', null, done + ' / ' + subtasks.length));
+    box.append(head);
 
+    const bar = el('div', 'bd-progress');
+    const fill = el('div', 'bd-progress-fill');
+    fill.style.width = Math.round((done / subtasks.length) * 100) + '%';
+    bar.append(fill);
+    box.append(bar);
+
+    const list = el('div', 'bd-subtasks');
+    for (const sub of subtasks) {
+      const row = el('div', 'bd-subtask' + (sub.done ? ' bd-subtask--done' : ''));
+      row.append(el('span', 'bd-subtask-mark', sub.done ? 'done' : 'open'));
+      row.append(el('span', null, sub.summary));
+      list.append(row);
+    }
+    box.append(list);
+    return box;
+  }
+
+  /* ---------- history: the ticket's story, told by Claude ---------- */
+
+  /**
+   * The log says what changed; the story says what happened and why. Claude
+   * writes it on request from the log, the spec and the conversation, in the
+   * plain voice of the /wait-what skill, and it is kept in the repo. Never
+   * written unasked — it costs a model call.
+   */
   function drawHistory(pane) {
     if (!detail) {
       pane.append(loading());
       return;
     }
 
-    if (detail.subtasks.length) {
-      const done = detail.subtasks.filter((s) => s.done).length;
-      const head = el('div', 'bd-section-head');
-      head.append(el('span', null, 'Sub-tasks'), el('span', null, done + ' / ' + detail.subtasks.length));
-      pane.append(head);
-
-      const bar = el('div', 'bd-progress');
-      const fill = el('div', 'bd-progress-fill');
-      fill.style.width = Math.round((done / detail.subtasks.length) * 100) + '%';
-      bar.append(fill);
-      pane.append(bar);
-
-      const list = el('div', 'bd-subtasks');
-      for (const sub of detail.subtasks) {
-        const row = el('div', 'bd-subtask' + (sub.done ? ' bd-subtask--done' : ''));
-        row.append(el('span', 'bd-subtask-mark', sub.done ? 'done' : 'open'));
-        row.append(el('span', null, sub.summary));
-        list.append(row);
-      }
-      pane.append(list);
+    if (storyWriting) {
+      const wait = el('div', 'bd-story-wait');
+      wait.append(el('div', 'bd-typing'));
+      wait.lastChild.append(el('i'), el('i'), el('i'));
+      wait.append(el('span', null, 'Claude is writing the story…'));
+      pane.append(wait);
+      pane.append(loading());
+      return;
     }
 
-    pane.append(el('div', 'bd-section-head', 'History'));
+    if (!story) {
+      const blank = el('div', 'bd-hello');
+      blank.append(el('div', 'bd-hello-title', 'No story yet.'));
+      blank.append(el('div', 'bd-hello-line',
+        'Claude reads the log, the spec and the conversation, then tells what happened and why — in plain words, using the project’s own terms.'));
+      if (storyCan) {
+        const row = el('div', 'bd-actions bd-actions--tight');
+        row.append(button('Write the story', () => post('tellStory', selected)));
+        blank.append(row);
+      } else {
+        blank.append(el('div', 'bd-hello-line', 'Map this space to a repo in board.repos first; the story is kept there.'));
+      }
+      pane.append(blank);
+      return;
+    }
+
+    const body = el('div', 'bd-desc bd-story');
+    body.append(window.renderMarkdown(story.markdown));
+    pane.append(body);
+
+    const foot = el('div', 'bd-story-foot');
+    foot.append(el('span', 'bd-story-when', 'written ' + when(story.writtenAt)));
+    if (storyStale) {
+      const note = el('span', 'bd-chip bd-chip--attention', 'log has moved on');
+      note.title = 'Things happened after this was written.';
+      foot.append(note);
+    }
+    if (storyCan) {
+      foot.append(button(storyStale ? 'Rewrite' : 'Write again', () => post('tellStory', selected), true));
+    }
+    pane.append(foot);
+  }
+
+  /* ---------- log: what JIRA already knows ---------- */
+
+  function drawLog(pane) {
+    if (!detail) {
+      pane.append(loading());
+      return;
+    }
+
+    pane.append(el('div', 'bd-section-head', 'Log'));
     if (!detail.timeline.length) {
       pane.append(el('div', 'bd-empty', 'nothing recorded yet'));
       return;
