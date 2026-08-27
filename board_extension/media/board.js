@@ -38,6 +38,7 @@
   let storyStale = false;
   let storyCan = false;  // a repo is mapped, so a story has somewhere to live
   let storyWriting = false;
+  let chatScale = 1;     // font size of the conversation, as a multiple of the editor's
 
   window.addEventListener('message', (event) => {
     const message = event.data;
@@ -841,12 +842,15 @@
     title.append(el('span', null, stateWord(snap.state)));
     head.append(title);
     const controls = el('div', 'bd-controls');
+    controls.append(zoomControl());
     controls.append(modelPicker(snap));
     controls.append(permissionPicker(snap.permissionMode));
     head.append(controls);
     pane.append(head);
 
     const scroll = el('div', 'bd-scroll');
+    // The conversation scales as one piece; the pinned header does not.
+    scroll.style.fontSize = chatScale + 'em';
 
     // Agent replies are Markdown; tool output and your own words are not.
     // Runs of tool lines fold into one row, so a long build reads as one step
@@ -960,6 +964,7 @@
     pane.append(scroll);
 
     const composer = el('div', 'bd-composer');
+    composer.style.fontSize = chatScale + 'em';
     composer.append(slashMenu(snap.commands || []));
 
     if (pending.length) {
@@ -1101,6 +1106,29 @@
       foot.append(stop);
     }
     return foot;
+  }
+
+  /**
+   * Conversation font size. A transcript is read for minutes at a time, and
+   * the editor's size is tuned for code, not prose. Kept across reloads.
+   */
+  function setChatScale(next) {
+    chatScale = Math.max(0.7, Math.min(1.8, Math.round(next * 10) / 10));
+    vscode.setState(Object.assign({}, vscode.getState(), { chatScale: chatScale }));
+    drawDetail();
+  }
+
+  function zoomControl() {
+    const group = el('span', 'bd-zoom');
+    group.title = 'Conversation text at ' + Math.round(chatScale * 100) + '%. Ctrl+= and Ctrl+- in the box, Ctrl+0 to reset.';
+    const smaller = el('button', 'bd-zoom-btn', 'A−');
+    smaller.type = 'button';
+    smaller.addEventListener('click', () => setChatScale(chatScale - 0.1));
+    const larger = el('button', 'bd-zoom-btn bd-zoom-btn--big', 'A+');
+    larger.type = 'button';
+    larger.addEventListener('click', () => setChatScale(chatScale + 0.1));
+    group.append(smaller, larger);
+    return group;
   }
 
   /** The same four levels Claude Code offers, per conversation. */
@@ -1252,6 +1280,24 @@
     });
 
     box.addEventListener('keydown', (event) => {
+      if (event.ctrlKey || event.metaKey) {
+        if (event.key === '=' || event.key === '+') {
+          event.preventDefault();
+          setChatScale(chatScale + 0.1);
+          return;
+        }
+        if (event.key === '-') {
+          event.preventDefault();
+          setChatScale(chatScale - 0.1);
+          return;
+        }
+        if (event.key === '0') {
+          event.preventDefault();
+          setChatScale(1);
+          return;
+        }
+      }
+
       if (menuOpen) {
         if (event.key === 'ArrowDown' || (event.key === 'Tab' && !event.shiftKey)) {
           event.preventDefault();
@@ -1578,6 +1624,9 @@
   const saved = vscode.getState() || {};
   if (saved.panelWidth) {
     setPanelWidth(saved.panelWidth);
+  }
+  if (saved.chatScale) {
+    chatScale = saved.chatScale;
   }
 
   resizerEl.addEventListener('mousedown', (event) => {

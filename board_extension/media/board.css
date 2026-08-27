@@ -623,6 +623,12 @@ a:hover { color: var(--vscode-textLink-activeForeground, var(--board-hue-info));
 .bd-subtask-box .bd-section-head{margin-top:0}
 .bd-subtask-box .bd-subtasks{margin-bottom:0}
 
+/* Conversation text size: two quiet steppers beside the pickers. */
+.bd-zoom{display:inline-flex;border:var(--border-width) solid var(--board-line-input);border-radius:var(--radius-inline);overflow:hidden}
+.bd-zoom-btn{background:var(--board-bg-input);color:var(--board-fg-input);border:none;font-family:inherit;font-size:var(--text-micro);line-height:1;padding:3px var(--space-3);cursor:pointer;opacity:var(--dim-1);text-transform:none;letter-spacing:normal}
+.bd-zoom-btn--big{font-size:var(--text-label);border-left:var(--border-width) solid var(--board-line-input)}
+.bd-zoom-btn:hover{opacity:1;background:var(--board-bg-hover)}
+
 /* Stacked in a narrow editor, the top bar wraps instead of clipping. */
 @media (max-width:620px){
 .bd-topbar{flex-wrap:wrap;gap:var(--space-5)}

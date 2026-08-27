@@ -91,6 +91,9 @@ skills it drives (`plan-ticket`, `implement`) are the ones already in
 - **Model switching** per conversation. The list comes from the running session,
   so it is whatever the account actually has rather than a hardcoded guess.
 - **A context meter** under the composer, amber past 80%.
+- **Conversation text size** is yours: A− / A+ beside the pickers, or Ctrl+=,
+  Ctrl+- and Ctrl+0 in the chat box. The editor's size is tuned for code; a
+  transcript is prose read for minutes at a time. Remembered across reloads.
 - **The panel is resizable.** Drag the edge between the board and the panel;
   double-click it to go back to the default. The width survives a reload.
 - **Agent replies render as Markdown** — headings, lists, code and links, the
