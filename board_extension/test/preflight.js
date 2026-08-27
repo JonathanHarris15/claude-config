@@ -672,8 +672,15 @@ function assert(condition, message) {
     // asking sorts first: the rail exists so "needs you" is findable without
     // hunting through six columns.
     assert(/asking:\s*0/.test(js), 'needs-you agents do not sort first');
-    assert(ext.indexOf('AgentSession.details()') >= 0, 'the rail is fed states only, no since/doing');
-    return 'rail drawn, needs-you first, fed by details()';
+    assert(ext.indexOf('AgentSession.details(this.space)') >= 0,
+      "the rail is fed every board's agents, not just this one's");
+    // The tab is the board you can see while reading code.
+    assert(ext.indexOf('private paintTab') >= 0, 'the tab never says what is waiting');
+    for (const mood of ['idle', 'working', 'asking', 'done', 'error']) {
+      assert(fs.existsSync(path.join(root, 'media', 'board-icon-' + mood + '.svg')),
+        'no tab icon for ' + mood);
+    }
+    return 'rail drawn, needs-you first, scoped to the space, tab painted';
   });
 
   check('the board filters as you type', () => {
@@ -794,8 +801,12 @@ function assert(condition, message) {
     assert(ext.indexOf('ensureIntegrationWorktree(cwd)') >= 0, 'the queue is not started in it');
     assert(ext.indexOf('private async tell(') >= 0 && ext.indexOf('live.receive(') >= 0, 'the queue cannot talk to a ticket agent');
     assert(ext.indexOf('store.save(repo, stored)') >= 0, 'a note to a stopped agent is lost');
-    assert(js.indexOf("bd-pill--queue") >= 0, 'no door to the queue in the rail');
-    return 'integration worktree, merge-tree, tell(), hold/changes/force-push rules';
+    // The door holds the end of the top bar in its own right, running or not,
+    // so it is never one of the pills that shuffle when a state changes.
+    assert(ext.indexOf('id="queue"') >= 0, 'no permanent slot for the queue in the top bar');
+    assert(js.indexOf('function drawQueue(') >= 0, 'nothing draws the door to the queue');
+    assert(js.indexOf("key !== QUEUE && agentState(key)") >= 0, 'the queue is back among the rail pills');
+    return 'integration worktree, merge-tree, tell(), hold/changes/force-push rules, its own slot';
   });
 
   check('hidden beats display', () => {

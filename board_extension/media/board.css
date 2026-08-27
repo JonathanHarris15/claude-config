@@ -103,17 +103,19 @@ body.vscode-high-contrast-light {
 
 /* ============ tokens/typography.css ============
    Two families, both supplied by the editor. No webfont anywhere: strict CSP.
-   The scale is em so it tracks the user's configured editor size. */
+   The scale is em so it tracks the user's configured editor size. Prose sits
+   at 1em: the editor size is the smallest thing worth reading a paragraph in,
+   so nothing that carries meaning goes under it by more than a step. */
 :root {
   --font-ui: var(--board-font-ui);
   --font-mono: var(--board-font-mono);
 
-  --text-micro: 0.7em;
-  --text-label: 0.78em;
-  --text-meta: 0.85em;
-  --text-body: 0.9em;
-  --text-base: 1em;
-  --text-title: 1.05em;
+  --text-micro: 0.8em;
+  --text-label: 0.86em;
+  --text-meta: 0.92em;
+  --text-body: 1em;
+  --text-base: 1.08em;
+  --text-title: 1.2em;
 
   --weight-normal: 400;
   --weight-strong: 600;
@@ -209,7 +211,7 @@ a:hover { color: var(--vscode-textLink-activeForeground, var(--board-hue-info));
 .bd-actions{display:flex;gap:var(--gap-action);flex-wrap:wrap;margin:var(--space-8) 0 var(--space-10)}
 .bd-actions--tight{margin:var(--space-6) 0 0}
 
-.bd-chip{display:inline-block;font-size:var(--text-micro);line-height:var(--leading-tight);padding:1px var(--space-4);border-radius:var(--radius-pill);white-space:nowrap;background:var(--role-neutral-solid);color:var(--role-neutral-on-solid)}
+.bd-chip{display:inline-block;font-size:var(--text-label);line-height:var(--leading-tight);padding:1px var(--space-4);border-radius:var(--radius-pill);white-space:nowrap;background:var(--role-neutral-solid);color:var(--role-neutral-on-solid)}
 .bd-chip--attention{background:var(--role-attention-solid);color:var(--role-attention-on-solid)}
 .bd-chip--running{background:var(--role-running-solid);color:var(--role-running-on-solid)}
 .bd-chip--settled{background:var(--role-settled-solid);color:var(--role-settled-on-solid)}
@@ -240,7 +242,7 @@ a:hover { color: var(--vscode-textLink-activeForeground, var(--board-hue-info));
 .bd-chat-log{max-height:var(--chat-log-max);overflow-y:auto;border:var(--border-width) solid var(--role-neutral-line);border-radius:var(--radius);padding:var(--space-5);margin-bottom:var(--space-5);background:var(--role-neutral-wash)}
 .bd-chat-entry{margin-bottom:var(--space-6);font-size:var(--text-body)}
 .bd-chat-entry:last-child{margin-bottom:0}
-.bd-chat-who{font-size:var(--text-micro);text-transform:var(--eyebrow-transform);letter-spacing:var(--eyebrow-tracking);opacity:var(--dim-3);margin-bottom:var(--space-1)}
+.bd-chat-who{font-size:var(--text-label);text-transform:var(--eyebrow-transform);letter-spacing:var(--eyebrow-tracking);opacity:var(--dim-2);margin-bottom:var(--space-1)}
 .bd-chat-text{white-space:pre-wrap;line-height:var(--leading-prose)}
 .bd-chat-text--tool{font-family:var(--font-mono);font-size:var(--text-meta);opacity:var(--dim-2)}
 .bd-chat-text--system{color:var(--role-attention-fg);font-size:var(--text-meta)}
@@ -326,7 +328,7 @@ a:hover { color: var(--vscode-textLink-activeForeground, var(--board-hue-info));
 
 /* Permission level and image attachments. Also not yet in the design system:
    both belong in Claude Design as a Select and an Attachment strip. */
-.bd-mode{background:var(--board-bg-input);color:var(--board-fg-input);border:var(--border-width) solid var(--board-line-input);border-radius:var(--radius-inline);font-family:inherit;font-size:var(--text-micro);padding:1px var(--space-2);text-transform:none;letter-spacing:normal;opacity:1}
+.bd-mode{background:var(--board-bg-input);color:var(--board-fg-input);border:var(--border-width) solid var(--board-line-input);border-radius:var(--radius-inline);font-family:inherit;font-size:var(--text-label);padding:2px var(--space-3);text-transform:none;letter-spacing:normal;opacity:1}
 .bd-mode:focus{outline:var(--border-width) solid var(--role-focus-line)}
 .bd-attachments{display:flex;flex-wrap:wrap;gap:var(--space-4);margin-bottom:var(--space-5)}
 .bd-thumb{position:relative;width:64px;height:64px;border-radius:var(--radius);overflow:hidden;border:var(--border-width) solid var(--role-neutral-line)}
@@ -355,9 +357,9 @@ a:hover { color: var(--vscode-textLink-activeForeground, var(--board-hue-info));
 /* Agent controls, the slash menu and the context meter. None of these are in
    the design system yet; they use its tokens and belong back in Claude Design
    as a Select, a Menu and a Meter. */
-.bd-agent-head{flex:none;align-items:center;margin-top:0;padding-bottom:var(--space-5);border-bottom:var(--border-width) solid var(--role-neutral-line);margin-bottom:var(--space-5)}
+.bd-agent-head{flex:none;align-items:center;margin-top:0;padding-bottom:var(--space-5);border-bottom:var(--border-width) solid var(--role-neutral-line);margin-bottom:var(--space-5);opacity:1}
 .bd-controls{display:flex;gap:var(--space-3);align-items:center}
-.bd-model-idle{font-size:var(--text-micro);opacity:var(--dim-2);text-transform:none;letter-spacing:normal;font-weight:var(--weight-normal)}
+.bd-model-idle{font-size:var(--text-label);opacity:var(--dim-2);text-transform:none;letter-spacing:normal;font-weight:var(--weight-normal)}
 
 .bd-menu{max-height:260px;overflow-y:auto;border:var(--border-width) solid var(--role-neutral-line);border-radius:var(--radius);background:var(--role-neutral-wash);margin-bottom:var(--space-4)}
 .bd-menu-row{display:flex;align-items:baseline;gap:var(--space-4);padding:var(--space-3) var(--space-5);cursor:pointer;font-size:var(--text-body)}
@@ -367,12 +369,12 @@ a:hover { color: var(--vscode-textLink-activeForeground, var(--board-hue-info));
 .bd-menu-hint{font-family:var(--font-mono);font-size:var(--text-micro);opacity:var(--dim-3);flex:none;max-width:140px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .bd-menu-desc{font-size:var(--text-meta);opacity:var(--dim-2);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 
-.bd-foot{display:flex;justify-content:space-between;align-items:center;gap:var(--space-5);margin-top:var(--space-2);font-size:var(--text-micro);opacity:var(--dim-2)}
+.bd-foot{display:flex;justify-content:space-between;align-items:center;gap:var(--space-5);margin-top:var(--space-2);font-size:var(--text-label);opacity:var(--dim-2)}
 .bd-foot-left{display:flex;align-items:center;gap:var(--space-4)}
 .bd-meter{display:inline-block;width:70px;height:4px;border-radius:var(--radius-pill);background:var(--role-neutral-solid);overflow:hidden}
 .bd-meter-fill{display:block;height:100%;background:var(--role-running-solid)}
 .bd-meter-fill--warn{background:var(--role-attention-solid)}
-.bd-linkish{background:none;border:none;color:var(--role-attention-fg);font-family:inherit;font-size:var(--text-micro);cursor:pointer;padding:0;opacity:1}
+.bd-linkish{background:none;border:none;color:var(--role-attention-fg);font-family:inherit;font-size:inherit;cursor:pointer;padding:0;opacity:1}
 .bd-linkish:hover{text-decoration:underline}
 
 /* Activity, live text and stacked permission requests. */
@@ -416,7 +418,7 @@ a:hover { color: var(--vscode-textLink-activeForeground, var(--board-hue-info));
 }
 
 /* Epic headings inside a column. Grouping, not status, so they stay quiet. */
-.bd-epic{display:flex;justify-content:space-between;align-items:baseline;gap:var(--space-4);font-size:var(--text-micro);text-transform:var(--eyebrow-transform);letter-spacing:var(--eyebrow-tracking);opacity:var(--dim-3);padding:var(--space-4) var(--space-2) var(--space-1)}
+.bd-epic{display:flex;justify-content:space-between;align-items:baseline;gap:var(--space-4);font-size:var(--text-label);text-transform:var(--eyebrow-transform);letter-spacing:var(--eyebrow-tracking);opacity:var(--dim-2);padding:var(--space-4) var(--space-2) var(--space-1)}
 .bd-epic:first-child{padding-top:0}
 .bd-epic-name{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 
@@ -448,7 +450,7 @@ a:hover { color: var(--vscode-textLink-activeForeground, var(--board-hue-info));
 .bd-headcell{flex:0 0 var(--column-width);display:flex;justify-content:space-between;align-items:baseline;gap:var(--space-4);font-weight:var(--weight-strong);font-size:var(--text-label);text-transform:var(--eyebrow-transform);letter-spacing:var(--eyebrow-tracking-wide);opacity:var(--dim-1);padding:0 var(--space-2)}
 
 .bd-lane{margin-bottom:var(--space-10);width:max-content}
-.bd-lane-head{position:sticky;left:0;display:flex;align-items:baseline;gap:var(--space-4);font-size:var(--text-micro);text-transform:var(--eyebrow-transform);letter-spacing:var(--eyebrow-tracking);opacity:var(--dim-3);padding:0 var(--space-2) var(--space-4);max-width:var(--column-width)}
+.bd-lane-head{position:sticky;left:0;display:flex;align-items:baseline;gap:var(--space-4);font-size:var(--text-label);text-transform:var(--eyebrow-transform);letter-spacing:var(--eyebrow-tracking);opacity:var(--dim-2);padding:0 var(--space-2) var(--space-4);max-width:var(--column-width)}
 .bd-lane-name{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .bd-lane-count{flex:none}
 
@@ -575,8 +577,8 @@ a:hover { color: var(--vscode-textLink-activeForeground, var(--board-hue-info));
 .bd-detail-x{flex:none;background:none;border:none;color:inherit;font-family:inherit;font-size:var(--text-title);line-height:1;cursor:pointer;opacity:var(--dim-3);padding:0 var(--space-2)}
 .bd-detail-x:hover{opacity:1}
 
-.bd-agent-state{display:inline-flex;align-items:center;gap:var(--space-4)}
-.bd-agent-dot{width:7px;height:7px;border-radius:var(--radius-pill);background:var(--role-neutral-solid);flex:none}
+.bd-agent-state{display:inline-flex;align-items:center;gap:var(--space-4);font-size:var(--text-body);opacity:var(--dim-1)}
+.bd-agent-dot{width:8px;height:8px;border-radius:var(--radius-pill);background:var(--role-neutral-solid);flex:none}
 .bd-agent-state--thinking .bd-agent-dot,.bd-agent-state--working .bd-agent-dot{background:var(--state-working);animation:bd-pulse 1.6s var(--ease) infinite}
 .bd-agent-state--asking .bd-agent-dot{background:var(--state-asking);animation:bd-pulse .9s var(--ease) infinite}
 .bd-agent-state--asking{color:var(--role-attention-fg);opacity:1}
@@ -584,7 +586,7 @@ a:hover { color: var(--vscode-textLink-activeForeground, var(--board-hue-info));
 .bd-agent-state--error .bd-agent-dot{background:var(--state-error)}
 
 .bd-steps{margin-bottom:var(--space-6)}
-.bd-steps>summary{cursor:pointer;font-size:var(--text-micro);text-transform:var(--eyebrow-transform);letter-spacing:var(--eyebrow-tracking);opacity:var(--dim-3);list-style:none;display:flex;align-items:center;gap:var(--space-3);user-select:none}
+.bd-steps>summary{cursor:pointer;font-size:var(--text-label);text-transform:var(--eyebrow-transform);letter-spacing:var(--eyebrow-tracking);opacity:var(--dim-2);list-style:none;display:flex;align-items:center;gap:var(--space-3);user-select:none}
 .bd-steps>summary::-webkit-details-marker{display:none}
 .bd-steps>summary::before{content:"\25B8";transition:transform var(--motion-quick) var(--ease)}
 .bd-steps[open]>summary::before{transform:rotate(90deg)}
@@ -640,8 +642,18 @@ a:hover { color: var(--vscode-textLink-activeForeground, var(--board-hue-info));
 .bd-agent-state--waiting .bd-agent-dot{background:var(--role-neutral-solid);animation:bd-pulse 2.4s var(--ease) infinite}
 
 /* The door to the merge queue: a pill like the agents, dashed until it runs. */
-.bd-pill--queue{border-style:dashed;opacity:var(--dim-1)}
-.bd-pill--queue:hover{opacity:1;border-style:solid}
+/* The merge queue holds the end of the top bar rather than floating in it as
+   one more pill. Full height, square, flush to three edges: negative margins
+   eat the bar's own padding, so it reads as part of the chrome and stays put
+   while the pills to its left come and go. */
+.bd-queue{flex:none;align-self:stretch;display:flex;margin:calc(-1 * var(--space-5)) calc(-1 * var(--space-9)) calc(-1 * var(--space-5)) 0;border-left:var(--border-width) solid var(--role-neutral-line)}
+.bd-queue-door{display:inline-flex;align-items:center;gap:var(--space-4);border:none;border-radius:0;background:var(--role-neutral-wash);color:inherit;font-family:inherit;font-size:var(--text-label);padding:0 var(--space-9);cursor:pointer;white-space:nowrap;transition:background var(--motion-quick) var(--ease)}
+.bd-queue-door:hover{background:var(--board-bg-hover)}
+.bd-queue-count{font-family:var(--font-mono);opacity:var(--dim-2)}
+/* Shut is not the same as absent: present, quiet, still the same door. */
+.bd-queue--shut .bd-queue-door{background:transparent;opacity:var(--dim-1)}
+.bd-queue--shut .bd-queue-door:hover{background:var(--board-bg-hover);opacity:1}
+.bd-queue-door.bd-pill--error{background:var(--role-broken-wash)}
 
 /* The one destructive button: quiet until hovered, then unmistakable. */
 .bd-btn--danger{margin-left:auto;background:transparent;color:var(--role-broken-fg);border:var(--border-width) solid transparent;opacity:var(--dim-2)}
@@ -649,8 +661,8 @@ a:hover { color: var(--vscode-textLink-activeForeground, var(--board-hue-info));
 
 /* Conversation text size: two quiet steppers beside the pickers. */
 .bd-zoom{display:inline-flex;border:var(--border-width) solid var(--board-line-input);border-radius:var(--radius-inline);overflow:hidden}
-.bd-zoom-btn{background:var(--board-bg-input);color:var(--board-fg-input);border:none;font-family:inherit;font-size:var(--text-micro);line-height:1;padding:3px var(--space-3);cursor:pointer;opacity:var(--dim-1);text-transform:none;letter-spacing:normal}
-.bd-zoom-btn--big{font-size:var(--text-label);border-left:var(--border-width) solid var(--board-line-input)}
+.bd-zoom-btn{background:var(--board-bg-input);color:var(--board-fg-input);border:none;font-family:inherit;font-size:var(--text-label);line-height:1;padding:3px var(--space-4);cursor:pointer;opacity:var(--dim-1);text-transform:none;letter-spacing:normal}
+.bd-zoom-btn--big{font-size:var(--text-body);border-left:var(--border-width) solid var(--board-line-input)}
 .bd-zoom-btn:hover{opacity:1;background:var(--board-bg-hover)}
 
 /* Stacked in a narrow editor, the top bar wraps instead of clipping. */
@@ -658,4 +670,6 @@ a:hover { color: var(--vscode-textLink-activeForeground, var(--board-hue-info));
 .bd-topbar{flex-wrap:wrap;gap:var(--space-5)}
 .bd-search{flex:1 1 160px}
 .bd-rail{justify-content:flex-start}
+.bd-queue{margin:0;align-self:auto}
+.bd-queue-door{padding:var(--space-3) var(--space-6)}
 }

@@ -30,6 +30,9 @@ export type AgentState = 'idle' | 'thinking' | 'working' | 'waiting' | 'asking' 
  */
 export type PermissionLevel = 'default' | 'acceptEdits' | 'bypassPermissions' | 'plan';
 
+/** What "edits without asking" waves through. Everything else still asks. */
+const EDIT_TOOLS = new Set(['Edit', 'Write', 'MultiEdit', 'NotebookEdit']);
+
 export const PERMISSION_LEVELS: { value: PermissionLevel; label: string }[] = [
   { value: 'default', label: 'ask every time' },
   { value: 'acceptEdits', label: 'edits without asking' },
@@ -373,14 +376,20 @@ export class AgentSession {
   }
 
   /**
-   * The board-wide view of every live agent: state, when the current burst of
-   * work started, and the tool running right now. This is what the agent rail
-   * in the top bar draws, so "what is waiting on me" is answered without
-   * hunting through six columns.
+   * Every live agent in one space: state, when the current burst of work
+   * started, and the tool running right now. This is what the agent rail in the
+   * top bar draws, so "what is waiting on me" is answered without hunting
+   * through six columns.
+   *
+   * Scoped to the space on purpose. Sessions from every board share one map,
+   * and a METH board that lists MS agents is answering a question nobody asked.
    */
-  static details(): Record<string, AgentInfo> {
+  static details(space: string): Record<string, AgentInfo> {
     const out: Record<string, AgentInfo> = {};
     for (const [ticket, session] of AgentSession.live) {
+      if (session.context.space !== space) {
+        continue;
+      }
       out[ticket] = { state: session.state, since: session.since, doing: session.doing };
     }
     return out;
@@ -501,6 +510,18 @@ export class AgentSession {
 
   async setMode(mode: PermissionLevel) {
     this.mode = mode;
+    // A prompt already on screen was raised under the old mode. Relaxing the
+    // mode has to clear it too, or "never ask" leaves you staring at the very
+    // question it was meant to remove.
+    if (mode === 'bypassPermissions') {
+      this.answerAll(true);
+    } else if (mode === 'acceptEdits') {
+      for (const entry of [...this.queue]) {
+        if (EDIT_TOOLS.has(entry.ask.tool)) {
+          entry.decide(true);
+        }
+      }
+    }
     if (this.stream?.setPermissionMode) {
       try {
         await this.stream.setPermissionMode(mode);
@@ -792,6 +813,17 @@ export class AgentSession {
   ): Promise<any> {
     // The board's own tools are ours; asking about them is noise.
     if (name.startsWith('mcp__board__')) {
+      return Promise.resolve({ behavior: 'allow', updatedInput: input });
+    }
+
+    // The mode is read here, on every call, rather than trusted to the session
+    // it was started with. The SDK is told about a change as well, but a stream
+    // already running need not accept one — so this is the gate that decides,
+    // and switching mode mid-conversation takes effect on the very next tool.
+    if (this.mode === 'bypassPermissions') {
+      return Promise.resolve({ behavior: 'allow', updatedInput: input });
+    }
+    if (this.mode === 'acceptEdits' && EDIT_TOOLS.has(name)) {
       return Promise.resolve({ behavior: 'allow', updatedInput: input });
     }
 

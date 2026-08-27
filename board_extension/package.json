@@ -66,9 +66,9 @@
         "board.repos": {
           "type": "object",
           "default": {
-            "METH": "c:/Users/jono1/Profesional Projects/Method",
-            "HAS": "c:/Users/jono1/Profesional Projects/harris-appraisals",
-            "MS": "c:/Users/jono1/Profesional Projects/mosaic-website"
+            "METH": "c:/Users/jono1/Professional Projects/Method-Project/main",
+            "HAS": "c:/Users/jono1/Professional Projects/Harris Apraisals",
+            "MS": "c:/Users/jono1/Professional Projects/Mosaic-Project/main"
           },
           "markdownDescription": "Where an agent runs for each JIRA space, keyed by space key. A space with no entry here is board-only — its tickets can be read, but Plan and Implement are disabled."
         },
