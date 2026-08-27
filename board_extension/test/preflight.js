@@ -390,6 +390,13 @@ function assert(condition, message) {
     const agent = fs.readFileSync(path.join(root, 'src', 'agent.ts'), 'utf8');
     const block = agent.slice(agent.indexOf('const ticketInstructions = ['), agent.indexOf('const integratorInstructions'));
     assert(block.indexOf('BOARD_COLUMNS.join') >= 0, 'the columns are not named to the agent');
+    // The three added stages exist because the work produces them and there was
+    // nowhere to put them. An agent that is not told what they mean will guess.
+    const board = fs.readFileSync(path.join(root, 'src', 'board.ts'), 'utf8');
+    for (const stage of ['Needs Grilling', 'Ready for Review', 'Changes Requested']) {
+      assert(board.indexOf(`'${stage}'`) >= 0, 'no ' + stage + ' column');
+      assert(block.indexOf(stage) >= 0, stage + ' is never explained to the agent');
+    }
     assert(block.indexOf('Do NOT move this ticket to Done') >= 0, 'the agent is not told Done is the human call');
     assert(block.indexOf('move_ticket') >= 0, 'move_ticket is not explained');
     return 'columns, PRD rule, and Done left to the human';

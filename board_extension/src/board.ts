@@ -6,12 +6,25 @@ import { twgJson } from './twg';
  * The six columns from BOARD.md, in workflow order. The order JIRA shows
  * is cosmetic; this is the contract.
  */
+/**
+ * The stages a ticket moves through, left to right. A transition is made by
+ * name, so every one of these has to exist as a status in each space's JIRA
+ * workflow — a column JIRA does not have will draw fine and refuse the drop.
+ *
+ * Three of them exist because the work produces those states and there was
+ * nowhere to put them: a plan that has not been stress-tested yet, work that
+ * is finished but has nobody looking at it, and work the merge queue sent
+ * back. Without the last one a rejected ticket sits in In Review looking ready.
+ */
 export const COLUMNS = [
   'To Plan',
+  'Needs Grilling',
   'To Do',
   'On Deck',
   'In Progress',
+  'Ready for Review',
   'In Review',
+  'Changes Requested',
   'Done'
 ] as const;
 

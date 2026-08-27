@@ -527,9 +527,19 @@ class BoardPanel {
         await setEpic(ticket, epic);
       }
     } catch (err) {
+      const why = describe(err);
+      // A column the space's workflow has never heard of fails every time and
+      // for one reason, so say the reason rather than passing JIRA's wording on.
+      const unknown = /transition|status/i.test(why) && !/permission|resolution|required/i.test(why);
       void this.panel.webview.postMessage({
         type: 'error',
-        message: `JIRA would not move ${ticket}: ${describe(err)}`
+        message: unknown
+          ? `JIRA would not move ${ticket} to "${column}": the ${this.space} workflow has ` +
+            `no such status. Add it in JIRA — Project settings, Workflows — or move the ` +
+            `card somewhere the workflow knows.
+
+${why}`
+          : `JIRA would not move ${ticket}: ${why}`
       });
     }
 

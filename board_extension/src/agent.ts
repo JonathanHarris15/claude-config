@@ -384,7 +384,7 @@ export class AgentSession {
    * Every live agent in one space: state, when the current burst of work
    * started, and the tool running right now. This is what the agent rail in the
    * top bar draws, so "what is waiting on me" is answered without hunting
-   * through six columns.
+   * through nine columns.
    *
    * Scoped to the space on purpose. Sessions from every board share one map,
    * and a METH board that lists MS agents is answering a question nobody asked.
@@ -982,7 +982,12 @@ export class AgentSession {
       `"${summary}", currently in ${status}.`,
       ``,
       `THE BOARD`,
-      `Six columns, left to right: ${BOARD_COLUMNS.join(' -> ')}.`,
+      `The columns, left to right: ${BOARD_COLUMNS.join(' -> ')}.`,
+      `Needs Grilling is a plan that has not been stress-tested.`,
+      `Ready for Review is finished work with nobody looking at it yet;`,
+      `In Review is work being looked at.`,
+      `Changes Requested is work the merge queue or a reviewer sent back —`,
+      `pick it up, fix it, and move it on yourself.`,
       `Only level-0 tickets appear; epics are grouping and sub-tasks render`,
       `inside their parent. A ticket may not sit right of To Plan without a`,
       `PRD on it. The full contract is in the plan-ticket skill BOARD.md file;`,
