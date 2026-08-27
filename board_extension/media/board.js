@@ -18,14 +18,16 @@
   let snapshots = {};    // ticket -> agent chat snapshot
   let detail = null;     // the selected ticket's JIRA detail
   let tab = 'description';
-  let chatDraft = '';
+  // Unsent messages, one per ticket: { text, images }. A draft belongs to the
+  // conversation it was written in, so clicking away puts it out of sight and
+  // clicking back brings it out again exactly as it was left.
+  let drafts = {};
   let descDraft = null;  // non-null means the description is being edited
   let titleDraft = null; // non-null means the title is being renamed
   // Renames JIRA has been told about but has not read back yet. JIRA's search
   // index trails its own writes by a moment, so a refresh landing in that gap
   // returns the old name — this holds the new one until the index catches up.
   let renaming = {};
-  let pending = [];      // images pasted or dropped, waiting to be sent
   let stick = true;      // follow the bottom of the transcript
   let menuEl = null;     // the slash menu element for the current render
   let menuAll = [];      // every command available
@@ -97,6 +99,7 @@
       delete renaming[message.key];
       drawDetail();
     } else if (message.type === 'deleted') {
+      dropDraft(message.key);
       if (message.key === selected) {
         selected = null;
         detail = null;
@@ -695,6 +698,32 @@
     }
   }
 
+  /**
+   * The draft for a ticket, made on first use. Never returns null, so every
+   * caller can just read and write through it.
+   */
+  function draft(key) {
+    if (!key) return { text: '', images: [] };
+    if (!drafts[key]) drafts[key] = { text: '', images: [] };
+    return drafts[key];
+  }
+
+  /** Forget a draft, and stop paying to remember it. */
+  function dropDraft(key) {
+    delete drafts[key];
+    saveDrafts();
+  }
+
+  // Text outlives a reload, images do not: a pasted screenshot is megabytes of
+  // base64 and webview state is not the place for it.
+  function saveDrafts() {
+    const text = {};
+    for (const key of Object.keys(drafts)) {
+      if (drafts[key].text) text[key] = drafts[key].text;
+    }
+    vscode.setState(Object.assign({}, vscode.getState(), { drafts: text }));
+  }
+
   function select(key) {
     selected = key;
     detail = null;
@@ -1227,9 +1256,10 @@
     composer.style.fontSize = chatScale + 'em';
     composer.append(slashMenu(snap.commands || []));
 
-    if (pending.length) {
+    const mine = draft(selected);
+    if (mine.images.length) {
       const strip = el('div', 'bd-attachments');
-      pending.forEach((image, index) => {
+      mine.images.forEach((image, index) => {
         const thumb = el('div', 'bd-thumb');
         const img = document.createElement('img');
         img.src = 'data:' + image.mediaType + ';base64,' + image.data;
@@ -1238,7 +1268,7 @@
         drop.type = 'button';
         drop.title = 'Remove';
         drop.addEventListener('click', () => {
-          pending.splice(index, 1);
+          mine.images.splice(index, 1);
           drawDetail();
         });
         thumb.append(drop);
@@ -1537,7 +1567,8 @@
 
   function accept(box, command) {
     box.value = '/' + command.name + ' ';
-    chatDraft = box.value;
+    draft(selected).text = box.value;
+    saveDrafts();
     menuEl.hidden = true;
     menuOpen = false;
     menuIndex = 0;
@@ -1547,10 +1578,11 @@
   function chatBox(snap) {
     const box = el('textarea', 'bd-chat-box');
     box.placeholder = 'Talk to this ticket...  / for skills, Enter to send, Shift+Enter for a newline, paste an image.';
-    box.value = chatDraft;
+    box.value = draft(selected).text;
 
     box.addEventListener('input', () => {
-      chatDraft = box.value;
+      draft(selected).text = box.value;
+      saveDrafts();
       menuIndex = 0;
       updateMenu(box);
     });
@@ -1649,7 +1681,7 @@
     reader.onload = () => {
       const result = String(reader.result);
       const comma = result.indexOf(',');
-      pending.push({ mediaType: file.type, data: result.slice(comma + 1) });
+      draft(selected).images.push({ mediaType: file.type, data: result.slice(comma + 1) });
       drawDetail();
     };
     reader.readAsDataURL(file);
@@ -1657,15 +1689,15 @@
 
   function send(box) {
     const text = box.value.trim();
-    if (!text && !pending.length) return;
+    const images = draft(selected).images;
+    if (!text && !images.length) return;
     vscode.postMessage({
       type: 'chat',
       key: selected,
       text: text || 'See the attached image.',
-      images: pending
+      images: images
     });
-    chatDraft = '';
-    pending = [];
+    dropDraft(selected);
     box.value = '';
     menuOpen = false;
     menuIndex = 0;
@@ -1933,6 +1965,11 @@
   }
   if (saved.boardZoom) {
     setBoardZoom(saved.boardZoom);
+  }
+  if (saved.drafts) {
+    for (const key of Object.keys(saved.drafts)) {
+      drafts[key] = { text: saved.drafts[key], images: [] };
+    }
   }
 
   resizerEl.addEventListener('mousedown', (event) => {

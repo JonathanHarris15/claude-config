@@ -648,6 +648,23 @@ function assert(condition, message) {
     return sample.key + ' reads back as ' + status;
   });
 
+  check('an unsent message stays with its own ticket', () => {
+    // One global draft meant clicking to another ticket carried your half-
+    // written message across, and clicking back showed someone else's.
+    const js = fs.readFileSync(path.join(root, 'media', 'board.js'), 'utf8');
+    assert(js.indexOf('let chatDraft') < 0, 'the draft is still one global');
+    assert(js.indexOf('function draft(key)') >= 0, 'no per-ticket draft');
+    assert(js.indexOf('box.value = draft(selected).text') >= 0, 'the box does not read its own draft');
+    assert(js.indexOf('draft(selected).images.push') >= 0, 'pasted images are not kept per ticket');
+    assert(js.indexOf('dropDraft(selected)') >= 0, 'a sent draft is never cleared');
+    assert(js.indexOf('dropDraft(message.key)') >= 0, 'a deleted ticket leaves its draft behind');
+    // Text survives a reload; base64 images would blow up webview state.
+    const save = js.slice(js.indexOf('function saveDrafts()'), js.indexOf('function select(key)'));
+    assert(save.indexOf('images') < 0, 'images are being written into webview state');
+    assert(js.indexOf('drafts[key] = { text: saved.drafts[key], images: [] }') >= 0, 'drafts do not survive a reload');
+    return 'draft per ticket, text survives a reload, images do not';
+  });
+
   check('a new card appears before JIRA answers', () => {
     const js = fs.readFileSync(path.join(root, 'media', 'board.js'), 'utf8');
     assert(js.indexOf('pending: true') >= 0, 'nothing is shown until JIRA replies');
