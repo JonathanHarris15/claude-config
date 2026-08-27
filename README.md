@@ -46,9 +46,23 @@ other half: how the skills actually touch JIRA. Both are shared reference, not s
 
 ```sh
 /plan-ticket METH-48 # take one ticket from To Plan onto the board
+/plan-ticket 10      # plan the 10 smallest, cheapest first
 /plan-ticket ALL     # queue up and work the whole To Plan column
 /implement METH-48   # build a ticket that's ready
+/implement 6         # build 6 decision-free tickets unattended, one PR back
+/implement ALL       # same, for everything eligible
 ```
+
+**The small-ticket loop.** Client reports and errors arrive constantly and most are tiny.
+`/plan-ticket 10` reads the column, sorts smallest first, and pushes anything genuinely
+trivial — an obvious fix with nothing left to decide, landing in one commit — down a fast
+lane: a two-line PRD, a `trivial` label, no sub-tasks, straight to `To Do`. A typo does not
+get thirty minutes of planning. Then `/implement ALL` builds every one of them back to back
+and hands you a single PR with one commit per ticket, so you can drop any one of them on its
+own. Anything that surprises it gets parked on the board with a note and the run carries on.
+
+The bar for trivial is deliberately strict: if there is one thing worth asking you, it isn't
+trivial and it goes down the normal lane instead.
 
 No site, project key, issue-type name or status is hardcoded in any skill. They're read
 from a `<!-- jira-config -->` block in the project's own `CLAUDE.md`, and if there isn't

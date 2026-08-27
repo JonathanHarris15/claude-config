@@ -1,7 +1,7 @@
 ---
 name: plan-ticket
-description: Take a ticket from the To Plan column all the way to the board — read how big and how formed it is, route it down the right lane (research / prototype / grill / diagnose, or escalate a whole project to create-epic), then converge on a PRD and sub-tasks and land it in To Do or On Deck. The front door of the JIRA workflow. Use with a ticket key (/plan-ticket METH-48) or ALL to work the whole To Plan column.
-argument-hint: "A JIRA ticket key (e.g. METH-48), or ALL to queue up the whole To Plan column"
+description: Take a ticket from the To Plan column all the way to the board — read how big and how formed it is, route it down the right lane (trivial fast path, research / prototype / grill / diagnose, or escalate a whole project to create-epic), then converge on a PRD and sub-tasks and land it in To Do or On Deck. The front door of the JIRA workflow. Use with a ticket key (/plan-ticket METH-48), a count to plan the N smallest (/plan-ticket 10), or ALL for the whole column.
+argument-hint: "A JIRA ticket key (METH-48), a count for the N smallest (10), or ALL for the whole To Plan column"
 ---
 
 # Plan Ticket
@@ -89,6 +89,7 @@ once, then do as they say.
 
 | Read | Run |
 | --- | --- |
+| **Trivial** | Smaller than a ticket — obvious fix, nothing to decide, one commit. Skip the lanes entirely: write the **two-line PRD** (`/to-prd` short form), add the `trivial` label, no sub-tasks, land it in `To Do`. See [ROUTING.md](./ROUTING.md). If it stops looking trivial while you write those two lines, say so and reroute. |
 | **An investigation ticket** | Labelled `investigation`, summary prefixed `[research]` / `[prototype]` / `[grill]` / `[task]`. Resolve it by its prefix: `[research]` → `/research`, `[prototype]` → `/prototype`, `[grill]` → `/grill-with-docs`, `[task]` → just do the small thing. The output is a **decision**, not code. Post the decision as a comment (what we decided and why, linking any research or prototype asset), close the ticket, and **stop — skip Phase 5 and 6 entirely.** See [BOARD.md](./BOARD.md). |
 | **A project, not a ticket** | `/create-epic`. The epic's Features land back in `To Plan` as fresh tickets. Close METH-48 with a comment linking the epic — it did its job. **Stop here**; the new tickets each come through `plan-ticket` on their own. |
 | **A pile** | Split into sibling tickets in `To Plan`, close the original, then plan each. |
@@ -109,8 +110,10 @@ Don't invent an epic for a one-off.
 
 ## Phase 5: Converge
 
-Always both, in order, whatever lane it took. The one exception is an **investigation
-ticket**, which never reaches this phase: its output is a decision comment, not a PRD.
+Always both, in order, whatever lane it took — with two exceptions. An **investigation
+ticket** never reaches this phase: its output is a decision comment, not a PRD. A **trivial**
+ticket runs `to-prd` in its short form and stops there — no sub-tasks, because the ticket is
+the sub-task.
 
 1. **`/to-prd`** — writes the PRD onto **this ticket's own description**. The ticket *is* the
    PRD; there's no separate doc.
@@ -157,10 +160,14 @@ Report: the key, its new column, the sub-task count, and why it landed where it 
 
 ---
 
-# Batch: `/plan-ticket ALL`
+# Batch: `/plan-ticket 10` or `/plan-ticket ALL`
 
-Same skill, but you **queue first and work second** — so the user sees the whole shape of the
-column before committing an afternoon to it.
+Same skill, but you **queue first and work second** — so the user sees the whole shape before
+committing an afternoon to it.
+
+A number takes that many, **smallest first**. `ALL` takes the column. A number is the usual
+call: small tickets arrive constantly from clients and error reports, and clearing ten of them
+is a better morning than half-planning thirty.
 
 ## Phase A: Survey
 
@@ -168,45 +175,65 @@ column before committing an afternoon to it.
 project = <KEY> AND status = "To Plan" ORDER BY created ASC
 ```
 
-Read every one. Explore the codebase **once**, up front — the context is shared across all of
-them and re-reading it per ticket is waste.
+Read every one, even when a count was given — you cannot pick the ten smallest without
+looking at all of them. Explore the codebase **once**, up front: the context is shared across
+all of them and re-reading it per ticket is waste.
 
 ## Phase B: Classify all of them
 
 Run **Phase 1 and 2** (read + two dials) on every ticket. Do not run any lane yet. This is
 cheap and it's what makes the queue honest.
 
-Consider dispatching a **subagent per ticket** to do the reading and classification in
-parallel — they're independent, and a column of 12 tickets is otherwise a long silent wait.
-Each returns: size, clarity, proposed lane, and the one-line reason. You make the final call.
+Dispatch a **subagent per ticket** to do the reading and classification in parallel — they're
+independent, and a column of thirty is otherwise a long silent wait. Each returns: size,
+clarity, proposed lane, whether it's **trivial**, and the one-line reason. You make the final
+call.
+
+Be strict about trivial here, not generous. The cost of calling a real ticket trivial is a
+half-thought change built without you; the cost of the reverse is ten minutes. When the two
+readings are close, it is not trivial.
 
 ## Phase C: Show the queue
 
-A table, ordered by **what unblocks what** (an epic escalation first — its Features become new
-tickets that themselves need planning), then cheapest-first within that:
+**Order smallest first.** Trivial tickets at the top, then sharp, then unknowns, then fog,
+then anything escalating to an epic. Two reasons: you get the satisfying part done while your
+attention is fresh, and the cheap ones often teach you something that changes how you grill
+the expensive ones.
+
+The one exception is a blocking edge — if planning A would change what B even is, A goes
+first whatever its size. Say so when you reorder for it.
 
 | Ticket | Summary | Read | Lane | You needed? |
 | --- | --- | --- | --- | --- |
-| METH-51 | Rework the sync engine | **Project** | `/create-epic` | Heavily — ~45m |
-| METH-48 | Make onboarding less painful | Fog | `/grill-with-docs` (wide) | Yes — ~15m |
-| METH-52 | Retry failed webhooks | Sharp | `/grill-with-docs` | Some — ~10m |
-| METH-49 | Duplicate rows on import | Bug | `/diagnose` | Only if it won't repro |
+| METH-53 | Typo on the invoice footer | **Trivial** | two-line PRD | No — ~1m |
+| METH-54 | Retry count hardcoded to 3 | **Trivial** | two-line PRD | No — ~1m |
 | METH-50 | Add `--json` to the CLI | Specced | straight to `to-prd` | No |
+| METH-49 | Duplicate rows on import | Bug | `/diagnose` | Only if it won't repro |
+| METH-52 | Retry failed webhooks | Sharp | `/grill-with-docs` | Some — ~10m |
+| METH-48 | Make onboarding less painful | Fog | `/grill-with-docs` (wide) | Yes — ~15m |
+| METH-51 | Rework the sync engine | **Project** | `/create-epic` | Heavily — ~45m |
 
-Then: *"That's roughly 90 minutes of your attention. Want to do all of them, a subset, or
-just the cheap ones?"* **Let them cut the queue before you start.** Seeing that one scratch
-note is secretly a 3-week project is often the most valuable thing this skill produces, and
-they may well want to stop right there and think.
+Then give the real total: *"Four of these need nothing from you. The other three are about
+70 minutes of your attention. All of them, the cheap ones only, or a subset?"* **Let them cut
+the queue before you start.** Seeing that one scratch note is secretly a three-week project is
+often the most valuable thing this skill produces, and they may want to stop right there.
 
 ## Phase D: Work the queue
 
-One at a time, in order, **interactively** — Phases 3→6 per ticket. This is not unattended:
-grillings are conversations, and batching them wouldn't make them faster, just worse.
+**Trivial tickets first, and run them straight through** — read, two-line PRD, `trivial` label,
+`To Do`. Don't narrate each one; a single line per ticket is plenty. Ten of these should take
+minutes, not an hour. If one turns out not to be trivial, move it down the queue to its real
+lane and carry on.
+
+Then the rest, one at a time, in order, **interactively** — Phases 3→6 per ticket. This part is
+not unattended: grillings are conversations, and batching them wouldn't make them faster, just
+worse.
 
 After each ticket lands, show a one-line progress marker (*"3 of 6 done — METH-52 → On Deck"*)
-and carry straight on to the next. **Don't ask permission to continue** between tickets; they
-already approved the queue. Do stop and ask if a ticket turns out to be something the queue
-didn't predict — a "sharp" one that's actually fog, or a ticket that turns out to be a project.
+and carry straight on. **Don't ask permission to continue** between tickets; they already
+approved the queue. Do stop and ask if a ticket turns out to be something the queue didn't
+predict — a "sharp" one that's actually fog, or a ticket that turns out to be a project.
 
 At the end: what landed where, what's left in `To Plan` and why, and anything the planning
-surfaced that wants its own ticket.
+surfaced that wants its own ticket. If trivial tickets landed in `To Do`, say so and remind
+them those can be built unattended with `/implement ALL`.

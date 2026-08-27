@@ -16,9 +16,22 @@ point classifying the fog on something that turns out to be a whole project.
 
 | Read | Meaning | Route |
 | --- | --- | --- |
+| **Trivial** | *Smaller* than a ticket. The change is obvious from the ticket and the code, there is nothing left to decide, and it lands in one commit. | **Trivial lane** — see below. Skip Dial 2 entirely. |
 | **One deliverable** | A vertical slice — thin path through the layers, demoable on its own. | Continue to Dial 2. |
 | **A project** | Several demoable checkpoints. You catch yourself saying "and then also…" more than twice. Or it has phases. | **Escalate to `/create-epic`.** |
 | **A pile** | Two or three *unrelated* things you jotted in one line. | **Split it.** Create the siblings in `To Plan`, then route each. |
+
+### Calibrate for agentic pace
+
+Agents shrink **build** time, not **your** time. A change that would have been a
+week of typing is often an hour of driving an agent — so the bar for "this is a
+project" sits far higher than it used to. Several days of old-money work is now
+routinely one ticket. Judge size by *how many demoable checkpoints it has*, never
+by how long it would have taken you by hand.
+
+What does **not** shrink is the conversation. Grilling is still grilling: an hour
+of your attention is an hour whatever the agent does afterwards. So when you
+estimate a queue, estimate the talking, not the building.
 
 **Escalating to `/create-epic`** means: the `To Plan` ticket is not the work, it's
 the *seed of a project*. Run `create-epic` with it. The epic it produces becomes
@@ -26,9 +39,39 @@ the parent; the Features it emits land back in `To Plan` as fresh tickets, each 
 which will come through `plan-ticket` on its own. Then **close the original ticket**
 with a comment linking the new epic — it has done its job.
 
-Don't be precious about this. A one-line scratch note genuinely can be a quarter of
-work, and quietly speccing it as a single ticket is how you get a "Feature" with
-eleven sub-tasks and a two-week tail.
+Don't be precious about this. A one-line scratch note can still hide several
+checkpoints, and quietly speccing it as one ticket is how you get a "Feature" with
+eleven sub-tasks and a tail that never ends.
+
+### The trivial lane
+
+Most of what arrives from clients and error reports is trivial: a wrong label, an
+off-by-one, a missing guard, a copy change, a constant that should have been
+configurable. Planning these properly is worse than not planning them — thirty
+minutes of ceremony around a sixty-second change teaches you to stop using the board.
+
+**A ticket is trivial when all four hold:**
+
+1. **Nothing left to decide.** You can state what "done" looks like in one sentence,
+   and there is no second reasonable way to do it that anyone would argue for.
+2. **One commit.** One concern, one place, no migration, no new dependency.
+3. **No question for the user.** This is the sharpest test. If you can think of one
+   thing you'd want to ask, it is not trivial — route it to `grill-with-docs` and
+   stop trying to be quick.
+4. **Reversible.** If it turns out wrong, reverting one commit fixes it.
+
+**Never trivial, however small the diff:** anything touching money, auth, permissions,
+deletion, or a data migration. A bug nobody has reproduced. Anything where the ticket
+tells you the *symptom* and you'd be guessing at the cause.
+
+**What the lane does:** skip Dial 2, skip grilling, skip `to-issues`. Write a
+**two-line PRD** straight onto the ticket — one sentence of problem, one testable
+acceptance criterion — and land it in `To Do`. No sub-tasks: the ticket *is* the
+sub-task. The board's integrity rule still holds, because the thinking really is
+finished; what you're skipping is the paperwork, not the thought.
+
+**If it stops being trivial while you're writing those two lines, say so and reroute.**
+That happens, and catching it costs a sentence. Pushing on regardless costs a bad ticket.
 
 **Placement.** While you're here: if the ticket is one deliverable but has **no epic
 parent**, ask which epic it belongs under — or whether it's genuinely standalone

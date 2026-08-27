@@ -21,6 +21,7 @@ You are normally invoked **by `/plan-ticket`**, straight after `to-prd`.
 Resolve the source Feature:
 - **Argument is a JIRA Feature key** → read it with `getJiraIssue` (include `description`); its PRD (from `to-prd`) is your input — mine the **User Stories** and **Implementation Decisions** for the breakdown. That Feature is the parent for the new sub-tasks.
 - **No argument** → work from context; ask which **Feature** to slice. If the Feature hasn't been specified yet, run `grill-with-docs` then `to-prd` first; if there's no epic/Feature at all, offer `create-epic`.
+- **The ticket carries the `trivial` label** → **stop, and don't slice it.** A trivial ticket is the sub-task: it went down the fast lane precisely because there is nothing to break down. Say so and hand back. If it genuinely needs slicing, the routing was wrong — send it back to `/plan-ticket`, don't quietly fix it here.
 
 ### 2. Explore the codebase (optional)
 

@@ -61,6 +61,23 @@ slipped through anyway, move it back to `To Plan` yourself and say why.
 practice, look for a `## Problem Statement` heading *and* an `## Acceptance Criteria`
 heading. A wall of prose, however long and however lovingly written, is **not** a PRD.
 
+### Trivial tickets keep the rule, cheaply
+
+A **trivial** ticket (see [ROUTING.md](./ROUTING.md)) is smaller than a ticket: an
+obvious fix with nothing left to decide, landing in one commit. It still gets a PRD,
+because the rule holds — but a **two-line** one. One sentence of problem, one testable
+acceptance criterion. Both headings present, so the rule is satisfied by inspection
+and `implement` will take it.
+
+It gets **no sub-tasks**. The ticket is the sub-task. It carries the `trivial` label,
+which is what lets a batch run find them, and it goes to `To Do` — a trivial ticket
+with a decision left in it was never trivial.
+
+This is not a hole in the integrity rule, it is the rule costing what it should. The
+promise `To Do` makes is that the thinking is finished; on a typo fix the thinking
+really is finished. What gets skipped is the paperwork, never the thought.
+
+
 ## The decision rule — what separates `To Do` from `On Deck`
 
 > **A ticket goes to `To Do` if the next thing to do in it can be built without
@@ -82,6 +99,11 @@ run AFK, AFK, HITL, AFK has two reachable — and the third is where it stops.
 Classify honestly. If a sub-task says "pick a sensible layout" or "decide how errors
 surface," it is **HITL**, however small it looks. Mislabelling one `afk` doesn't cost
 a column — it costs a confident guess built on your behalf. When in doubt, `On Deck`.
+
+**A trivial ticket has no sub-tasks to classify**, so read the rule against the ticket
+itself: it qualified as trivial precisely because nothing in it needs you. It is AFK by
+definition and goes to `To Do`. If you find yourself wanting to mark one HITL, it was
+misrouted — send it back to `To Plan` and grill it properly.
 
 A ticket in `To Do` may still stop part-way through: `implement` builds what it can
 reach, and when it hits a genuine decision it stops and asks rather than guessing.

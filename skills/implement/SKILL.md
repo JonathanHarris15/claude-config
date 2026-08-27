@@ -1,7 +1,7 @@
 ---
 name: implement
-description: Build a planned JIRA ticket end-to-end while driving it across the board — claim it and move it In Progress, work its sub-tasks test-first at agreed seams, guard against regressions, review, grow the docs, then commit/PR with the ticket key and transition to In Review / Done. Use when you're ready to build a specific ticket from To Do or On Deck (the executor that follows plan-ticket), or 'next' to take the oldest ready one. Refuses tickets with no PRD.
-argument-hint: "The JIRA ticket key to implement (e.g. PROJ-124), or 'next' to pick from the To Do / On Deck queue"
+description: Build a planned JIRA ticket end-to-end while driving it across the board — claim it and move it In Progress, work its sub-tasks test-first at agreed seams, guard against regressions, review, grow the docs, then commit/PR with the ticket key and transition to In Review / Done. Use with a ticket key, 'next' for the oldest ready one, or a count / ALL to run a whole batch of decision-free tickets unattended. Refuses tickets with no PRD.
+argument-hint: "A JIRA ticket key (PROJ-124), 'next' for the oldest ready one, or a count / ALL to batch-run every decision-free ticket"
 ---
 
 <what-to-do>
@@ -22,7 +22,7 @@ Do not skip the JIRA transitions and do not fake the build discipline. A merged 
 
 ## Phase 0: Claim
 
-1. **Resolve the target.** If given a ticket key, use it. If given `next` (or nothing), find the ready queue with JQL (the `To Do` / `On Deck` columns, see `<jira-mechanics>`) and pick the oldest unblocked one — confirm with me before claiming. Prefer `To Do` over `On Deck`: `On Deck` means the next step in it is mine to make.
+1. **Resolve the target.** A ticket key means that ticket. `next` (or nothing) means find the ready queue with JQL (the `To Do` / `On Deck` columns, see `<jira-mechanics>`) and take the oldest unblocked one — confirm with me before claiming, and prefer `To Do` over `On Deck`, since `On Deck` means the next step in it is mine to make. **A count or `ALL` means batch mode — go to `<batch>` instead of working these phases directly.**
 2. **Read the ticket fully** with `getJiraIssue` (include `comment`, `description`, `parent`, `issuelinks`, `status`, `labels`, `subtasks`): its PRD, acceptance criteria, sub-tasks, and its parent epic for context.
 3. **Check it's actually takeable.** If it's blocked by an open issue, stop and say so. If it has **no PRD** (no `## Problem Statement` + `## Acceptance Criteria`) it should never have left `To Plan` — **stop**, say the board was lying to you, and recommend `/plan-ticket <KEY>`. Don't build on fog, and don't quietly spec it yourself; that's how an un-reviewed guess becomes a merged PR.
 4. **The ticket vs its sub-tasks.** The **ticket** is the unit that rides the board. Work its **sub-tasks** one at a time (Phase 1→6 per sub-task), ticking each one Done as it lands, so the card's progress count stays true. The ticket itself moves `In Progress` once, at the start, and `In Review` once, at the end. If it has no sub-tasks, implement it directly — but say so, because `to-issues` should have made some.
@@ -90,6 +90,73 @@ Once tests pass and no regressions remain:
 Report at the end: the issue key(s) moved, their new statuses, the branch/PR, and what's next in the tree.
 
 </phases>
+
+<batch>
+
+# Batch: `/implement 6` or `/implement ALL`
+
+Run a queue of decision-free tickets back to back, unattended, and hand back one PR. This is
+what the trivial lane exists to feed. A number caps the run; `ALL` takes everything eligible.
+
+## What is eligible
+
+A ticket qualifies only if **every** one of its sub-tasks is AFK-reachable — or it is a
+`trivial` ticket, which has no sub-tasks and is AFK by definition (see
+[BOARD.md](../plan-ticket/BOARD.md)). A ticket with one HITL sub-task in it is **not** eligible,
+even if you could reach three AFK ones first: a batch run is not the place to stop half way.
+That ticket waits for an interactive `/implement <KEY>`.
+
+Find them, `trivial` first, then oldest:
+
+```
+project = <KEY> AND status = "To Do" ORDER BY created ASC
+```
+
+then drop anything with an open blocker, anything with a HITL sub-task, and anything without a
+PRD. **Show the user the list and the count before you start**, then go. That is the last gate;
+you do not ask again.
+
+## How it runs
+
+**One branch, one commit per ticket, one PR at the end.** Branch it off main with a name that
+says what it is, not a ticket key — `batch-2026-08-26` or similar — since it carries several.
+
+For each ticket in turn:
+
+1. Transition it to In Progress.
+2. Build it with the normal discipline — Phases 1→6. Tests still come first, regressions still
+   stop you, `CONTEXT.md` still grows. **Batch does not mean sloppy.** What batch removes is the
+   conversation, not the standard.
+3. Run `/review` on that ticket's commit range, and fix what it surfaces before moving on.
+4. **Commit once**, message led by the issue key, so the ticket is one revertible unit.
+5. Transition it to In Review and post a one-line comment saying it is in the batch branch.
+6. Full test suite before the next ticket starts. A batch that breaks on ticket two and keeps
+   building is worse than a batch that stops.
+
+At the end, open **one PR** listing every ticket key it contains, and say which commit is which.
+
+## Parking
+
+When a ticket surprises you, **park that ticket and carry on with the next one.** Do not stop
+the batch, and do not push through.
+
+Park it when: a real decision appears that the PRD doesn't settle; the change spreads well past
+what the ticket implied; a test fails for a reason you didn't cause; the ticket turns out not to
+be trivial after all; or you find yourself about to guess.
+
+To park: revert or drop that ticket's work so the branch stays clean, move the ticket to
+`On Deck`, and comment plainly what it hit and what it needs. Then move to the next ticket.
+
+**One honest park beats six confident guesses.** Coming back to "six done, two parked, here's
+why" is the point of the mode.
+
+## Reporting back
+
+Close with a short table — ticket, done or parked, and one line why for each park — plus the PR
+link and the total. Say plainly if the parked pile is bigger than the done pile; that means the
+planning was optimistic, not that the run failed, and it is worth knowing before the next batch.
+
+</batch>
 
 <supporting-info>
 

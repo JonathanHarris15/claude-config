@@ -22,6 +22,32 @@ Throughout this skill, **"Feature" means the level-0 ticket you're speccing** �
 
 You are normally invoked **by `/plan-ticket`**, not directly. Called directly, you still work — but you're skipping the routing that decides whether this ticket was ever ready to spec.
 
+## The short form, for a trivial ticket
+
+When `plan-ticket` routes a ticket down the **trivial lane** (see
+[ROUTING.md](../plan-ticket/ROUTING.md)), everything below is too much. Write this
+instead, straight onto the ticket, and stop:
+
+```md
+## Problem Statement
+
+{One sentence. What is wrong, and where.}
+
+## Acceptance Criteria
+
+- [ ] {One testable condition. Pass or fail, externally observable.}
+```
+
+Both headings are present, so the board's integrity rule is satisfied. Add the
+`trivial` label. **Do not call `to-issues`** — a trivial ticket has no sub-tasks,
+because the ticket is the sub-task. Skip the module sketch and the confirmation
+step too; there is nothing to confirm.
+
+Writing those two lines is also the last honest check on the routing. If you cannot
+state the problem in one sentence, or the criterion needs an "and", or you find
+yourself wanting to ask the user something — **it was never trivial.** Say so and
+send it back to the full process.
+
 ## Process
 
 ### 1. Explore
