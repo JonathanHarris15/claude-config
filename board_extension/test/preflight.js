@@ -648,6 +648,24 @@ function assert(condition, message) {
     return sample.key + ' reads back as ' + status;
   });
 
+  check('the board pans past its own edges', () => {
+    // A canvas you can only drag until the content stops is not a canvas: any
+    // column has to be draggable to any edge, To Plan to the right included.
+    const css = fs.readFileSync(path.join(root, 'media', 'board.css'), 'utf8');
+    const js = fs.readFileSync(path.join(root, 'media', 'board.js'), 'utf8');
+    assert(/--canvas-pad-x:\s*100vw/.test(css), 'the canvas is not a viewport wide either side');
+    const scroller = css.slice(css.indexOf('.bd-columns{flex:1;min-width:0;min-height:0'));
+    const rule = scroller.slice(0, scroller.indexOf('}'));
+    assert(rule.indexOf('var(--canvas-pad-y) var(--canvas-pad-x)') >= 0, 'the left edge is still clamped');
+    // Scroll 0 is now a blank screen, so the board has to open at its columns.
+    assert(js.indexOf('function goHome()') >= 0, 'nothing scrolls the board off the blank canvas');
+    assert(js.indexOf('if (!homed)') >= 0, 'the board never homes, or homes on every refresh');
+    // The pad is a fixed width that does not zoom; scaling it walks the board.
+    assert(js.indexOf('columnsEl.scrollLeft + x - pad.x') >= 0, 'zoom scales the padding too');
+    assert(js.indexOf('onBoardX * ratio - x + pad.x') >= 0, 'zoom does not put the padding back');
+    return 'a viewport of canvas each side, opens on To Plan, zoom anchors to the columns';
+  });
+
   check('an unsent message stays with its own ticket', () => {
     // One global draft meant clicking to another ticket carried your half-
     // written message across, and clicking back showed someone else's.
@@ -710,7 +728,8 @@ function assert(condition, message) {
     ]);
     const globals = new Set([
       'acquireVsCodeApi', 'setTimeout', 'setInterval', 'clearTimeout',
-      'clearInterval', 'parseInt', 'parseFloat', 'isNaN', 'requestAnimationFrame'
+      'clearInterval', 'parseInt', 'parseFloat', 'isNaN', 'requestAnimationFrame',
+      'getComputedStyle'
     ]);
     const missing = new Set();
     for (const m of js.matchAll(/(^|[^.\w'"`])([a-z][A-Za-z0-9_]*)\s*\(/gm)) {

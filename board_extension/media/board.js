@@ -50,6 +50,7 @@
   let boardZoom = 1;     // how far in the board canvas is zoomed
   let queueOn = false;   // a repo is mapped, so the merge queue has somewhere to run
   let queued = [];       // tickets lined up at the merge queue, in its order
+  let homed = false;     // the board has been scrolled to its resting position
 
   // The merge queue is one conversation per space, not a ticket. It gets a
   // synthetic card so the panel can open on it like any other.
@@ -173,6 +174,7 @@
     if ((event.ctrlKey || event.metaKey) && event.key === '0') {
       event.preventDefault();
       setBoardZoom(1);
+      goHome();
       return;
     }
     if (event.key === 'Escape' && selected) {
@@ -419,6 +421,14 @@
       : total + ' ticket' + (total === 1 ? '' : 's');
     statusEl.textContent = 'updated ' + new Date().toLocaleTimeString();
     paintCards();
+
+    // The canvas starts with a viewport of nothing to the left of To Plan, so
+    // scroll 0 is a blank screen. Only on the first board: after that the view
+    // is wherever the human left it, and a refresh must not drag them home.
+    if (!homed) {
+      homed = true;
+      goHome();
+    }
   }
 
   /** Lanes ordered by size, with the unparented tickets last. */
@@ -2004,6 +2014,20 @@
    * Pass the wheel event to keep the point under the pointer where it is —
    * without that, zooming walks the board out from under you.
    */
+  /** How much blank canvas sits before the first column. Set in CSS, read here. */
+  function canvasPad() {
+    const style = getComputedStyle(columnsEl);
+    return {
+      x: parseFloat(style.paddingLeft) || 0,
+      y: parseFloat(style.paddingTop) || 0
+    };
+  }
+
+  /** Put the first column at the left edge — the board's resting position. */
+  function goHome() {
+    columnsEl.scrollLeft = canvasPad().x;
+  }
+
   function setBoardZoom(next, at) {
     const before = boardZoom;
     boardZoom = Math.max(0.5, Math.min(2, next));
@@ -2012,18 +2036,22 @@
     }
 
     const box = columnsEl.getBoundingClientRect();
+    const pad = canvasPad();
     const x = at ? at.clientX - box.left : box.width / 2;
     const y = at ? at.clientY - box.top : box.height / 2;
-    const onBoardX = columnsEl.scrollLeft + x;
-    const onBoardY = columnsEl.scrollTop + y;
+    // Measured from the first column, not from the start of the blank canvas:
+    // the padding is a fixed width that does not zoom, so scaling it too would
+    // walk the board sideways on every notch of the wheel.
+    const onBoardX = columnsEl.scrollLeft + x - pad.x;
+    const onBoardY = columnsEl.scrollTop + y - pad.y;
 
     columnsEl.style.setProperty('--zoom', String(boardZoom));
     // Read a layout value to make the new size real before moving the scroll.
     void columnsEl.scrollWidth;
 
     const ratio = boardZoom / before;
-    columnsEl.scrollLeft = onBoardX * ratio - x;
-    columnsEl.scrollTop = onBoardY * ratio - y;
+    columnsEl.scrollLeft = onBoardX * ratio - x + pad.x;
+    columnsEl.scrollTop = onBoardY * ratio - y + pad.y;
 
     vscode.setState(Object.assign({}, vscode.getState(), { boardZoom: boardZoom }));
   }
