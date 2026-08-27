@@ -20,6 +20,7 @@
   let tab = 'description';
   let chatDraft = '';
   let descDraft = null;  // non-null means the description is being edited
+  let titleDraft = null; // non-null means the title is being renamed
   let pending = [];      // images pasted or dropped, waiting to be sent
   let stick = true;      // follow the bottom of the transcript
   let menuEl = null;     // the slash menu element for the current render
@@ -80,6 +81,7 @@
       }
     } else if (message.type === 'saved') {
       descDraft = null;
+      titleDraft = null;
     } else if (message.type === 'deleted') {
       if (message.key === selected) {
         selected = null;
@@ -642,6 +644,7 @@
     selected = key;
     detail = null;
     descDraft = null;
+    titleDraft = null;
     wt = null;
     story = null;
     storyStale = false;
@@ -688,7 +691,7 @@
     });
     eyebrow.append(close);
     head.append(eyebrow);
-    head.append(el('h2', 'bd-detail-title', ticket.summary));
+    head.append(titleNode(ticket));
 
     const chips = el('div', 'bd-chips');
     for (const label of (detail && detail.labels) || []) {
@@ -820,6 +823,73 @@
     remove.title = 'Delete this ticket and its sub-tasks from JIRA. You will be asked to confirm.';
     row.append(remove);
     return row;
+  }
+
+  /**
+   * The title, and the way you rename it. A summary is one line, so it edits in
+   * place rather than behind a button: click the words, type, Enter. Escape
+   * puts back what was there. The merge queue is not a JIRA ticket and has no
+   * name to change.
+   */
+  function titleNode(ticket) {
+    if (ticket.queue) {
+      return el('h2', 'bd-detail-title', ticket.summary);
+    }
+
+    if (titleDraft === null) {
+      const node = el('h2', 'bd-detail-title bd-detail-title--edits', ticket.summary);
+      node.title = 'Click to rename';
+      node.addEventListener('click', () => {
+        titleDraft = ticket.summary;
+        drawDetail();
+      });
+      return node;
+    }
+
+    const box = el('input', 'bd-title-edit');
+    box.type = 'text';
+    box.value = titleDraft;
+    box.setAttribute('aria-label', 'Ticket title');
+
+    // Enter saves and redraws; the redraw can pull the input out from under a
+    // blur that then saves again. Once only.
+    let saved = false;
+    const save = () => {
+      if (saved) {
+        return;
+      }
+      saved = true;
+      const next = box.value.trim();
+      titleDraft = null;
+      // Nothing typed, or nothing changed: no round trip to JIRA.
+      if (next && next !== ticket.summary) {
+        vscode.postMessage({ type: 'saveSummary', key: ticket.key, summary: next });
+      }
+      drawDetail();
+    };
+
+    box.addEventListener('keydown', (event) => {
+      if (event.key === 'Enter') {
+        event.preventDefault();
+        save();
+      } else if (event.key === 'Escape') {
+        event.preventDefault();
+        saved = true;
+        titleDraft = null;
+        drawDetail();
+      }
+    });
+    box.addEventListener('blur', save);
+    box.addEventListener('input', () => {
+      titleDraft = box.value;
+    });
+
+    // Drawn, then focused: the whole name is selected so typing replaces it.
+    setTimeout(() => {
+      box.focus();
+      box.select();
+    }, 0);
+    return box;
   }
 
   function tabStrip() {

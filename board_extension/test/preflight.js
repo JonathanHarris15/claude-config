@@ -755,6 +755,21 @@ function assert(condition, message) {
     return 'STE voice, glossary, four headings, one-shot, stamped';
   });
 
+  check('a ticket can be renamed from the panel', () => {
+    const js = fs.readFileSync(path.join(root, 'media', 'board.js'), 'utf8');
+    const ext = fs.readFileSync(path.join(root, 'src', 'extension.ts'), 'utf8');
+    const board = fs.readFileSync(path.join(root, 'src', 'board.ts'), 'utf8');
+    assert(board.indexOf("'--summary'") >= 0, 'nothing writes a new summary to JIRA');
+    assert(ext.indexOf("case 'saveSummary'") >= 0, 'the panel cannot ask for a rename');
+    // JIRA accepts an empty summary and the card goes blank, so it is refused.
+    const save = ext.slice(ext.indexOf('private async saveSummary('), ext.indexOf('private async saveDescription('));
+    assert(save.indexOf('if (!trimmed)') >= 0, 'an empty rename would be saved');
+    assert(js.indexOf('function titleNode(') >= 0, 'the title is not editable');
+    const node = js.slice(js.indexOf('function titleNode('), js.indexOf('function tabStrip('));
+    assert(node.indexOf('ticket.queue') >= 0, 'the merge queue offers a rename it cannot do');
+    return 'inline rename, empty refused, queue left alone';
+  });
+
   check('a ticket can be deleted, but only through the editor\'s modal', () => {
     const js = fs.readFileSync(path.join(root, 'media', 'board.js'), 'utf8');
     const ext = fs.readFileSync(path.join(root, 'src', 'extension.ts'), 'utf8');

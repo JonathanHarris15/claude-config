@@ -287,6 +287,11 @@ a:hover { color: var(--vscode-textLink-activeForeground, var(--board-hue-info));
 .bd-detail{flex:0 0 var(--detail-width);border-left:var(--border-width) solid var(--role-neutral-line);padding:var(--pad-panel);overflow:hidden;display:flex;flex-direction:column}
 .bd-detail-key{font-family:var(--font-mono);font-size:var(--text-label);opacity:var(--dim-2)}
 .bd-detail-title{margin:0 0 2px;font-size:var(--text-title);line-height:var(--leading-card);font-weight:var(--weight-strong)}
+/* The title renames in place, so it has to look like it will take a click. */
+.bd-detail-title--edits{cursor:text;border-radius:var(--radius-inline);margin-left:calc(-1 * var(--space-3));padding-left:var(--space-3)}
+.bd-detail-title--edits:hover{background:var(--board-bg-hover)}
+.bd-title-edit{display:block;width:100%;box-sizing:border-box;margin:0 0 2px calc(-1 * var(--space-3));padding:0 var(--space-3);border:none;border-bottom:var(--border-width) solid var(--role-focus-line);background:transparent;color:inherit;font-family:inherit;font-size:var(--text-title);line-height:var(--leading-card);font-weight:var(--weight-strong)}
+.bd-title-edit:focus{outline:none}
 
 .bd-tabs{display:flex;border-bottom:var(--border-width) solid var(--role-neutral-line);margin:var(--space-8) 0 var(--space-6)}
 .bd-tab{background:none;border:none;border-bottom:var(--accent-width) solid transparent;color:inherit;opacity:var(--dim-2);font-family:inherit;font-size:var(--text-label);font-weight:var(--weight-strong);text-transform:var(--eyebrow-transform);letter-spacing:var(--eyebrow-tracking-wide);padding:var(--space-3) var(--space-6);cursor:pointer;display:flex;align-items:center;gap:var(--space-2)}

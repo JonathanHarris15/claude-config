@@ -16,7 +16,8 @@ import {
   deleteTicket,
   issueTypes,
   setEpic,
-  updateDescription
+  updateDescription,
+  updateSummary
 } from './board';
 import { fetchSpaces, Space } from './spaces';
 import { loadStory, saveStory, tellStory } from './story';
@@ -229,6 +230,9 @@ class BoardPanel {
         break;
       case 'agentState':
         this.pushAgentState(message.key);
+        break;
+      case 'saveSummary':
+        await this.saveSummary(message.key, message.summary);
         break;
       case 'saveDescription':
         await this.saveDescription(message.key, message.markdown);
@@ -712,6 +716,28 @@ class BoardPanel {
    * the description round-tripped cleanly to Markdown, so nothing structural
    * is lost here — see adf.ts.
    */
+  /** Rename. Refused empty, because JIRA takes it and the card goes blank. */
+  private async saveSummary(ticket: string, summary: string) {
+    const trimmed = (summary ?? '').trim();
+    if (!trimmed) {
+      void this.panel.webview.postMessage({
+        type: 'error', message: 'A ticket needs a title. The rename was not saved.'
+      });
+      await this.pushDetail(ticket);
+      return;
+    }
+    try {
+      await updateSummary(ticket, trimmed);
+      void this.panel.webview.postMessage({ type: 'saved', key: ticket });
+      await this.pushDetail(ticket);
+      await this.pushBoard();
+    } catch (err) {
+      void this.panel.webview.postMessage({ type: 'error', message: describe(err) });
+      // The panel is showing a name JIRA rejected; put the real one back.
+      await this.pushDetail(ticket);
+    }
+  }
+
   private async saveDescription(ticket: string, markdown: string) {
     try {
       await updateDescription(ticket, markdown);

@@ -281,6 +281,11 @@ export async function updateDescription(key: string, markdown: string): Promise<
   ]);
 }
 
+/** Rename a ticket. The summary is the one field the board shows everywhere. */
+export async function updateSummary(key: string, summary: string): Promise<void> {
+  await twgJson(['jira', 'workitem', 'update', '--id', key, '--summary', summary]);
+}
+
 /**
  * The board query returns a lean field set with no parent and no labels. One
  * bulk fetch fills both in for every card at once, which is cheap enough to do
