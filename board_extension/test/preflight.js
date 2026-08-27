@@ -755,6 +755,25 @@ function assert(condition, message) {
     return 'STE voice, glossary, four headings, one-shot, stamped';
   });
 
+  check('a column is the same width in every lane', () => {
+    const css = fs.readFileSync(path.join(root, 'media', 'board.css'), 'utf8');
+    // A flex item will not go below its content's minimum unless told it may.
+    // One card holding an unbreakable string — a stack trace, a URL, a long
+    // identifier — otherwise widens its own cell, and every column right of it
+    // in that lane stops lining up with the header and with the other lanes.
+    for (const rule of ['.bd-lane-col{', '.bd-headcell{']) {
+      const at = css.indexOf(rule);
+      assert(at >= 0, 'no ' + rule + ' rule');
+      const body = css.slice(at, css.indexOf('}', at));
+      assert(body.indexOf('var(--column-width)') >= 0, rule + ' does not use the column width');
+      assert(body.indexOf('min-width:0') >= 0, rule + ' can be widened by its content');
+    }
+    assert(css.indexOf('.bd-card-summary{') >= 0
+      && css.slice(css.indexOf('.bd-card-summary{')).indexOf('overflow-wrap:anywhere') < 200,
+      'a long word spills out of the card instead of breaking');
+    return 'width pinned in header and lanes, long words break';
+  });
+
   check('a ticket can be renamed from the panel', () => {
     const js = fs.readFileSync(path.join(root, 'media', 'board.js'), 'utf8');
     const ext = fs.readFileSync(path.join(root, 'src', 'extension.ts'), 'utf8');

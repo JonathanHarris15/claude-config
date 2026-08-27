@@ -230,7 +230,7 @@ a:hover { color: var(--vscode-textLink-activeForeground, var(--board-hue-info));
 .bd-card:hover{border-color:var(--role-focus-line)}
 .bd-card--selected{border-color:var(--role-focus-line);background:var(--role-selected-wash)}
 .bd-card-key{display:flex;justify-content:space-between;align-items:center;gap:var(--space-4);font-size:var(--text-label);opacity:var(--dim-2);font-family:var(--font-mono)}
-.bd-card-summary{margin-top:var(--space-1);font-size:var(--text-base);line-height:var(--leading-card)}
+.bd-card-summary{margin-top:var(--space-1);font-size:var(--text-base);line-height:var(--leading-card);overflow-wrap:anywhere}
 .bd-card--thinking,.bd-card--working{border-left-color:var(--state-working);background:var(--role-running-wash)}
 .bd-card--asking{border-left-color:var(--state-asking);background:var(--role-attention-wash)}
 .bd-card--done{border-left-color:var(--state-done);background:var(--role-settled-wash)}
@@ -286,7 +286,7 @@ a:hover { color: var(--vscode-textLink-activeForeground, var(--board-hue-info));
 .bd-body{flex:1;min-width:0;display:flex;min-height:0}
 .bd-detail{flex:0 0 var(--detail-width);border-left:var(--border-width) solid var(--role-neutral-line);padding:var(--pad-panel);overflow:hidden;display:flex;flex-direction:column}
 .bd-detail-key{font-family:var(--font-mono);font-size:var(--text-label);opacity:var(--dim-2)}
-.bd-detail-title{margin:0 0 2px;font-size:var(--text-title);line-height:var(--leading-card);font-weight:var(--weight-strong)}
+.bd-detail-title{margin:0 0 2px;font-size:var(--text-title);line-height:var(--leading-card);font-weight:var(--weight-strong);overflow-wrap:anywhere}
 /* The title renames in place, so it has to look like it will take a click. */
 .bd-detail-title--edits{cursor:text;border-radius:var(--radius-inline);margin-left:calc(-1 * var(--space-3));padding-left:var(--space-3)}
 .bd-detail-title--edits:hover{background:var(--board-bg-hover)}
@@ -457,7 +457,7 @@ a:hover { color: var(--vscode-textLink-activeForeground, var(--board-hue-info));
 .bd-columns{flex:1;min-width:0;min-height:0;display:block;overflow:auto;padding:var(--gap) var(--space-9)}
 
 .bd-headrow{display:flex;gap:var(--gap);position:sticky;top:0;z-index:2;background:var(--board-bg-editor);padding-bottom:var(--space-5);width:max-content}
-.bd-headcell{flex:0 0 var(--column-width);display:flex;justify-content:space-between;align-items:baseline;gap:var(--space-4);font-weight:var(--weight-strong);font-size:var(--text-label);text-transform:var(--eyebrow-transform);letter-spacing:var(--eyebrow-tracking-wide);opacity:var(--dim-1);padding:0 var(--space-2)}
+.bd-headcell{flex:0 0 var(--column-width);min-width:0;display:flex;justify-content:space-between;align-items:baseline;gap:var(--space-4);font-weight:var(--weight-strong);font-size:var(--text-label);text-transform:var(--eyebrow-transform);letter-spacing:var(--eyebrow-tracking-wide);opacity:var(--dim-1);padding:0 var(--space-2)}
 
 .bd-lane{margin-bottom:var(--space-10);width:max-content}
 .bd-lane-head{position:sticky;left:0;display:flex;align-items:baseline;gap:var(--space-4);font-size:var(--text-label);text-transform:var(--eyebrow-transform);letter-spacing:var(--eyebrow-tracking);opacity:var(--dim-2);padding:0 var(--space-2) var(--space-4);max-width:var(--column-width)}
@@ -465,7 +465,7 @@ a:hover { color: var(--vscode-textLink-activeForeground, var(--board-hue-info));
 .bd-lane-count{flex:none}
 
 .bd-lane-cols{display:flex;gap:var(--gap);align-items:flex-start}
-.bd-lane-col{flex:0 0 var(--column-width);display:flex;flex-direction:column;gap:var(--gap-card);min-height:52px;border-radius:var(--radius);padding:var(--space-1)}
+.bd-lane-col{flex:0 0 var(--column-width);min-width:0;display:flex;flex-direction:column;gap:var(--gap-card);min-height:52px;border-radius:var(--radius);padding:var(--space-1)}
 .bd-lane-col--over{background:var(--role-selected-wash);outline:var(--border-width) dashed var(--role-focus-line)}
 
 /* The add button is a quiet plus that only asserts itself on hover. With a
