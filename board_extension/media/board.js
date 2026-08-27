@@ -72,6 +72,12 @@
       }
     } else if (message.type === 'saved') {
       descDraft = null;
+    } else if (message.type === 'deleted') {
+      if (message.key === selected) {
+        selected = null;
+        detail = null;
+        drawDetail();
+      }
     } else if (message.type === 'story') {
       if (message.key === selected) {
         story = message.story || null;
@@ -737,6 +743,11 @@
       button('Open in JIRA', () =>
         vscode.postMessage({ type: 'openInJira', key: ticket.key, url: ticket.url }), true)
     );
+    // The editor asks "are you sure" in its own modal; this button only asks.
+    const remove = button('Delete', () => post('deleteTicket', ticket.key), true);
+    remove.classList.add('bd-btn--danger');
+    remove.title = 'Delete this ticket and its sub-tasks from JIRA. You will be asked to confirm.';
+    row.append(remove);
     return row;
   }
 

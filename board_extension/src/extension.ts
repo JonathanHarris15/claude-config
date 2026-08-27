@@ -13,6 +13,7 @@ import {
   Ticket,
   TicketDetail,
   createTicket,
+  deleteTicket,
   issueTypes,
   setEpic,
   updateDescription
@@ -162,6 +163,9 @@ class BoardPanel {
         break;
       case 'tellStory':
         await this.writeStory(message.key);
+        break;
+      case 'deleteTicket':
+        await this.remove(message.key);
         break;
       case 'openInJira':
         if (message.url) {
@@ -464,6 +468,40 @@ class BoardPanel {
     } catch (err) {
       void this.panel.webview.postMessage({ type: 'error', message: describe(err) });
       this.pushStory(ticket);
+    }
+  }
+
+  /**
+   * Delete a ticket. The one destructive action on the board, so it goes
+   * through the editor's own modal rather than a button that can be clicked
+   * twice by accident. A live agent is stopped first; its worktree is left
+   * alone, because deleting a ticket must never delete work.
+   */
+  private async remove(ticket: string) {
+    const card = this.cards.get(ticket);
+    const choice = await vscode.window.showWarningMessage(
+      `Delete ${ticket}${card ? ` — "${card.summary}"` : ''}?`,
+      {
+        modal: true,
+        detail: 'This removes the ticket and its sub-tasks from JIRA. It cannot be undone. Any worktree stays on disk.'
+      },
+      'Delete'
+    );
+    if (choice !== 'Delete') {
+      return;
+    }
+    try {
+      AgentSession.get(ticket)?.stop();
+      await deleteTicket(ticket);
+      this.cards.delete(ticket);
+      this.details.delete(ticket);
+      void this.panel.webview.postMessage({ type: 'deleted', key: ticket });
+      await this.pushBoard();
+    } catch (err) {
+      void this.panel.webview.postMessage({
+        type: 'error',
+        message: `JIRA would not delete ${ticket}: ${describe(err)}`
+      });
     }
   }
 

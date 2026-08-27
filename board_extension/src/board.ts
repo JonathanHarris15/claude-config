@@ -400,6 +400,23 @@ async function statusOf(key: string): Promise<string | undefined> {
 }
 
 /**
+ * Delete a ticket for good. Sub-tasks go with it — they have no meaning
+ * without their parent. JIRA's own permission check is the only gate here;
+ * the confirmation is the extension's job before it ever calls this.
+ */
+export async function deleteTicket(key: string): Promise<void> {
+  try {
+    await twgJson(['jira', 'workitem', 'delete', key, '--delete-subtasks', 'true']);
+  } catch (err) {
+    // A delete may answer with nothing at all, which reads as "not JSON". The
+    // ticket itself is the truth: if it is gone, the delete worked.
+    if (await statusOf(key)) {
+      throw err;
+    }
+  }
+}
+
+/**
  * Move a ticket into a different epic, or out of one entirely. Dragging a card
  * to another swimlane means exactly this.
  */

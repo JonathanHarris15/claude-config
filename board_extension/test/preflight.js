@@ -737,6 +737,20 @@ function assert(condition, message) {
     return 'STE voice, glossary, four headings, one-shot, stamped';
   });
 
+  check('a ticket can be deleted, but only through the editor\'s modal', () => {
+    const js = fs.readFileSync(path.join(root, 'media', 'board.js'), 'utf8');
+    const ext = fs.readFileSync(path.join(root, 'src', 'extension.ts'), 'utf8');
+    const src = fs.readFileSync(path.join(root, 'src', 'board.ts'), 'utf8');
+    assert(js.indexOf("post('deleteTicket'") >= 0, 'no delete button');
+    assert(ext.indexOf("case 'deleteTicket'") >= 0, 'the extension never deletes');
+    const body = ext.slice(ext.indexOf('private async remove('), ext.indexOf('/** Branch, drift'));
+    assert(body.indexOf('modal: true') >= 0, 'delete does not confirm through a modal');
+    assert(body.indexOf("choice !== 'Delete'") >= 0, 'delete does not wait for the answer');
+    assert(body.indexOf('cullWorktree') < 0, 'deleting a ticket deletes work on disk');
+    assert(src.indexOf("'delete', key, '--delete-subtasks', 'true'") >= 0, 'sub-tasks would be orphaned');
+    return 'modal confirm, sub-tasks go with it, worktree stays';
+  });
+
   check('hidden beats display', () => {
     const css = fs.readFileSync(path.join(root, 'media', 'board.css'), 'utf8');
     assert(css.indexOf('[hidden]{display:none !important}') >= 0, 'a flex element can ignore its hidden attribute');

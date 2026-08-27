@@ -64,6 +64,10 @@ skills it drives (`plan-ticket`, `implement`) are the ones already in
   Stop agent while one is running, and — when a ticket reaches In Review — a
   **Mark complete** button that transitions it to Done. That last one is
   deliberately a human action: agents are told to stop at In Review.
+- **Delete** sits at the far end of the header, quiet until hovered. It asks
+  through VS Code's own modal first, takes the sub-tasks with the ticket, stops
+  any agent on it, and leaves the worktree on disk — deleting a ticket must
+  never delete work.
 - **Plan** and **Implement** are just things you say to an open conversation.
   Each ticket has one, behaving like a Claude Code session: your skills from
   `~/.claude/skills` are loaded, you talk to it freely, and `/plan-ticket` or
