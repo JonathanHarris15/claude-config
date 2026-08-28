@@ -27,8 +27,6 @@
 !board/
 !board/**
 
-!board_extension/
-!board_extension/**
 # Built output and deps rebuild from source on each machine.
 
 # Installed by the twg CLI's own setup, not authored here. Each machine gets
