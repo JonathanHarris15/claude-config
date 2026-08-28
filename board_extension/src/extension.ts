@@ -399,6 +399,16 @@ class BoardPanel {
             model: snapshot.model,
             transcript: snapshot.transcript,
             updatedAt: ''
+          }),
+        archive: (snapshot) =>
+          store.archive(cwd, {
+            ticket,
+            space: this.space,
+            sessionId: snapshot.sessionId,
+            permissionMode: snapshot.permissionMode,
+            model: snapshot.model,
+            transcript: snapshot.transcript,
+            updatedAt: ''
           })
       }
     );

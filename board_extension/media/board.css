@@ -176,7 +176,11 @@ body.vscode-high-contrast-light {
   /* Room past the edges of the board, so there is somewhere to pan to. A
      canvas you can only drag until the content stops is not a canvas. A whole
      viewport on each side means any column can be dragged to any edge — To
-     Plan can sit hard right if that is where you want to work. */
+     Plan can sit hard right if that is where you want to work.
+
+     This belongs to the rows, never to the scroller: padding on the scroller
+     cannot shrink, so a viewport of it made the scroller twice the window
+     wide and pushed the detail panel off the screen. */
   --canvas-pad-x: 100vw;
   --canvas-pad-y: 220px;
   --detail-width: 380px;
@@ -437,6 +441,9 @@ a:hover { color: var(--vscode-textLink-activeForeground, var(--board-hue-info));
 .bd-choice-mark{font-family:var(--font-mono);font-size:var(--text-micro);opacity:var(--dim-2);flex:none}
 .bd-choice-label{font-size:var(--text-body);font-weight:var(--weight-strong)}
 .bd-choice-desc{font-size:var(--text-meta);opacity:var(--dim-2)}
+.bd-question-own{margin-top:var(--space-5)}
+.bd-question-write{width:100%;box-sizing:border-box;resize:vertical;padding:var(--space-4) var(--space-5);border-radius:var(--radius);border:var(--border-width) solid var(--board-line-input);background:var(--board-bg-input);color:var(--board-fg-input);font-family:inherit;font-size:var(--text-body)}
+.bd-question-write:focus{outline:none;border-color:var(--role-focus-line)}
 
 /* Stacked, there is no vertical edge to drag. */
 @media (max-width:620px){
@@ -471,12 +478,12 @@ a:hover { color: var(--vscode-textLink-activeForeground, var(--board-hue-info));
    each column, so one glance shows an epic's progress. One header row at the
    top; every lane below lines up under it because the cell width is fixed.
    --------------------------------------------------------------------------- */
-.bd-columns{flex:1;min-width:0;min-height:0;display:block;overflow:auto;padding:var(--gap) var(--canvas-pad-x) var(--canvas-pad-y) var(--canvas-pad-x);--column-width:calc(var(--column-width-base) * var(--zoom, 1));font-size:calc(1em * var(--zoom, 1))}
+.bd-columns{flex:1;min-width:0;min-height:0;display:block;overflow:auto;padding:var(--gap) 0 var(--canvas-pad-y) var(--space-9);--column-width:calc(var(--column-width-base) * var(--zoom, 1));font-size:calc(1em * var(--zoom, 1))}
 
-.bd-headrow{display:flex;gap:calc(var(--gap) * var(--zoom, 1));position:sticky;top:0;z-index:2;background:var(--board-bg-editor);padding-bottom:var(--space-5);width:max-content}
+.bd-headrow{display:flex;gap:calc(var(--gap) * var(--zoom, 1));position:sticky;top:0;z-index:2;background:var(--board-bg-editor);padding:0 var(--canvas-pad-x) var(--space-5) 0;margin-left:var(--canvas-pad-x);width:max-content}
 .bd-headcell{flex:0 0 var(--column-width);min-width:0;display:flex;justify-content:space-between;align-items:baseline;gap:var(--space-4);font-weight:var(--weight-strong);font-size:var(--text-label);text-transform:var(--eyebrow-transform);letter-spacing:var(--eyebrow-tracking-wide);opacity:var(--dim-1);padding:0 var(--space-2)}
 
-.bd-lane{margin-bottom:calc(var(--space-10) * var(--zoom, 1));width:max-content}
+.bd-lane{margin-bottom:calc(var(--space-10) * var(--zoom, 1));margin-left:var(--canvas-pad-x);padding-right:var(--canvas-pad-x);width:max-content}
 .bd-lane-head{position:sticky;left:0;display:flex;align-items:baseline;gap:var(--space-4);font-size:var(--text-label);text-transform:var(--eyebrow-transform);letter-spacing:var(--eyebrow-tracking);opacity:var(--dim-2);padding:0 var(--space-2) var(--space-4);max-width:var(--column-width)}
 .bd-lane-name{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .bd-lane-count{flex:none}

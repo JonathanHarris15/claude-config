@@ -87,6 +87,16 @@
           "default": "claude-sonnet-5",
           "markdownDescription": "Model that writes the History tab's story of a ticket. One turn, no tools, so a small model is the right choice. Blank uses the session default."
         },
+        "board.agentModel": {
+          "type": "string",
+          "default": "claude-sonnet-5",
+          "markdownDescription": "Model a ticket's agent starts on. Every agent inherits your global model otherwise, so three of them running at once means three of the most expensive sessions you can open — and each one they spawn again for a review. Change it per ticket in the panel's model picker; this is only where they start. Blank uses the session default."
+        },
+        "board.accountConnectors": {
+          "type": "boolean",
+          "default": false,
+          "markdownDescription": "Load your claude.ai connectors (Gmail, Dropbox, Atlassian, Calendar) into every ticket agent. They cost roughly 20,000 tokens of context per agent per turn and a ticket agent has the board's own tools and `twg` instead, so this is off. Turn it on if you want an agent to reach your mail or drive."
+        },
         "board.sharedCommands": {
           "type": "object",
           "default": {

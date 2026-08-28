@@ -22,6 +22,10 @@
   // conversation it was written in, so clicking away puts it out of sight and
   // clicking back brings it out again exactly as it was left.
   let drafts = {};
+  // A half-typed answer to the agent's question. The panel repaints on every
+  // state change, so the text lives out here rather than in the box it is
+  // typed into, which is thrown away and rebuilt each time.
+  let ownAnswer = { id: null, text: '', focused: false };
   let descDraft = null;  // non-null means the description is being edited
   let titleDraft = null; // non-null means the title is being renamed
   // Renames JIRA has been told about but has not read back yet. JIRA's search
@@ -1373,12 +1377,50 @@
       box.append(row);
     }
 
-    const skip = el('div', 'bd-actions bd-actions--tight');
-    skip.append(button('You decide', () =>
+    // None of the options is ever guaranteed to be the answer. Typing your own
+    // is always on the table, so the agent's guess at the choices cannot box
+    // you in.
+    if (ownAnswer.id !== question.id) {
+      ownAnswer = { id: question.id, text: '', focused: false };
+    }
+    const own = el('div', 'bd-question-own');
+    const write = el('textarea', 'bd-question-write');
+    write.rows = 2;
+    write.placeholder = 'Or answer in your own words. Enter to send, Shift+Enter for a newline.';
+    write.value = ownAnswer.text;
+    const sendOwn = () => {
+      const said = write.value.trim();
+      if (!said) return;
+      ownAnswer = { id: null, text: '', focused: false };
+      vscode.postMessage({ type: 'answerQuestion', key: selected, id: question.id, answers: [said] });
+    };
+    write.addEventListener('input', () => { ownAnswer.text = write.value; });
+    write.addEventListener('focus', () => { ownAnswer.focused = true; });
+    write.addEventListener('blur', () => { ownAnswer.focused = false; });
+    write.addEventListener('keydown', (event) => {
+      if (event.key === 'Enter' && !event.shiftKey) {
+        event.preventDefault();
+        sendOwn();
+      }
+    });
+    own.append(write);
+    const ownRow = el('div', 'bd-actions bd-actions--tight');
+    ownRow.append(button('Send', sendOwn));
+    ownRow.append(button('You decide', () =>
       vscode.postMessage({ type: 'answerQuestion', key: selected, id: question.id, answers: null }),
       true
     ));
-    box.append(skip);
+    own.append(ownRow);
+    box.append(own);
+
+    // The panel rebuilds itself whenever anything moves; put the cursor back
+    // where it was, or a repaint mid-sentence loses your place.
+    if (ownAnswer.focused) {
+      setTimeout(() => {
+        write.focus();
+        write.setSelectionRange(write.value.length, write.value.length);
+      }, 0);
+    }
     return box;
   }
 
@@ -2014,12 +2056,17 @@
    * Pass the wheel event to keep the point under the pointer where it is —
    * without that, zooming walks the board out from under you.
    */
-  /** How much blank canvas sits before the first column. Set in CSS, read here. */
+  /**
+   * How much blank canvas sits before the first column. It is a margin on the
+   * rows rather than padding on the scroller — padding on the scroller cannot
+   * shrink, and a viewport of it pushed the detail panel off the screen — so
+   * it is read back off a row.
+   */
   function canvasPad() {
-    const style = getComputedStyle(columnsEl);
+    const row = columnsEl.querySelector('.bd-headrow') || columnsEl.firstElementChild;
     return {
-      x: parseFloat(style.paddingLeft) || 0,
-      y: parseFloat(style.paddingTop) || 0
+      x: row ? parseFloat(getComputedStyle(row).marginLeft) || 0 : 0,
+      y: parseFloat(getComputedStyle(columnsEl).paddingTop) || 0
     };
   }
 

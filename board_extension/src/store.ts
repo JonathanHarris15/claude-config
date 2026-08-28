@@ -56,6 +56,29 @@ export function save(repo: string, conversation: StoredConversation): void {
   }
 }
 
+/**
+ * Keep a conversation that is about to be forgotten. /clear empties the panel
+ * and starts the model over, and the ticket's log is rewritten from what is
+ * left — so without this the record of everything before the clear would be
+ * overwritten by the blank that replaced it.
+ */
+export function archive(repo: string, conversation: StoredConversation): void {
+  if (!conversation.transcript.length) {
+    return;
+  }
+  try {
+    const dir = folder(repo);
+    fs.mkdirSync(dir, { recursive: true });
+    const stamp = new Date().toISOString().slice(0, 19).replace(/[:]/g, '-');
+    fs.writeFileSync(
+      path.join(dir, `${conversation.ticket}.cleared-${stamp}.md`),
+      asMarkdown({ ...conversation, updatedAt: new Date().toISOString() })
+    );
+  } catch {
+    // Same as save: losing the copy is not worth killing the session over.
+  }
+}
+
 export function list(repo: string): string[] {
   try {
     return fs
@@ -99,6 +122,8 @@ function ensureReadme(dir: string): void {
       '- `<TICKET>.json` — the state the panel reloads, including the Claude',
       '  session id so the conversation can be resumed rather than restarted.',
       '- `<TICKET>.md` — the same conversation, readable.',
+      '- `<TICKET>.cleared-<when>.md` — what /clear wiped from the panel, kept',
+      '  so the record is not lost with the context.',
       '',
       'Safe to delete: a missing file just starts that ticket fresh. Commit them',
       'if you want the reasoning in history, ignore them if you do not.',

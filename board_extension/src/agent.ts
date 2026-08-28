@@ -34,6 +34,22 @@ export type PermissionLevel = 'default' | 'acceptEdits' | 'bypassPermissions' | 
 /** What "edits without asking" waves through. Everything else still asks. */
 const EDIT_TOOLS = new Set(['Edit', 'Write', 'MultiEdit', 'NotebookEdit']);
 
+/**
+ * The names the CLI answers to for "start again with nothing". It is handled
+ * inside the session, not by us: the model gets a new session with an empty
+ * context. The panel has to be told, or it goes on showing a conversation the
+ * agent can no longer see.
+ */
+const CLEARS_CONTEXT = /^\/(clear|reset|new)(\s|$)/;
+
+/**
+ * How long a paused agent will stand at its next step before the CLI gives up
+ * waiting on us and runs the call anyway. A day: long enough that a pause you
+ * leave overnight is still a pause, short enough that a window closed without
+ * a resume cannot hold a tool call open forever.
+ */
+const PAUSE_LIMIT_SECONDS = 86400;
+
 export const PERMISSION_LEVELS: { value: PermissionLevel; label: string }[] = [
   { value: 'default', label: 'ask every time' },
   { value: 'acceptEdits', label: 'edits without asking' },
@@ -337,6 +353,8 @@ export interface AgentHooks {
   moveTicket(ticket: string, column: string): Promise<void>;
   /** Writes the conversation to the repo. */
   persist(snapshot: AgentSnapshot): void;
+  /** Keeps a copy of a conversation about to be cleared from the panel. */
+  archive?(snapshot: AgentSnapshot): void;
   /** Re-read the board, because something just changed the ticket in JIRA. */
   refreshBoard(): void;
   /** Put a note in front of another ticket's agent. Returns what happened. */
@@ -413,6 +431,8 @@ export class AgentSession {
   private queue: { ask: PendingAsk; decide: (allow: boolean) => void }[] = [];
   private askSeq = 0;
   private held?: { question: PendingQuestion; resolve: (answers: string[] | null) => void };
+  /** True between saying /clear and the empty session arriving. */
+  private clearing = false;
   /** Parked. Set by you; released by you. */
   private paused = false;
   /** Tool calls parked by the pause, released in order when it lifts. */
@@ -437,6 +457,12 @@ export class AgentSession {
     private readonly hooks: AgentHooks
   ) {
     AgentSession.live.set(context.ticket, this);
+    // Where a new agent starts. Without this every ticket inherits whatever
+    // model your own sessions run, and a board is not one session: it is one
+    // per ticket, each of which spawns more for a review. Restoring a
+    // conversation, or picking a model in the panel, overrides it.
+    this.model =
+      vscode.workspace.getConfiguration('board').get<string>('agentModel') || undefined;
     // Seed the slash menu from disk so it works before anything is running.
     this.commands = listSkills(context.cwd);
   }
@@ -485,6 +511,9 @@ export class AgentSession {
   /** Anything typed into the chat box, with any images that came with it. */
   async send(text: string, images: Attachment[] = []) {
     await this.ensureStream();
+    if (CLEARS_CONTEXT.test(text.trim())) {
+      this.clearing = true;
+    }
     this.record('you', text, images.length);
 
     if (!images.length) {
@@ -662,12 +691,24 @@ export class AgentSession {
         // Omitting settingSources loads user, project and local settings, which
         // is what makes the skills in ~/.claude/skills available here.
         skills: 'all',
+        // Your account's connectors — mail, drive, calendar — otherwise load
+        // into every ticket agent and sit in its context on every single turn,
+        // for work none of them does. The board's own tools are passed above
+        // and are unaffected.
+        strictMcpConfig: !vscode.workspace
+          .getConfiguration('board')
+          .get<boolean>('accountConnectors'),
         canUseTool: (name: string, input: Record<string, unknown>, options?: { signal?: AbortSignal }) =>
           this.requestPermission(name, input, options),
-        // Hooks run in every permission mode, unlike the prompt above, so the
-        // turn-taking cannot be switched off by "never ask".
+        // Hooks run in every permission mode, unlike the prompt above, so
+        // neither the pause nor the turn-taking can be switched off by
+        // "never ask".
         hooks: {
-          PreToolUse: [{ matcher: 'Bash', hooks: [this.beforeTool] }],
+          // Every tool, not just Bash: pause has to stop the next step whatever
+          // it is. The default hook timeout would let a call through while you
+          // were still deciding, so it is set past any pause you would sit
+          // through.
+          PreToolUse: [{ matcher: '*', timeout: PAUSE_LIMIT_SECONDS, hooks: [this.beforeTool] }],
           PostToolUse: [{ matcher: 'Bash', hooks: [this.afterTool] }],
           PostToolUseFailure: [{ matcher: 'Bash', hooks: [this.afterTool] }]
         },
@@ -678,12 +719,33 @@ export class AgentSession {
     void this.consume();
   }
 
-  /** Wait for the shared resource this command needs, and hold it for the call. */
+  /**
+   * The gate every tool call passes through: parked while you have it paused,
+   * then made to queue for any shared resource it needs.
+   *
+   * This is a hook rather than the permission prompt on purpose. Hooks run in
+   * every permission mode; the prompt does not — "never ask" hands the call
+   * straight to the tool without consulting us, which is exactly the mode an
+   * agent left running unattended is in, and exactly the one you want to be
+   * able to stop.
+   */
   private readonly beforeTool = async (
     input: any,
     toolUseID: string | undefined,
     options: { signal?: AbortSignal }
   ) => {
+    // Parked before the queue for a shared resource, not after: a pause that
+    // still takes its place in the line for the test suite is not a pause.
+    if (this.paused) {
+      this.doing = `paused before ${input.tool_name}`;
+      await new Promise<void>((release) => {
+        this.parked.push(release);
+        this.setState('paused');
+        options?.signal?.addEventListener('abort', () => release());
+      });
+      this.doing = input.tool_name;
+    }
+
     const resource = sharedResource(input.tool_name, input.tool_input ?? {});
     if (!resource || !toolUseID) {
       return {};
@@ -792,7 +854,16 @@ export class AgentSession {
 
   private handle(message: any) {
     if (message.type === 'system' && message.subtype === 'init') {
+      // /clear answers with a second init carrying a different session. That
+      // new session remembers nothing, so this is the moment the panel has to
+      // let go of the old conversation too.
+      const started = Boolean(this.sessionId);
+      const fresh = started && message.session_id !== this.sessionId;
       this.sessionId = message.session_id;
+      if (this.clearing && fresh) {
+        this.clearing = false;
+        this.forget();
+      }
       void this.loadCapabilities();
       this.changed();
       return;
@@ -835,6 +906,10 @@ export class AgentSession {
     }
 
     if (message.type === 'result') {
+      // The turn is over. If no empty session arrived, /clear was not what that
+      // was — stop waiting for one, so a later session change is not mistaken
+      // for it.
+      this.clearing = false;
       if (message.subtype !== 'success') {
         this.record('system', `run ended: ${message.subtype}`);
       }
@@ -1088,7 +1163,9 @@ export class AgentSession {
         'ask',
         'Ask the human a question with two to five concrete options. Use this ' +
           'instead of AskUserQuestion, which this panel cannot render. Blocks ' +
-          'until they choose. Only for decisions you cannot make yourself.',
+          'until they answer. They can pick one of your options or write their ' +
+          'own answer, so the options are your best guesses, not the only ' +
+          'ways out. Only for decisions you cannot make yourself.',
         {
           question: z.string(),
           options: z
@@ -1126,7 +1203,18 @@ export class AgentSession {
             };
           }
           this.record('you', answers.join(', '));
-          return { content: [{ type: 'text', text: 'They chose: ' + answers.join(', ') }] };
+          // An answer they typed is not one of your options, and reading it back
+          // as "they chose" would hide that they went their own way.
+          const labels = new Set(options.map((option: { label: string }) => option.label));
+          const own = answers.some((answer) => !labels.has(answer));
+          return {
+            content: [
+              {
+                type: 'text',
+                text: (own ? 'They answered: ' : 'They chose: ') + answers.join(', ')
+              }
+            ]
+          };
         }
       ),
       tool(
@@ -1236,6 +1324,19 @@ export class AgentSession {
       instructions: (integrator ? integratorInstructions : ticketInstructions).join('\n'),
       tools
     });
+  }
+
+  /**
+   * Empty the panel to match a model that has just forgotten. The conversation
+   * is written to the repo first: the context is meant to go, the record of it
+   * is not.
+   */
+  private forget() {
+    this.hooks.archive?.(this.snapshot());
+    this.transcript = [];
+    this.streaming = '';
+    this.usage = undefined;
+    this.record('system', 'cleared. The agent starts from here; what came before is in the repo log.');
   }
 
   private record(role: ChatEntry['role'], text: string, images = 0) {

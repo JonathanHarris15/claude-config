@@ -654,16 +654,32 @@ function assert(condition, message) {
     const css = fs.readFileSync(path.join(root, 'media', 'board.css'), 'utf8');
     const js = fs.readFileSync(path.join(root, 'media', 'board.js'), 'utf8');
     assert(/--canvas-pad-x:\s*100vw/.test(css), 'the canvas is not a viewport wide either side');
-    const scroller = css.slice(css.indexOf('.bd-columns{flex:1;min-width:0;min-height:0'));
-    const rule = scroller.slice(0, scroller.indexOf('}'));
-    assert(rule.indexOf('var(--canvas-pad-y) var(--canvas-pad-x)') >= 0, 'the left edge is still clamped');
+
+    // The room belongs to the rows. Padding on the scroller cannot shrink, so
+    // a viewport of it made the scroller twice the window wide and pushed the
+    // detail panel out past the shell's overflow:hidden, where it vanished.
+    const rule = (sel) => {
+      const at = css.indexOf(sel);
+      assert(at >= 0, 'no rule for ' + sel);
+      return css.slice(at, css.indexOf('}', at));
+    };
+    const scroller = rule('.bd-columns{flex:1;min-width:0;min-height:0');
+    assert(scroller.indexOf('--canvas-pad-x') < 0, 'the scroller carries canvas padding again');
+    const head = rule('.bd-headrow{display:flex');
+    const lane = rule('.bd-lane{margin-bottom');
+    for (const [name, text] of [['head row', head], ['lane', lane]]) {
+      assert(text.indexOf('margin-left:var(--canvas-pad-x)') >= 0, name + ' has no room to its left');
+      assert(/padding(-right)?:[^;]*var\(--canvas-pad-x\)/.test(text), name + ' has no room to its right');
+    }
+
     // Scroll 0 is now a blank screen, so the board has to open at its columns.
     assert(js.indexOf('function goHome()') >= 0, 'nothing scrolls the board off the blank canvas');
     assert(js.indexOf('if (!homed)') >= 0, 'the board never homes, or homes on every refresh');
-    // The pad is a fixed width that does not zoom; scaling it walks the board.
-    assert(js.indexOf('columnsEl.scrollLeft + x - pad.x') >= 0, 'zoom scales the padding too');
-    assert(js.indexOf('onBoardX * ratio - x + pad.x') >= 0, 'zoom does not put the padding back');
-    return 'a viewport of canvas each side, opens on To Plan, zoom anchors to the columns';
+    assert(js.indexOf("getComputedStyle(row).marginLeft") >= 0, 'the canvas room is measured off the wrong box');
+    // The room is a fixed width that does not zoom; scaling it walks the board.
+    assert(js.indexOf('columnsEl.scrollLeft + x - pad.x') >= 0, 'zoom scales the canvas room too');
+    assert(js.indexOf('onBoardX * ratio - x + pad.x') >= 0, 'zoom does not put the canvas room back');
+    return 'a viewport of canvas each side, carried by the rows, not the scroller';
   });
 
   check('an unsent message stays with its own ticket', () => {
