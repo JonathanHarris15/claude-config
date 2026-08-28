@@ -30,8 +30,6 @@
 !board_extension/
 !board_extension/**
 # Built output and deps rebuild from source on each machine.
-board_extension/node_modules/
-board_extension/out/
 
 # Installed by the twg CLI's own setup, not authored here. Each machine gets
 # its own copy when it runs `twg setup`, so syncing them would fight the
