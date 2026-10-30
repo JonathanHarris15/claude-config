@@ -62,7 +62,21 @@
       "Bash(grep -n \"^    //\\\\|^    function \\\\|^    const [A-Z]\\\\|module.exports\\\\|^        [a-zA-Z]*,$\" public/events-occurrence-core.js)",
       "Bash(curl -sL -w \"\\\\n[HTTP %{http_code}]\\\\n\" \"https://docs.google.com/spreadsheets/d/1aZ-pEb05hf8tDjUVLG71FPbtdqB2qItmcHLCFf7vBuU/export?format=csv&gid=0\")",
       "Bash(rm -f /private/tmp/claude-501/-Users-jono1505-dev-Method/02c57e0e-8616-48aa-ba11-04c9b5274ae7/scratchpad/launch.log)",
-      "Bash(./dist/Method.app/Contents/MacOS/Method)"
+      "Bash(./dist/Method.app/Contents/MacOS/Method)",
+      "Bash(gh run *)",
+      "Bash(gh release *)",
+      "mcp__claude_ai_Atlassian_Rovo__searchJiraIssuesUsingJql",
+      "Bash(sed -n '/^\\\\*\\\\*Verse Flow/,/^$/p;/^\\\\*\\\\*Collections/,/^$/p;/^\\\\*\\\\*Spacing File/,/^$/p' CONTEXT.md | head -40)",
+      "Bash(cd /Users/jono1505/.claude/skills/plan-ticket && cat BOARD.md ROUTING.md)",
+      "Read(//Users/jono1505/.claude/skills/plan-ticket/**)",
+      "Bash(python3 -c \"import os,sys; print\\(sys.version\\); print\\('cores', os.cpu_count\\(\\)\\)\")",
+      "Bash(ulimit -n)",
+      "Bash(ulimit -u)",
+      "Bash(python3 -c \"import xdist,pytest; print\\('xdist',xdist.__version__,'pytest',pytest.__version__\\)\")",
+      "mcp__claude_ai_Atlassian_Rovo__editJiraIssue"
+    ],
+    "additionalDirectories": [
+      "/Users/jono1505/dev/Method"
     ]
   },
   "model": "opus[1m]",
@@ -71,5 +85,17 @@
   "skipDangerousModePermissionPrompt": true,
   "theme": "dark",
   "inputNeededNotifEnabled": true,
-  "agentPushNotifEnabled": true
+  "agentPushNotifEnabled": true,
+  "extraKnownMarketplaces": {
+    "codegraph": {
+      "source": {
+        "source": "github",
+        "repo": "JonathanHarris15/codegraph"
+      },
+      "autoUpdate": true
+    }
+  },
+  "enabledPlugins": {
+    "codegraph@codegraph": true
+  }
 }
