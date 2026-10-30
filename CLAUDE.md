@@ -56,6 +56,11 @@ me. Say "the Mac build works" before you say METH-311.
 - "Design pass", "let's do X together", or "review" means you build first and I
   react. Start it yourself — you need me to finish it, not to begin it. Treat me
   like a senior reviewing a junior's PR, not a gate you wait at.
+- Ask few questions: one or two at most, and only when the answer changes the
+  work and the repo can't settle it. Naming, doc format, whether to write an ADR
+  and other reversible calls are yours: state the call in a line and build.
+- When I tell you how I want you to work, add it to this file, not to memory.
+  This file syncs to all my machines; memory stays on the one it was saved on.
 
 ## Environment
 
