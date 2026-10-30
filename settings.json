@@ -97,5 +97,19 @@
   },
   "enabledPlugins": {
     "codegraph@codegraph": true
+  },
+  "hooks": {
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "git -C \"$HOME/.claude\" pull --ff-only --quiet",
+            "async": true,
+            "timeout": 30
+          }
+        ]
+      }
+    ]
   }
 }
