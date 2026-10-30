@@ -35,6 +35,11 @@
 skills/twg/
 skills/twg-*/
 
+# Written by the Claude app: its copies of the skills synced from the claude.ai
+# account, and the ones it set aside. Each machine fetches its own.
+skills/synced/
+skills/.trash/
+
 # --- Deliberately NOT synced, even though they sit next to the above ---
 # .credentials.json   OAuth token
 # .claude.json        (parent dir) user id, machine id, prompt history, MCP keys
