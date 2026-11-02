@@ -10,7 +10,8 @@ My personal Claude Code configuration, synced across machines.
 | `agents/` | Custom subagents. Markdown with frontmatter; the frontmatter sets the model, tools, and description. |
 | `workflows/` | Multi-agent orchestration scripts. Plain JS that fans out subagents with real control flow — loops, pipelines, adversarial verification. |
 | `commands/` | Custom slash commands. |
-| `settings.json` | Global settings: effort level, theme, permission allowlist, hooks. |
+| `mods/` | Mods — code that changes Claude's own interface. `config-map` is a pane listing every skill on the machine and the whole config folder, marking what this repo tracks. |
+| `settings.json` | Global settings: effort level, theme, permission allowlist, hooks, and the `CLAUDE_CODE_PLUGIN_DIRS` that loads the mods. |
 | `CLAUDE.md` | Instructions prepended to every session, in every project, on every machine. |
 
 ## The JIRA workflow
@@ -114,6 +115,34 @@ sensible option. It stops, moves the ticket to `On Deck`, and says exactly what 
 It refuses to start on a red test suite (you cannot detect a regression against a broken
 baseline), it never merges its own PR, and it will not weaken a test to make it pass — a
 failing test it didn't expect is a **stop**, not an obstacle.
+
+## Mods
+
+A mod is a plugin that changes Claude's own interface rather than what it knows —
+a pane beside the chat, a row above the prompt, a hook on tool calls. Each one is
+a folder under `mods/`, and `settings.json` loads them by naming them in
+`CLAUDE_CODE_PLUGIN_DIRS`. The path uses `~`, so the same setting works on
+Windows and Mac.
+
+**`config-map`** answers "what have I actually got, and which of it survives a new
+machine?" It opens a pane with two views:
+
+- **Skills** — every skill on the machine, in four groups: the ones in this repo
+  (so they're on every machine), the ones only on this machine (the `twg-*` ones
+  the `twg` installer writes, which the allowlist leaves out on purpose), the ones
+  claude.ai syncs down from the customize tab, and the ones plugins bring. Pick one
+  to read what it says it does and copy its path.
+- **Config** — everything at the top of `~/.claude`, split into what the repo
+  tracks and what it doesn't, each with a plain-words note saying what it is.
+
+The header shows the branch, how many files are tracked, and whether anything is
+uncommitted. `/config-map` reopens the pane; `refresh` re-reads the disk.
+
+Its own folder holds the whole mod: `plugin.json` names it, `hooks/register.tsx`
+is the code, `types/index.d.ts` declares the values it keeps between draws, and
+`tests/` is run with `claude plugin test mods/config-map`. The engine writes a
+`.claude-plugin/types/` beside it at every load, naming the build; that stays
+untracked, since each machine regenerates it.
 
 ## The .gitignore is an allowlist, on purpose
 

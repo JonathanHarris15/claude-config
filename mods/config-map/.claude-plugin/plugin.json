@@ -1,0 +1,7 @@
+{
+  "name": "config-map",
+  "version": "0.1.0",
+  "description": "A pane listing every skill on this machine and the whole ~/.claude config, flagging what the config repo tracks",
+  "author": { "name": "Jonathan Harris" },
+  "types": "./types/index.d.ts"
+}

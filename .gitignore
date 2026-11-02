@@ -22,6 +22,11 @@
 !hooks/
 !hooks/**
 
+# Mods: panes and hooks that change Claude's own interface. Each is a plugin
+# folder, loaded by CLAUDE_CODE_PLUGIN_DIRS in settings.json.
+!mods/
+!mods/**
+
 # Per-space working notes, written from the board's sidebar. Small, hand-kept,
 # and worth having on every machine.
 !board/
@@ -39,6 +44,10 @@ skills/twg-*/
 # account, and the ones it set aside. Each machine fetches its own.
 skills/synced/
 skills/.trash/
+
+# Laid beside a mod by the engine at every load, naming the build that wrote
+# them. Regenerated per machine, so syncing them would only ever conflict.
+mods/*/.claude-plugin/types/
 
 # --- Deliberately NOT synced, even though they sit next to the above ---
 # .credentials.json   OAuth token

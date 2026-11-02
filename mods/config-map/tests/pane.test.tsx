@@ -1,0 +1,108 @@
+import { expect, test } from 'claude-code/testing'
+
+import type { Scan } from '../types'
+
+const PANE = {
+  plugin: 'config-map',
+  component: 'Pane',
+  requestId: 'config-map',
+  props: {
+    title: 'Claude config',
+    isFocused: false,
+    bodyColumns: 60,
+    placement: 'dock',
+    scroll: { offset: 0, bodyRows: 40 },
+    view: {},
+  },
+} as const
+
+const SCAN: Scan = {
+  at: 1,
+  root: '/home/me/.claude',
+  branch: 'main',
+  trackedFiles: 400,
+  dirtyFiles: 0,
+  skills: [
+    { id: 'own/tdd', name: 'tdd', origin: 'repo', owner: '', path: 'skills/tdd', isTracked: true },
+    { id: 'own/twg', name: 'twg', origin: 'local', owner: '', path: 'skills/twg', isTracked: false },
+    {
+      id: 'synced/pdf',
+      name: 'pdf',
+      origin: 'synced',
+      owner: 'claude.ai',
+      path: 'skills/synced/bucket/pdf',
+      isTracked: false,
+    },
+  ],
+  config: [
+    {
+      id: 'cfg/CLAUDE.md',
+      name: 'CLAUDE.md',
+      kind: 'file',
+      isTracked: true,
+      trackedCount: 1,
+      note: 'your global instructions, read every session',
+    },
+    {
+      id: 'cfg/projects',
+      name: 'projects',
+      kind: 'dir',
+      isTracked: false,
+      trackedCount: 0,
+      note: 'full session transcripts',
+    },
+  ],
+  troubles: [],
+}
+
+test('the pane sorts skills by whether the config repo holds them', async ($, on) => {
+  // Nothing sits beneath the plugin: these hooks stand for the store.
+  const held: Record<string, unknown> = {
+    scan: { shape: 'scan-1', value: SCAN },
+    shut: { shape: 'shut-1', value: [] },
+  }
+  on('state.get', (_, e) => ({ value: { value: held[e.key], version: 1 } }))
+
+  for (const surface of ['terminal', 'desktop', 'vscode', 'mobile'] as const) {
+    const ui = await $.ui.mount({ ...PANE, surface })
+
+    expect(await ui.find({ key: 'h-repo' })).toBeDefined()
+    expect(await ui.find({ key: 'h-local' })).toBeDefined()
+    expect(await ui.find({ key: 'h-synced' })).toBeDefined()
+    expect(await ui.find({ key: 'b-own/tdd' })).toBeDefined()
+    expect(await ui.find({ type: 'Text', text: /400 files tracked/ })).toBeDefined()
+
+    await ui.unmount()
+  }
+})
+
+test('the config view tells tracked from untracked', async ($, on) => {
+  // The scan is seeded; every other key falls through to the engine, so the
+  // press writes and redraws as it would in a session.
+  const held: Record<string, unknown> = { scan: { shape: 'scan-1', value: SCAN } }
+  on('state.get', (_, e, next) =>
+    e.key in held ? { value: { value: held[e.key], version: 1 } } : next(e),
+  )
+
+  const ui = await $.ui.mount({ ...PANE, surface: 'desktop' })
+  await ui.press({ key: 'tab-config' })
+
+  expect((await ui.find({ type: 'Text', text: /Tracked in the repo/ }))?.text).toBe(
+    'Tracked in the repo (1)',
+  )
+  expect((await ui.find({ type: 'Text', text: /Not tracked/ }))?.text).toBe('Not tracked (1)')
+  expect(await ui.find({ type: 'Text', text: /full session transcripts/ })).toBeDefined()
+
+  await ui.unmount()
+})
+
+test('a scan an earlier version stored is declined', async ($, on) => {
+  // What the code before this edit wrote stays through the reload.
+  on('state.get', () => ({ value: { value: { shape: 'scan-0', value: SCAN }, version: 1 } }))
+
+  const ui = await $.ui.mount({ ...PANE, surface: 'desktop' })
+
+  expect((await ui.find({ type: 'Text' }))?.text).toBe('Nothing read yet.')
+
+  await ui.unmount()
+})
