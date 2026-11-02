@@ -138,6 +138,22 @@ machine?" It opens a pane with two views:
 The header shows the branch, how many files are tracked, and whether anything is
 uncommitted. `/config-map` reopens the pane; `refresh` re-reads the disk.
 
+**Putting a skill in the repo.** Pick an untracked skill and the pane offers to
+add it, which means one of two things depending on where the skill lives:
+
+- One already sitting in `skills/` — the `twg-*` ones — is **tracked where it
+  is**. Nothing moves; the pane appends an explicit `!skills/<name>/` pair under
+  a marker comment, so the allowlist stays an allowlist with one more named
+  exception.
+- One the app or a plugin owns is **copied into `skills/<name>/`**, and the
+  original stays where it is. Tracking those in place would put git and the
+  thing that writes them in a fight over the same folder. The engine writes
+  text and not bytes, so a binary file (a font, an image) is left behind and
+  named rather than half-copied.
+
+Either way the result is staged, not committed — `/sync-config` commits and
+pushes it, so nothing leaves the machine without you looking at it first.
+
 Its own folder holds the whole mod: `plugin.json` names it, `hooks/register.tsx`
 is the code, `types/index.d.ts` declares the values it keeps between draws, and
 `tests/` is run with `claude plugin test mods/config-map`. The engine writes a

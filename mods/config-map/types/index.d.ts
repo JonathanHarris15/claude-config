@@ -41,6 +41,14 @@ export type Scan = {
 /** The description read out of a skill's own file, once it is picked. */
 export type Detail = { id: string; text: string }
 
+/** What came of adding one skill to the repo, said in plain words. */
+export type Added = {
+  /** The skill it speaks for, so a stale message never sits under another. */
+  id: string
+  ok: boolean
+  text: string
+}
+
 declare module 'claude-code' {
   interface PluginState {
     'config-map': {
@@ -50,6 +58,7 @@ declare module 'claude-code' {
       detail: Shaped<Detail | null>
       shut: Shaped<string[]>
       isBusy: Shaped<boolean>
+      added: Shaped<Added | null>
     }
   }
 }

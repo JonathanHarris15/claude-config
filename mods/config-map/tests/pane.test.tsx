@@ -106,3 +106,34 @@ test('a scan an earlier version stored is declined', async ($, on) => {
 
   await ui.unmount()
 })
+test('an untracked skill is offered to the repo and a tracked one is not', async ($, on) => {
+  // One hook, read afresh each draw, so the pick can change between mounts.
+  let picked = 'own/twg'
+  on('state.get', (_, e, next) => {
+    const held: Record<string, unknown> = {
+      scan: { shape: 'scan-1', value: SCAN },
+      shut: { shape: 'shut-1', value: [] },
+      pick: { shape: 'pick-1', value: picked },
+    }
+    return e.key in held ? { value: { value: held[e.key], version: 1 } } : next(e)
+  })
+
+  // One already in skills/, so the allowlist alone keeps it out.
+  let ui = await $.ui.mount({ ...PANE, surface: 'desktop' })
+  expect(await ui.find({ key: 'keep' })).toBeDefined()
+  expect(await ui.find({ type: 'Text', text: /adds one allowlist line/ })).toBeDefined()
+  await ui.unmount()
+
+  // One the app owns, which is copied in instead.
+  picked = 'synced/pdf'
+  ui = await $.ui.mount({ ...PANE, surface: 'desktop' })
+  expect(await ui.find({ key: 'keep' })).toBeDefined()
+  expect(await ui.find({ type: 'Text', text: /leaves the original where it is/ })).toBeDefined()
+  await ui.unmount()
+
+  // One the repo already holds has nothing to offer.
+  picked = 'own/tdd'
+  ui = await $.ui.mount({ ...PANE, surface: 'desktop' })
+  expect(await ui.find({ key: 'keep' })).toBeUndefined()
+  await ui.unmount()
+})

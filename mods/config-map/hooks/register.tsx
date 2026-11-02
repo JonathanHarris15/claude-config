@@ -1,7 +1,7 @@
 import { atom, read, update } from 'claude-code'
 import type { EngineInterface, Register } from 'claude-code'
 
-import type { ConfigRow, Detail, Scan, SkillOrigin, SkillRow } from '../types'
+import type { Added, ConfigRow, Detail, Scan, SkillOrigin, SkillRow } from '../types'
 
 const PANE = 'config-map'
 
@@ -19,6 +19,15 @@ const shut = atom({ plugin: 'config-map', key: 'shut' } as const, ['plugin'] as 
   shape: 'shut-1',
 })
 const isBusy = atom({ plugin: 'config-map', key: 'isBusy' } as const, false, { shape: 'busy-1' })
+const added = atom({ plugin: 'config-map', key: 'added' } as const, null as Added | null, {
+  shape: 'added-1',
+})
+
+/** The line the allowlist gains above anything this pane un-ignores. */
+const MARK = '# Added from the config-map pane, tracked on purpose.'
+
+/** Files git should hold but this pane cannot copy, since it writes only text. */
+const BINARY = /\.(woff2?|ttf|otf|eot|png|jpe?g|gif|webp|ico|pdf|zips?|gz|tgz|wasm|mp[34]|wav|dll|exe|so|dylib|bin)$/i
 
 /** What each thing at the top of the config folder is, in plain words. */
 const NOTES: Record<string, string> = {
@@ -255,6 +264,131 @@ async function choose($: EngineInterface, row: SkillRow, root: string): Promise<
   await update($, detail, () => ({ id: row.id, text }))
 }
 
+/**
+ * Un-ignore a path the allowlist still refuses, by name, at the end of the
+ * file where the last rule wins. The allowlist stays an allowlist: one more
+ * explicit exception, never a flip to a denylist.
+ */
+async function allowInGit($: EngineInterface, root: string, rel: string): Promise<void> {
+  const asked = await $.process.run(['git', '-C', root, 'check-ignore', '-v', '--', rel], {
+    timeoutMs: 20000,
+  })
+  // 1 says no rule mentions the path at all, so there is nothing to add.
+  if (asked.exitCode !== 0) return
+  // A rule matched, which is not the same as ignored: git answers 0 for a
+  // negation too. `<source>:<line>:<rule>\t<path>`, the source a path of its
+  // own, so take the rule from the last `:<digits>:` before the tab.
+  const shown = (asked.stdout.split(/\r?\n/)[0] ?? '').split('\t')[0] ?? ''
+  const rule = /:(\d+):(.*)$/.exec(shown)?.[2] ?? ''
+  if (rule.startsWith('!')) return
+
+  const file = root + '/.gitignore'
+  const held = await $.fs.read(file)
+  const text = typeof held === 'string' ? held : ''
+  const have = new Set(text.split(/\r?\n/).map(one => one.trim()))
+  const want = ['!' + rel + '/', '!' + rel + '/**'].filter(one => !have.has(one))
+  if (want.length === 0) return
+
+  const at = text.indexOf(MARK)
+  if (at < 0) {
+    await $.fs.write(file, text.replace(/\s*$/, '') + '\n\n' + MARK + '\n' + want.join('\n') + '\n')
+    return
+  }
+  const cut = text.indexOf('\n', at)
+  const after = cut < 0 ? text.length : cut + 1
+  await $.fs.write(file, text.slice(0, after) + want.join('\n') + '\n' + text.slice(after))
+}
+
+/**
+ * Copy a skill folder's text files across. The engine writes text and not
+ * bytes, so anything else is left behind and named, never half-copied.
+ */
+async function copyTree(
+  $: EngineInterface,
+  from: string,
+  to: string,
+): Promise<{ files: number; missed: string[] }> {
+  let files = 0
+  const missed: string[] = []
+
+  const walk = async (src: string, dst: string, where: string): Promise<void> => {
+    for (const one of await $.fs.list(src)) {
+      const named = where ? where + '/' + one.name : one.name
+      if (one.kind === 'dir') {
+        await walk(src + '/' + one.name, dst + '/' + one.name, named)
+        continue
+      }
+      if (one.kind !== 'file' || BINARY.test(one.name)) {
+        missed.push(named)
+        continue
+      }
+      try {
+        const held = await $.fs.read(src + '/' + one.name)
+        // A byte no text holds says the file is not text after all.
+        if (typeof held !== 'string' || held.includes('\u0000') || held.includes('�')) {
+          missed.push(named)
+          continue
+        }
+        await $.fs.write(dst + '/' + one.name, held)
+        files += 1
+      } catch {
+        missed.push(named)
+      }
+    }
+  }
+
+  await walk(from, to, '')
+  return { files, missed }
+}
+
+/**
+ * Put one untracked skill in the repo, and say what it took. A skill already
+ * sitting in `skills/` only needs the allowlist to stop refusing it; one the
+ * app or a plugin owns is copied in, since git and its owner would otherwise
+ * both write the same folder.
+ */
+async function keep($: EngineInterface, row: SkillRow, root: string): Promise<void> {
+  if (row.isTracked) return
+  const say = (ok: boolean, text: string) => update($, added, () => ({ id: row.id, ok, text }))
+
+  await update($, isBusy, () => true)
+  let moved = false
+  try {
+    let rel = row.path
+    let said = ''
+
+    if (row.origin === 'local') {
+      await allowInGit($, root, rel)
+      said = 'Tracked where it sits.'
+    } else {
+      rel = 'skills/' + row.name
+      if (await $.fs.exists(root + '/' + rel)) {
+        await say(false, rel + ' is already there, so nothing was copied.')
+        return
+      }
+      const done = await copyTree($, root + '/' + row.path, root + '/' + rel)
+      moved = true
+      await allowInGit($, root, rel)
+      said = 'Copied ' + done.files + ' files to ' + rel + '. The original stays put.'
+      if (done.missed.length > 0) said += ' Left behind: ' + done.missed.join(', ') + '.'
+    }
+
+    const staged = await $.process.run(['git', '-C', root, 'add', '--', rel], { timeoutMs: 20000 })
+    if (staged.exitCode !== 0) {
+      await say(false, said + ' But git add failed: ' + firstLine(staged.stderr))
+      return
+    }
+    moved = true
+    await say(true, said + ' Staged — /sync-config commits and pushes it.')
+  } catch (err) {
+    await say(false, 'Could not add it: ' + String(err))
+  } finally {
+    await update($, isBusy, () => false)
+  }
+
+  if (moved) await rescan($)
+}
+
 export const register: Register = on => {
   on('session.start', async ($, e, next) => {
     await $.command.register({
@@ -282,6 +416,7 @@ export const register: Register = on => {
     const shown = await read($, detail)
     const closed = await read($, shut)
     const busy = await read($, isBusy)
+    const last = await read($, added)
 
     if (!found) {
       return (
@@ -418,7 +553,30 @@ export const register: Register = on => {
             <Text bold>{chosen.name}</Text>
             <Text dimColor>{chosen.path}</Text>
             <Text>{shown && shown.id === chosen.id ? shown.text : 'Reading...'}</Text>
+            {!chosen.isTracked && (
+              <Box marginTop={1}>
+                <Text dimColor>
+                  {chosen.origin === 'local'
+                    ? 'Not in the repo. Tracking it adds one allowlist line.'
+                    : 'Not in the repo. Copying it leaves the original where it is.'}
+                </Text>
+              </Box>
+            )}
+            {last && last.id === chosen.id && (
+              <Box marginTop={1}>
+                <Text color={last.ok ? 'green' : 'red'}>{last.text}</Text>
+              </Box>
+            )}
             <Box gap={1} marginTop={1}>
+              {!chosen.isTracked && (
+                <Button key="keep" onPress={() => void keep($, chosen, found.root)}>
+                  {busy
+                    ? 'working...'
+                    : chosen.origin === 'local'
+                      ? 'Track in repo'
+                      : 'Copy into repo'}
+                </Button>
+              )}
               <Button
                 key="copy"
                 onPress={press =>
