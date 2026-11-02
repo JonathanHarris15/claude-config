@@ -30,25 +30,13 @@
       "/Users/jono1505/dev/Method"
     ]
   },
-  "model": "opus[1m]",
   "effortLevel": "high",
   "autoUpdatesChannel": "latest",
   "skipDangerousModePermissionPrompt": true,
   "theme": "dark",
   "inputNeededNotifEnabled": true,
   "agentPushNotifEnabled": true,
-  "extraKnownMarketplaces": {
-    "codegraph": {
-      "source": {
-        "source": "github",
-        "repo": "JonathanHarris15/codegraph"
-      },
-      "autoUpdate": true
-    }
-  },
-  "enabledPlugins": {
-    "codegraph@codegraph": true
-  },
+  "model": "claude-opus-5",
   "hooks": {
     "SessionStart": [
       {
