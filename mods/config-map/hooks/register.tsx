@@ -1,20 +1,19 @@
 import { atom, read, update } from 'claude-code'
 import type { EngineInterface, Register } from 'claude-code'
 
-import type { Added, ConfigRow, Detail, Scan, SkillOrigin, SkillRow } from '../types'
+import type { Added, ConfigRow, Scan, SkillOrigin, SkillRow } from '../types'
 
 const PANE = 'config-map'
 
 // Change a tag when a value's fields change: it declines what an earlier
 // version stored, which outlives a reload.
-const scan = atom({ plugin: 'config-map', key: 'scan' } as const, null as Scan | null, { shape: 'scan-1' })
+const scan = atom({ plugin: 'config-map', key: 'scan' } as const, null as Scan | null, {
+  shape: 'scan-2',
+})
 const view = atom({ plugin: 'config-map', key: 'view' } as const, 'skills' as 'skills' | 'config', {
   shape: 'view-1',
 })
 const pick = atom({ plugin: 'config-map', key: 'pick' } as const, '', { shape: 'pick-1' })
-const detail = atom({ plugin: 'config-map', key: 'detail' } as const, null as Detail | null, {
-  shape: 'detail-1',
-})
 const shut = atom({ plugin: 'config-map', key: 'shut' } as const, ['plugin'] as string[], {
   shape: 'shut-1',
 })
@@ -73,6 +72,24 @@ const GROUPS: { origin: SkillOrigin; title: string; gist: string }[] = [
 function firstLine(text: string): string {
   const line = text.split(/\r?\n/).find(one => one.trim())
   return line ? line.trim().slice(0, 160) : ''
+}
+
+/** Pad a name out so a column of them lines up. */
+function pad(text: string, wide: number): string {
+  return text.length >= wide ? text : text + ' '.repeat(wide - text.length)
+}
+
+/** Cut text to the room there is, marking that it was cut. */
+function cut(text: string, wide: number): string {
+  if (wide < 2) return ''
+  return text.length <= wide ? text : text.slice(0, wide - 1).trimEnd() + '…'
+}
+
+/** The widest of these names, within a cap, so one column holds them all. */
+function widest(names: readonly string[], cap: number): number {
+  let n = 0
+  for (const one of names) n = Math.max(n, one.length)
+  return Math.min(cap, n)
 }
 
 /** The config folder this session reads, however the machine names home. */
@@ -147,6 +164,7 @@ async function sweep($: EngineInterface): Promise<Scan> {
       owner: '',
       path,
       isTracked,
+      gist: '',
     })
   }
 
@@ -159,6 +177,7 @@ async function sweep($: EngineInterface): Promise<Scan> {
         owner: 'claude.ai',
         path: 'skills/synced/' + bucket + '/' + name,
         isTracked: false,
+        gist: '',
       })
     }
   }
@@ -175,6 +194,7 @@ async function sweep($: EngineInterface): Promise<Scan> {
             owner: plug,
             path: base + '/' + plug + '/skills/' + name,
             isTracked: false,
+            gist: '',
           })
         }
       }
@@ -211,10 +231,11 @@ async function sweep($: EngineInterface): Promise<Scan> {
     skills,
     config,
     troubles,
+    isTold: false,
   }
 }
 
-/** The description a skill's own file declares, read only once it is picked. */
+/** The description a skill's own file declares. */
 function describedIn(text: string): string {
   const front = /^---\r?\n([\s\S]*?)\r?\n---/.exec(text)
   const body = front?.[1]
@@ -235,33 +256,47 @@ function describedIn(text: string): string {
   return (quoted?.[2] ?? value).trim()
 }
 
-/** Read the disk again and keep what it found. */
+/** What one skill says it does, on a single line, or nothing. */
+async function gistOf($: EngineInterface, root: string, row: SkillRow): Promise<string> {
+  const file = root + '/' + row.path + '/SKILL.md'
+  if (!(await $.fs.exists(file))) return ''
+  try {
+    const held = await $.fs.read(file)
+    const said = describedIn(typeof held === 'string' ? held : '')
+    return said.replace(/\s+/g, ' ').trim().slice(0, 300)
+  } catch {
+    return ''
+  }
+}
+
+/**
+ * The second pass: what every skill says it does. Split from the sweep so the
+ * pane draws the moment the folders are known, rather than after a hundred
+ * files have been read.
+ */
+async function describeAll($: EngineInterface, found: Scan): Promise<Scan> {
+  const told = await Promise.all(
+    found.skills.map(async row => ({ ...row, gist: await gistOf($, found.root, row) })),
+  )
+  return { ...found, skills: told, isTold: true }
+}
+
+/** Read the disk again and keep what it found, the descriptions after. */
 async function rescan($: EngineInterface): Promise<void> {
   await update($, isBusy, () => true)
   try {
     const swept = await sweep($)
     await update($, scan, () => swept)
+    const told = await describeAll($, swept)
+    await update($, scan, () => told)
   } finally {
     await update($, isBusy, () => false)
   }
 }
 
-/** Pick a skill, or unpick it, and fetch what its own file says it does. */
-async function choose($: EngineInterface, row: SkillRow, root: string): Promise<void> {
+/** Open a skill where it sits in the list, or shut it again. */
+async function choose($: EngineInterface, row: SkillRow): Promise<void> {
   await update($, pick, was => (was === row.id ? '' : row.id))
-  if ((await read($, pick)) !== row.id) return
-  await update($, detail, () => ({ id: row.id, text: 'Reading...' }))
-  const file = root + '/' + row.path + '/SKILL.md'
-  let text = 'No SKILL.md here.'
-  if (await $.fs.exists(file)) {
-    try {
-      const held = await $.fs.read(file)
-      text = describedIn(typeof held === 'string' ? held : '') || 'No description declared.'
-    } catch {
-      text = 'Could not read SKILL.md.'
-    }
-  }
-  await update($, detail, () => ({ id: row.id, text }))
 }
 
 /**
@@ -294,8 +329,8 @@ async function allowInGit($: EngineInterface, root: string, rel: string): Promis
     await $.fs.write(file, text.replace(/\s*$/, '') + '\n\n' + MARK + '\n' + want.join('\n') + '\n')
     return
   }
-  const cut = text.indexOf('\n', at)
-  const after = cut < 0 ? text.length : cut + 1
+  const cutAt = text.indexOf('\n', at)
+  const after = cutAt < 0 ? text.length : cutAt + 1
   await $.fs.write(file, text.slice(0, after) + want.join('\n') + '\n' + text.slice(after))
 }
 
@@ -413,34 +448,35 @@ export const register: Register = on => {
     const found = await read($, scan)
     const which = await read($, view)
     const picked = await read($, pick)
-    const shown = await read($, detail)
     const closed = await read($, shut)
     const busy = await read($, isBusy)
     const last = await read($, added)
 
     if (!found) {
       return (
-        <Box flexDirection="column">
-          <Text dimColor>{busy ? 'Reading your config...' : 'Nothing read yet.'}</Text>
-          <Button key="scan" onPress={() => void rescan($)}>
+        <Box flexDirection="column" gap={1}>
+          <Text dimColor>{busy ? 'Reading your config…' : 'Nothing read yet.'}</Text>
+          <Button key="scan" variant="primary" onPress={() => void rescan($)}>
             Read it now
           </Button>
         </Box>
       )
     }
 
-    const room = Math.max(4, (e.viewport?.rows ?? 30) - 11)
+    const wide = Math.max(32, e.props?.bodyColumns ?? 60)
+    const room = Math.max(4, (e.viewport?.rows ?? 30) - 10)
 
     const head = (
       <Box flexDirection="column">
-        <Box gap={1}>
+        <Box gap={2}>
           <Button
             key="tab-skills"
             plain
             dimColor={which !== 'skills'}
             onPress={() => void update($, view, () => 'skills')}
           >
-            {'Skills (' + found.skills.length + ')'}
+            <Text weight={which === 'skills' ? 'semibold' : 'regular'}>Skills</Text>
+            <Text dimColor>{' ' + found.skills.length}</Text>
           </Button>
           <Button
             key="tab-config"
@@ -448,24 +484,25 @@ export const register: Register = on => {
             dimColor={which !== 'config'}
             onPress={() => void update($, view, () => 'config')}
           >
-            {'Config (' + found.config.length + ')'}
+            <Text weight={which === 'config' ? 'semibold' : 'regular'}>Config</Text>
+            <Text dimColor>{' ' + found.config.length}</Text>
           </Button>
           <Button key="refresh" plain dimColor onPress={() => void rescan($)}>
-            {busy ? 'reading...' : 'refresh'}
+            {busy ? 'reading…' : 'refresh'}
           </Button>
         </Box>
-        <Text dimColor>
-          {found.branch +
-            ' - ' +
-            found.trackedFiles +
-            ' files tracked - ' +
-            (found.dirtyFiles ? found.dirtyFiles + ' uncommitted' : 'clean')}
-        </Text>
+        <Box gap={1}>
+          <Text color="claude">{found.branch}</Text>
+          <Text dimColor>{'· ' + found.trackedFiles + ' files tracked ·'}</Text>
+          <Text color={found.dirtyFiles > 0 ? 'warning' : 'success'}>
+            {found.dirtyFiles > 0 ? found.dirtyFiles + ' uncommitted' : 'clean'}
+          </Text>
+        </Box>
       </Box>
     )
 
     const troubles = found.troubles.map(one => (
-      <Text key={'t-' + one} color="red">
+      <Text key={'t-' + one} color="error">
         {one}
       </Text>
     ))
@@ -473,32 +510,49 @@ export const register: Register = on => {
     if (which === 'config') {
       const kept = found.config.filter(one => one.isTracked)
       const rest = found.config.filter(one => !one.isTracked)
+      const nameWide = widest(
+        found.config.map(one => one.name + (one.kind === 'dir' ? '/' : '')),
+        22,
+      )
+      const noteWide = Math.max(8, wide - nameWide - 4)
+
+      const line = (one: ConfigRow, isKept: boolean) => {
+        const name = one.name + (one.kind === 'dir' ? '/' : '')
+        const note = (one.trackedCount > 1 ? one.trackedCount + ' files · ' : '') + one.note
+        return (
+          <Box key={(isKept ? 'k-' : 'u-') + one.id} paddingLeft={2}>
+            <Text mono color={isKept ? 'text' : 'inactive'}>
+              {pad(cut(name, nameWide), nameWide)}
+            </Text>
+            <Text dimColor>{'  ' + cut(note, noteWide)}</Text>
+          </Box>
+        )
+      }
 
       return (
         <Box flexDirection="column">
           {head}
-          <Box marginTop={1}>
-            <Text bold>{'Tracked in the repo (' + kept.length + ')'}</Text>
-          </Box>
-          {kept.map(one => (
-            <Box key={'k-' + one.id} paddingLeft={1}>
-              <Text>{one.name + (one.kind === 'dir' ? '/' : '')}</Text>
-              <Text dimColor>
-                {'  ' + (one.trackedCount > 1 ? one.trackedCount + ' files - ' : '') + one.note}
+          <Box flexDirection="column" marginTop={1}>
+            <Box gap={1}>
+              <Text weight="semibold" color="success">
+                {'Tracked in the repo'}
               </Text>
+              <Text dimColor>{kept.length + ' · travels to every machine'}</Text>
             </Box>
-          ))}
-          <Box marginTop={1}>
-            <Text bold>{'Not tracked (' + rest.length + ')'}</Text>
+            {kept.map(one => line(one, true))}
           </Box>
-          {rest.slice(0, room).map(one => (
-            <Box key={'u-' + one.id} paddingLeft={1}>
-              <Text dimColor>
-                {one.name + (one.kind === 'dir' ? '/' : '') + (one.note ? '  ' + one.note : '')}
-              </Text>
+          <Box flexDirection="column" marginTop={1}>
+            <Box gap={1}>
+              <Text weight="semibold">{'Not tracked'}</Text>
+              <Text dimColor>{rest.length + ' · stays on this machine'}</Text>
             </Box>
-          ))}
-          {rest.length > room && <Text dimColor>{'  ...' + (rest.length - room) + ' more'}</Text>}
+            {rest.slice(0, room).map(one => line(one, false))}
+            {rest.length > room && (
+              <Box paddingLeft={2}>
+                <Text dimColor>{'… and ' + (rest.length - room) + ' more'}</Text>
+              </Box>
+            )}
+          </Box>
           {troubles}
         </Box>
       )
@@ -509,14 +563,16 @@ export const register: Register = on => {
       rows: found.skills.filter(one => one.origin === group.origin),
     })).filter(one => one.rows.length > 0)
 
-    const chosen = found.skills.find(one => one.id === picked)
-
     return (
       <Box flexDirection="column">
         {head}
         {groups.map(({ group, rows }) => {
           const isShut = closed.includes(group.origin)
           const seen = isShut ? [] : rows.slice(0, room)
+          const nameWide = widest(
+            rows.map(one => one.name),
+            24,
+          )
 
           return (
             <Box key={'g-' + group.origin} flexDirection="column" marginTop={1}>
@@ -531,66 +587,113 @@ export const register: Register = on => {
                   )
                 }
               >
-                {(isShut ? '+ ' : '- ') + group.title + ' (' + rows.length + ')  '}
-                <Text dimColor>{group.gist}</Text>
+                <Text dimColor>{isShut ? '▸ ' : '▾ '}</Text>
+                <Text weight="semibold">{group.title}</Text>
+                <Text dimColor>{'  ' + rows.length + '  ' + group.gist}</Text>
               </Button>
-              {seen.map(row => (
-                <Box key={'r-' + row.id} paddingLeft={2}>
-                  <Button key={'b-' + row.id} plain onPress={() => void choose($, row, found.root)}>
-                    {(row.id === picked ? '> ' : '  ') + row.name + '  '}
-                    <Text dimColor>{row.owner}</Text>
-                  </Button>
-                </Box>
-              ))}
+
+              {seen.map(row => {
+                const isOpen = row.id === picked
+                const gistWide = Math.max(8, wide - nameWide - 8)
+
+                return (
+                  <Box key={'r-' + row.id} flexDirection="column">
+                    <Box paddingLeft={2}>
+                      <Button key={'b-' + row.id} plain onPress={() => void choose($, row)}>
+                        <Text dimColor>{isOpen ? '▾ ' : '  '}</Text>
+                        <Text mono weight={isOpen ? 'semibold' : 'regular'}>
+                          {pad(cut(row.name, nameWide), nameWide)}
+                        </Text>
+                        <Text dimColor>
+                          {'  ' +
+                            (row.gist
+                              ? cut(row.gist, gistWide)
+                              : found.isTold
+                                ? 'no description'
+                                : '…')}
+                        </Text>
+                      </Button>
+                    </Box>
+
+                    {isOpen && (
+                      <Box flexDirection="column" paddingLeft={6} marginBottom={1}>
+                        <Text mono dimColor>
+                          {row.path}
+                        </Text>
+                        <Box marginTop={1}>
+                          <Text wrap="wrap">
+                            {row.gist ||
+                              (found.isTold
+                                ? 'Its SKILL.md declares no description.'
+                                : 'Reading its SKILL.md…')}
+                          </Text>
+                        </Box>
+                        {row.owner !== '' && (
+                          <Text dimColor>{'Comes with ' + row.owner + '.'}</Text>
+                        )}
+                        {!row.isTracked && (
+                          <Box marginTop={1}>
+                            <Text color="warning" wrap="wrap">
+                              {row.origin === 'local'
+                                ? 'Not in the repo. Tracking it adds one allowlist line.'
+                                : 'Not in the repo. Copying it leaves the original where it is.'}
+                            </Text>
+                          </Box>
+                        )}
+                        {last && last.id === row.id && (
+                          <Box marginTop={1}>
+                            <Text color={last.ok ? 'success' : 'error'} wrap="wrap">
+                              {last.text}
+                            </Text>
+                          </Box>
+                        )}
+                        <Box gap={1} marginTop={1}>
+                          {!row.isTracked && (
+                            <Button
+                              key="keep"
+                              variant="primary"
+                              onPress={() => void keep($, row, found.root)}
+                            >
+                              {busy
+                                ? 'working…'
+                                : row.origin === 'local'
+                                  ? 'Track in repo'
+                                  : 'Copy into repo'}
+                            </Button>
+                          )}
+                          <Button
+                            key="copy"
+                            onPress={press =>
+                              void $.ui.copy({
+                                text: found.root + '/' + row.path,
+                                surface: press.surface,
+                              })
+                            }
+                          >
+                            Copy path
+                          </Button>
+                          <Button
+                            key="shut"
+                            role="dismiss"
+                            onPress={() => void update($, pick, () => '')}
+                          >
+                            Close
+                          </Button>
+                        </Box>
+                      </Box>
+                    )}
+                  </Box>
+                )
+              })}
+
               {!isShut && rows.length > seen.length && (
-                <Text dimColor>{'    ...' + (rows.length - seen.length) + ' more'}</Text>
+                <Box paddingLeft={4}>
+                  <Text dimColor>{'… and ' + (rows.length - seen.length) + ' more'}</Text>
+                </Box>
               )}
             </Box>
           )
         })}
-        {chosen && (
-          <Box flexDirection="column" marginTop={1} borderStyle="round" paddingX={1}>
-            <Text bold>{chosen.name}</Text>
-            <Text dimColor>{chosen.path}</Text>
-            <Text>{shown && shown.id === chosen.id ? shown.text : 'Reading...'}</Text>
-            {!chosen.isTracked && (
-              <Box marginTop={1}>
-                <Text dimColor>
-                  {chosen.origin === 'local'
-                    ? 'Not in the repo. Tracking it adds one allowlist line.'
-                    : 'Not in the repo. Copying it leaves the original where it is.'}
-                </Text>
-              </Box>
-            )}
-            {last && last.id === chosen.id && (
-              <Box marginTop={1}>
-                <Text color={last.ok ? 'green' : 'red'}>{last.text}</Text>
-              </Box>
-            )}
-            <Box gap={1} marginTop={1}>
-              {!chosen.isTracked && (
-                <Button key="keep" onPress={() => void keep($, chosen, found.root)}>
-                  {busy
-                    ? 'working...'
-                    : chosen.origin === 'local'
-                      ? 'Track in repo'
-                      : 'Copy into repo'}
-                </Button>
-              )}
-              <Button
-                key="copy"
-                onPress={press =>
-                  void $.ui.copy({ text: found.root + '/' + chosen.path, surface: press.surface })
-                }
-              >
-                Copy path
-              </Button>
-              <Button key="shut" role="dismiss" onPress={() => void update($, pick, () => '')}>
-                Close
-              </Button>
-            </Box>
-          </Box>
-        )}
         {troubles}
       </Box>
     )

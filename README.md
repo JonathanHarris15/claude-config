@@ -130,10 +130,15 @@ machine?" It opens a pane with two views:
 - **Skills** — every skill on the machine, in four groups: the ones in this repo
   (so they're on every machine), the ones only on this machine (the `twg-*` ones
   the `twg` installer writes, which the allowlist leaves out on purpose), the ones
-  claude.ai syncs down from the customize tab, and the ones plugins bring. Pick one
-  to read what it says it does and copy its path.
+  claude.ai syncs down from the customize tab, and the ones plugins bring. Each
+  group opens and closes, and every row carries what that skill says it does,
+  read out of its own `SKILL.md`. Click a skill and it opens where it sits, under
+  its own row: the full description, where it lives, and what you can do with it.
 - **Config** — everything at the top of `~/.claude`, split into what the repo
   tracks and what it doesn't, each with a plain-words note saying what it is.
+
+The descriptions come in a second pass, so the list is there to read before all
+hundred-odd `SKILL.md` files have been opened.
 
 The header shows the branch, how many files are tracked, and whether anything is
 uncommitted. `/config-map` reopens the pane; `refresh` re-reads the disk.

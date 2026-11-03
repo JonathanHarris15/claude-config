@@ -11,6 +11,11 @@ export type SkillRow = {
   /** Relative to the config root, so it reads the same on either machine. */
   path: string
   isTracked: boolean
+  /**
+   * What the skill says it does, out of its own SKILL.md, on one line. Read in
+   * a second pass, so it is empty until that pass lands.
+   */
+  gist: string
 }
 
 /** One entry at the top of the config folder. */
@@ -36,10 +41,9 @@ export type Scan = {
   config: ConfigRow[]
   /** Anything that went wrong, said plainly. */
   troubles: string[]
+  /** Whether the second pass has filled the skills' descriptions in. */
+  isTold: boolean
 }
-
-/** The description read out of a skill's own file, once it is picked. */
-export type Detail = { id: string; text: string }
 
 /** What came of adding one skill to the repo, said in plain words. */
 export type Added = {
@@ -55,7 +59,6 @@ declare module 'claude-code' {
       scan: Shaped<Scan | null>
       view: Shaped<'skills' | 'config'>
       pick: Shaped<string>
-      detail: Shaped<Detail | null>
       shut: Shaped<string[]>
       isBusy: Shaped<boolean>
       added: Shaped<Added | null>
