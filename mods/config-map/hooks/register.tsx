@@ -21,6 +21,7 @@ const isBusy = atom({ plugin: 'config-map', key: 'isBusy' } as const, false, { s
 const added = atom({ plugin: 'config-map', key: 'added' } as const, null as Added | null, {
   shape: 'added-1',
 })
+const find = atom({ plugin: 'config-map', key: 'find' } as const, '', { shape: 'find-1' })
 
 /** The line the allowlist gains above anything this pane un-ignores. */
 const MARK = '# Added from the config-map pane, tracked on purpose.'
@@ -442,20 +443,29 @@ export const register: Register = on => {
 
     return { text: 'Claude config pane opened.' }
   })
-
   on('ui.render', { component: 'Pane', requestId: PANE }, async ($, e) => {
-    const { Box, Text, Button } = $.ui.resolve(e)
+    const table = $.ui.resolve(e)
+    const { Box, Text, Button, Markdown } = table
+    // The mobile app draws no field yet, so the filter is offered where there is one.
+    const Field = 'Input' in table ? table.Input : undefined
+
     const found = await read($, scan)
     const which = await read($, view)
     const picked = await read($, pick)
     const closed = await read($, shut)
     const busy = await read($, isBusy)
     const last = await read($, added)
+    const finding = await read($, find)
 
     if (!found) {
       return (
-        <Box flexDirection="column" gap={1}>
-          <Text dimColor>{busy ? 'Reading your config…' : 'Nothing read yet.'}</Text>
+        <Box flexDirection="column" gap={1} paddingY={1}>
+          <Text size="heading" weight="semibold">
+            Claude config
+          </Text>
+          <Text size="footnote" dimColor>
+            {busy ? 'Reading your config…' : 'Nothing read yet.'}
+          </Text>
           <Button key="scan" variant="primary" onPress={() => void rescan($)}>
             Read it now
           </Button>
@@ -464,45 +474,56 @@ export const register: Register = on => {
     }
 
     const wide = Math.max(32, e.props?.bodyColumns ?? 60)
-    const room = Math.max(4, (e.viewport?.rows ?? 30) - 10)
 
     const head = (
       <Box flexDirection="column">
-        <Box gap={2}>
-          <Button
-            key="tab-skills"
-            plain
-            dimColor={which !== 'skills'}
-            onPress={() => void update($, view, () => 'skills')}
-          >
-            <Text weight={which === 'skills' ? 'semibold' : 'regular'}>Skills</Text>
-            <Text dimColor>{' ' + found.skills.length}</Text>
-          </Button>
-          <Button
-            key="tab-config"
-            plain
-            dimColor={which !== 'config'}
-            onPress={() => void update($, view, () => 'config')}
-          >
-            <Text weight={which === 'config' ? 'semibold' : 'regular'}>Config</Text>
-            <Text dimColor>{' ' + found.config.length}</Text>
-          </Button>
-          <Button key="refresh" plain dimColor onPress={() => void rescan($)}>
-            {busy ? 'reading…' : 'refresh'}
-          </Button>
+        <Box justifyContent="space-between" alignItems="center">
+          <Text size="heading" weight="semibold">
+            Claude config
+          </Text>
+          <Box gap={1}>
+            <Button
+              key="tab-skills"
+              variant={which === 'skills' ? 'primary' : 'secondary'}
+              onPress={() => void update($, view, () => 'skills')}
+            >
+              {'Skills ' + found.skills.length}
+            </Button>
+            <Button
+              key="tab-config"
+              variant={which === 'config' ? 'primary' : 'secondary'}
+              onPress={() => void update($, view, () => 'config')}
+            >
+              {'Config ' + found.config.length}
+            </Button>
+          </Box>
         </Box>
-        <Box gap={1}>
-          <Text color="claude">{found.branch}</Text>
-          <Text dimColor>{'· ' + found.trackedFiles + ' files tracked ·'}</Text>
-          <Text color={found.dirtyFiles > 0 ? 'warning' : 'success'}>
+        <Box gap={1} marginTop={1} alignItems="center">
+          <Text size="footnote" mono color="claude">
+            {found.branch}
+          </Text>
+          <Text size="footnote" dimColor>
+            {'· ' + found.trackedFiles + ' files tracked ·'}
+          </Text>
+          <Text size="footnote" color={found.dirtyFiles > 0 ? 'warning' : 'success'}>
             {found.dirtyFiles > 0 ? found.dirtyFiles + ' uncommitted' : 'clean'}
           </Text>
+          <Box flexGrow={1} />
+          <Button
+            key="refresh"
+            plain
+            dimColor
+            hover={{ scope: 'refresh', dimColor: false }}
+            onPress={() => void rescan($)}
+          >
+            {busy ? 'reading…' : 'refresh'}
+          </Button>
         </Box>
       </Box>
     )
 
     const troubles = found.troubles.map(one => (
-      <Text key={'t-' + one} color="error">
+      <Text key={'t-' + one} size="footnote" color="error" wrap="wrap">
         {one}
       </Text>
     ))
@@ -510,21 +531,24 @@ export const register: Register = on => {
     if (which === 'config') {
       const kept = found.config.filter(one => one.isTracked)
       const rest = found.config.filter(one => !one.isTracked)
-      const nameWide = widest(
-        found.config.map(one => one.name + (one.kind === 'dir' ? '/' : '')),
-        22,
-      )
-      const noteWide = Math.max(8, wide - nameWide - 4)
+      const named = (one: ConfigRow) => one.name + (one.kind === 'dir' ? '/' : '')
+      const nameWide = widest(found.config.map(named), 22)
+      const noteWide = Math.max(8, wide - nameWide - 8)
 
       const line = (one: ConfigRow, isKept: boolean) => {
-        const name = one.name + (one.kind === 'dir' ? '/' : '')
+        const scope = 'cfg-' + one.id
         const note = (one.trackedCount > 1 ? one.trackedCount + ' files · ' : '') + one.note
         return (
           <Box key={(isKept ? 'k-' : 'u-') + one.id} paddingLeft={2}>
-            <Text mono color={isKept ? 'text' : 'inactive'}>
-              {pad(cut(name, nameWide), nameWide)}
+            <Text color={isKept ? 'success' : 'inactive'}>
+              {isKept ? '● ' : '○ '}
             </Text>
-            <Text dimColor>{'  ' + cut(note, noteWide)}</Text>
+            <Text mono hover={{ scope, color: 'claude' }}>
+              {pad(cut(named(one), nameWide), nameWide)}
+            </Text>
+            <Text size="footnote" dimColor hover={{ scope, dimColor: false }}>
+              {'   ' + cut(note, noteWide)}
+            </Text>
           </Box>
         )
       }
@@ -533,52 +557,100 @@ export const register: Register = on => {
         <Box flexDirection="column">
           {head}
           <Box flexDirection="column" marginTop={1}>
-            <Box gap={1}>
+            <Box gap={1} alignItems="center">
               <Text weight="semibold" color="success">
-                {'Tracked in the repo'}
+                Tracked in the repo
               </Text>
-              <Text dimColor>{kept.length + ' · travels to every machine'}</Text>
+              <Text inverse>{' ' + kept.length + ' '}</Text>
+              <Text size="footnote" dimColor>
+                travels to every machine
+              </Text>
             </Box>
             {kept.map(one => line(one, true))}
           </Box>
           <Box flexDirection="column" marginTop={1}>
-            <Box gap={1}>
-              <Text weight="semibold">{'Not tracked'}</Text>
-              <Text dimColor>{rest.length + ' · stays on this machine'}</Text>
+            <Box gap={1} alignItems="center">
+              <Text weight="semibold">Not tracked</Text>
+              <Text inverse>{' ' + rest.length + ' '}</Text>
+              <Text size="footnote" dimColor>
+                stays on this machine
+              </Text>
             </Box>
-            {rest.slice(0, room).map(one => line(one, false))}
-            {rest.length > room && (
-              <Box paddingLeft={2}>
-                <Text dimColor>{'… and ' + (rest.length - room) + ' more'}</Text>
-              </Box>
-            )}
+            {rest.map(one => line(one, false))}
           </Box>
           {troubles}
         </Box>
       )
     }
 
+    const needle = finding.trim().toLowerCase()
+    const hits = (row: SkillRow) =>
+      needle === '' ||
+      row.name.toLowerCase().includes(needle) ||
+      row.gist.toLowerCase().includes(needle) ||
+      row.owner.toLowerCase().includes(needle)
+
     const groups = GROUPS.map(group => ({
       group,
-      rows: found.skills.filter(one => one.origin === group.origin),
+      rows: found.skills.filter(one => one.origin === group.origin && hits(one)),
     })).filter(one => one.rows.length > 0)
+    const matched = groups.reduce((n, one) => n + one.rows.length, 0)
 
     return (
       <Box flexDirection="column">
         {head}
+
+        {Field !== undefined && (
+          <Box marginTop={1}>
+            <Field
+              key="find"
+              label="Filter"
+              placeholder="a name, or words from a description"
+              value={finding}
+              onInput={value => void update($, find, () => value)}
+              onSubmit={value => void update($, find, () => value)}
+            />
+          </Box>
+        )}
+
+        {needle !== '' && (
+          <Box gap={1} marginTop={1} alignItems="center">
+            <Text size="footnote" dimColor>
+              {matched + ' of ' + found.skills.length + ' match'}
+            </Text>
+            <Button
+              key="clear"
+              plain
+              dimColor
+              hover={{ scope: 'clear', dimColor: false }}
+              onPress={() => void update($, find, () => '')}
+            >
+              clear
+            </Button>
+          </Box>
+        )}
+
+        {groups.length === 0 && (
+          <Box marginTop={1}>
+            <Text dimColor>{'Nothing matches “' + finding.trim() + '”.'}</Text>
+          </Box>
+        )}
+
         {groups.map(({ group, rows }) => {
-          const isShut = closed.includes(group.origin)
-          const seen = isShut ? [] : rows.slice(0, room)
+          // A filter opens every group: a match nobody can see is no match.
+          const isShut = needle === '' && closed.includes(group.origin)
           const nameWide = widest(
             rows.map(one => one.name),
-            24,
+            26,
           )
+          const gistWide = Math.max(10, wide - nameWide - 11)
 
           return (
             <Box key={'g-' + group.origin} flexDirection="column" marginTop={1}>
               <Button
                 key={'h-' + group.origin}
                 plain
+                hover={{ scope: 'h-' + group.origin, dimColor: false }}
                 onPress={() =>
                   void update($, shut, was =>
                     was.includes(group.origin)
@@ -587,25 +659,36 @@ export const register: Register = on => {
                   )
                 }
               >
-                <Text dimColor>{isShut ? '▸ ' : '▾ '}</Text>
-                <Text weight="semibold">{group.title}</Text>
-                <Text dimColor>{'  ' + rows.length + '  ' + group.gist}</Text>
+                <Text dimColor>{isShut ? '▸  ' : '▾  '}</Text>
+                <Text weight="semibold">{group.title + '  '}</Text>
+                <Text inverse>{' ' + rows.length + ' '}</Text>
+                <Text size="footnote" dimColor>
+                  {'   ' + group.gist}
+                </Text>
               </Button>
 
-              {seen.map(row => {
-                const isOpen = row.id === picked
-                const gistWide = Math.max(8, wide - nameWide - 8)
+              {!isShut &&
+                rows.map(row => {
+                  const isOpen = row.id === picked
+                  const scope = 'row-' + row.id
 
-                return (
-                  <Box key={'r-' + row.id} flexDirection="column">
-                    <Box paddingLeft={2}>
-                      <Button key={'b-' + row.id} plain onPress={() => void choose($, row)}>
-                        <Text dimColor>{isOpen ? '▾ ' : '  '}</Text>
+                  return (
+                    <Box key={'r-' + row.id} flexDirection="column">
+                      <Button
+                        key={'b-' + row.id}
+                        plain
+                        hover={{ scope, dimColor: false, color: 'claude' }}
+                        onPress={() => void choose($, row)}
+                      >
+                        <Text dimColor>{isOpen ? '  ▾ ' : '    '}</Text>
+                        <Text color={row.isTracked ? 'success' : 'inactive'}>
+                          {row.isTracked ? '● ' : '○ '}
+                        </Text>
                         <Text mono weight={isOpen ? 'semibold' : 'regular'}>
                           {pad(cut(row.name, nameWide), nameWide)}
                         </Text>
-                        <Text dimColor>
-                          {'  ' +
+                        <Text size="footnote" dimColor hover={{ scope, dimColor: false }}>
+                          {'   ' +
                             (row.gist
                               ? cut(row.gist, gistWide)
                               : found.isTold
@@ -613,84 +696,103 @@ export const register: Register = on => {
                                 : '…')}
                         </Text>
                       </Button>
-                    </Box>
 
-                    {isOpen && (
-                      <Box flexDirection="column" paddingLeft={6} marginBottom={1}>
-                        <Text mono dimColor>
-                          {row.path}
-                        </Text>
-                        <Box marginTop={1}>
-                          <Text wrap="wrap">
-                            {row.gist ||
-                              (found.isTold
-                                ? 'Its SKILL.md declares no description.'
-                                : 'Reading its SKILL.md…')}
-                          </Text>
-                        </Box>
-                        {row.owner !== '' && (
-                          <Text dimColor>{'Comes with ' + row.owner + '.'}</Text>
-                        )}
-                        {!row.isTracked && (
-                          <Box marginTop={1}>
-                            <Text color="warning" wrap="wrap">
-                              {row.origin === 'local'
-                                ? 'Not in the repo. Tracking it adds one allowlist line.'
-                                : 'Not in the repo. Copying it leaves the original where it is.'}
+                      {isOpen && (
+                        <Box
+                          flexDirection="column"
+                          marginLeft={5}
+                          marginY={1}
+                          paddingX={1}
+                          borderStyle="round"
+                          borderColor="claude"
+                        >
+                          <Box justifyContent="space-between" alignItems="center">
+                            <Text size="caption" mono dimColor>
+                              {row.path}
+                            </Text>
+                            <Text size="caption" color={row.isTracked ? 'success' : 'warning'}>
+                              {row.isTracked ? 'in the repo' : 'not in the repo'}
                             </Text>
                           </Box>
-                        )}
-                        {last && last.id === row.id && (
+
                           <Box marginTop={1}>
-                            <Text color={last.ok ? 'success' : 'error'} wrap="wrap">
-                              {last.text}
-                            </Text>
+                            {row.gist !== '' ? (
+                              <Markdown text={row.gist} />
+                            ) : (
+                              <Text dimColor wrap="wrap">
+                                {found.isTold
+                                  ? 'Its SKILL.md declares no description.'
+                                  : 'Reading its SKILL.md…'}
+                              </Text>
+                            )}
                           </Box>
-                        )}
-                        <Box gap={1} marginTop={1}>
-                          {!row.isTracked && (
-                            <Button
-                              key="keep"
-                              variant="primary"
-                              onPress={() => void keep($, row, found.root)}
-                            >
-                              {busy
-                                ? 'working…'
-                                : row.origin === 'local'
-                                  ? 'Track in repo'
-                                  : 'Copy into repo'}
-                            </Button>
+
+                          {row.owner !== '' && (
+                            <Text size="footnote" dimColor>
+                              {'Comes with ' + row.owner + '.'}
+                            </Text>
                           )}
-                          <Button
-                            key="copy"
-                            onPress={press =>
-                              void $.ui.copy({
-                                text: found.root + '/' + row.path,
-                                surface: press.surface,
-                              })
-                            }
-                          >
-                            Copy path
-                          </Button>
-                          <Button
-                            key="shut"
-                            role="dismiss"
-                            onPress={() => void update($, pick, () => '')}
-                          >
-                            Close
-                          </Button>
-                        </Box>
-                      </Box>
-                    )}
-                  </Box>
-                )
-              })}
 
-              {!isShut && rows.length > seen.length && (
-                <Box paddingLeft={4}>
-                  <Text dimColor>{'… and ' + (rows.length - seen.length) + ' more'}</Text>
-                </Box>
-              )}
+                          {!row.isTracked && (
+                            <Box marginTop={1}>
+                              <Text size="footnote" color="warning" wrap="wrap">
+                                {row.origin === 'local'
+                                  ? 'Tracking it adds one line to the allowlist.'
+                                  : 'Copying it leaves the original where it is.'}
+                              </Text>
+                            </Box>
+                          )}
+
+                          {last && last.id === row.id && (
+                            <Box marginTop={1}>
+                              <Text
+                                size="footnote"
+                                color={last.ok ? 'success' : 'error'}
+                                wrap="wrap"
+                              >
+                                {last.text}
+                              </Text>
+                            </Box>
+                          )}
+
+                          <Box gap={1} marginTop={1}>
+                            {!row.isTracked && (
+                              <Button
+                                key="keep"
+                                variant="primary"
+                                onPress={() => void keep($, row, found.root)}
+                              >
+                                {busy
+                                  ? 'working…'
+                                  : row.origin === 'local'
+                                    ? 'Track in repo'
+                                    : 'Copy into repo'}
+                              </Button>
+                            )}
+                            <Button
+                              key="copy"
+                              onPress={press =>
+                                void $.ui.copy({
+                                  text: found.root + '/' + row.path,
+                                  surface: press.surface,
+                                })
+                              }
+                            >
+                              Copy path
+                            </Button>
+                            <Button
+                              key="shut"
+                              role="dismiss"
+                              onPress={() => void update($, pick, () => '')}
+                            >
+                              Close
+                            </Button>
+                          </Box>
+                        </Box>
+                      )}
+                    </Box>
+                  )
+                })}
             </Box>
           )
         })}

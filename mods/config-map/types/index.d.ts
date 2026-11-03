@@ -62,6 +62,7 @@ declare module 'claude-code' {
       shut: Shaped<string[]>
       isBusy: Shaped<boolean>
       added: Shaped<Added | null>
+      find: Shaped<string>
     }
   }
 }

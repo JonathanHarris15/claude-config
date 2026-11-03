@@ -141,7 +141,17 @@ The descriptions come in a second pass, so the list is there to read before all
 hundred-odd `SKILL.md` files have been opened.
 
 The header shows the branch, how many files are tracked, and whether anything is
-uncommitted. `/config-map` reopens the pane; `refresh` re-reads the disk.
+uncommitted. A filled dot marks anything the repo holds and a hollow one anything
+it doesn't, so the whole list is scannable without reading a word. There's a
+filter field where the surface has one — type a name or a few words from a
+description, and every group opens to show what matched. `/config-map` reopens
+the pane; `refresh` re-reads the disk.
+
+The pane draws itself from whichever surface it's on, so it is not one design:
+the desktop app gets real type sizes, borders and hover highlighting, while the
+terminal gets the same tree in one size. Anything surface-specific — the filter
+field, which the mobile app has no control for yet — is drawn only where it
+exists.
 
 **Putting a skill in the repo.** Pick an untracked skill and the pane offers to
 add it, which means one of two things depending on where the skill lives:

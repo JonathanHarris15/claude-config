@@ -79,7 +79,9 @@ test('the pane sorts skills by whether the config repo holds them', async ($, on
     scan: { shape: 'scan-2', value: SCAN },
     shut: { shape: 'shut-1', value: [] },
   }
-  on('state.get', (_, e) => ({ value: { value: held[e.key], version: 1 } }))
+  on('state.get', (_, e, next) =>
+    e.key in held ? { value: { value: held[e.key], version: 1 } } : next(e),
+  )
 
   for (const surface of ['terminal', 'desktop', 'vscode', 'mobile'] as const) {
     const ui = await $.ui.mount({ ...PANE, surface })
@@ -164,7 +166,7 @@ test('an untracked skill is offered to the repo and a tracked one is not', async
   // One already in skills/, so the allowlist alone keeps it out.
   let ui = await $.ui.mount({ ...PANE, surface: 'desktop' })
   expect(await ui.find({ key: 'keep' })).toBeDefined()
-  expect(await ui.find({ type: 'Text', text: /adds one allowlist line/ })).toBeDefined()
+  expect(await ui.find({ type: 'Text', text: /one line to the allowlist/ })).toBeDefined()
   expect(await ui.find({ type: 'Text', text: /skills\/twg/ })).toBeDefined()
   await ui.unmount()
 
@@ -190,7 +192,8 @@ test('a scan an earlier version stored is declined', async ($, on) => {
 
   const ui = await $.ui.mount({ ...PANE, surface: 'desktop' })
 
-  expect((await ui.find({ type: 'Text' }))?.text).toBe('Nothing read yet.')
+  expect(await ui.find({ type: 'Text', text: /Nothing read yet/ })).toBeDefined()
+  expect(await ui.find({ key: 'scan' })).toBeDefined()
 
   await ui.unmount()
 })
