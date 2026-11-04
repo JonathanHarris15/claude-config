@@ -147,6 +147,11 @@ filter field where the surface has one — type a name or a few words from a
 description, and every group opens to show what matched. `/config-map` reopens
 the pane; `refresh` re-reads the disk.
 
+Groups roll open and shut rather than snapping. No element takes a height or an
+opacity, so there is no transition to ask for — the pane steps the number of rows
+it draws over six frames instead, about 110ms, easing out on the way open and in
+on the way shut. The list arrives in order; it does not slide.
+
 The pane draws itself from whichever surface it's on, so it is not one design:
 the desktop app gets real type sizes, borders and hover highlighting, while the
 terminal gets the same tree in one size. Anything surface-specific — the filter

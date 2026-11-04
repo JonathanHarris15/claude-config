@@ -1,7 +1,7 @@
 import { atom, read, update } from 'claude-code'
 import type { EngineInterface, Register } from 'claude-code'
 
-import type { Added, ConfigRow, Scan, SkillOrigin, SkillRow } from '../types'
+import type { Added, ConfigRow, Reveal, Scan, SkillOrigin, SkillRow } from '../types'
 
 const PANE = 'config-map'
 
@@ -22,6 +22,20 @@ const added = atom({ plugin: 'config-map', key: 'added' } as const, null as Adde
   shape: 'added-1',
 })
 const find = atom({ plugin: 'config-map', key: 'find' } as const, '', { shape: 'find-1' })
+const anim = atom({ plugin: 'config-map', key: 'anim' } as const, null as Reveal | null, {
+  shape: 'anim-1',
+})
+
+/** Frames one unrolling takes, and the wait between them. */
+const STEPS = 6
+const FRAME = 22
+
+/**
+ * Which unrolling is the live one. A second press abandons the first rather
+ * than letting two of them fight over the same count; a reload starts over,
+ * which is right, since nothing is part way open across one.
+ */
+let era = 0
 
 /** The line the allowlist gains above anything this pane un-ignores. */
 const MARK = '# Added from the config-map pane, tracked on purpose.'
@@ -301,6 +315,43 @@ async function choose($: EngineInterface, row: SkillRow): Promise<void> {
 }
 
 /**
+ * Roll a group open or shut, a few rows a frame. No element takes a height or
+ * an opacity, so this steps the number of rows drawn instead: the list arrives
+ * in order rather than all at once. `shut` is only written once a closing
+ * group has finished, so the rows are still there to draw on the way down.
+ */
+async function unfold($: EngineInterface, origin: SkillOrigin, count: number): Promise<void> {
+  const mine = (era += 1)
+  const wasShut = (await read($, shut)).includes(origin)
+
+  if (wasShut) {
+    // The count lands before the group leaves `shut`, or it would flash open.
+    await update($, anim, () => ({ origin, shown: 0, to: count }))
+    await update($, shut, was => was.filter(one => one !== origin))
+  }
+
+  const from = wasShut ? 0 : count
+  const to = wasShut ? count : 0
+
+  for (let step = 1; step <= STEPS; step += 1) {
+    if (mine !== era) return
+    const t = step / STEPS
+    // Opening settles: most of the list arrives at once, the tail eases in.
+    // Shutting is the other way round, or it appears to stall at the last row.
+    const eased = wasShut ? 1 - (1 - t) * (1 - t) : t * t
+    const shown = Math.round(from + (to - from) * eased)
+    await update($, anim, () => ({ origin, shown, to }))
+    if (step < STEPS) await $.clock.sleep(FRAME)
+  }
+
+  if (mine !== era) return
+  if (to === 0) {
+    await update($, shut, was => (was.includes(origin) ? was : [...was, origin]))
+  }
+  await update($, anim, () => null)
+}
+
+/**
  * Un-ignore a path the allowlist still refuses, by name, at the end of the
  * file where the last rule wins. The allowlist stays an allowlist: one more
  * explicit exception, never a flip to a denylist.
@@ -456,6 +507,7 @@ export const register: Register = on => {
     const busy = await read($, isBusy)
     const last = await read($, added)
     const finding = await read($, find)
+    const rolling = await read($, anim)
 
     if (!found) {
       return (
@@ -637,8 +689,16 @@ export const register: Register = on => {
         )}
 
         {groups.map(({ group, rows }) => {
+          // While a group is rolling, its own count says how much shows.
+          const moving = rolling !== null && rolling.origin === group.origin ? rolling : null
           // A filter opens every group: a match nobody can see is no match.
-          const isShut = needle === '' && closed.includes(group.origin)
+          const isShut = moving !== null ? false : needle === '' && closed.includes(group.origin)
+          const seen =
+            moving !== null
+              ? rows.slice(0, Math.max(0, Math.min(rows.length, moving.shown)))
+              : isShut
+                ? []
+                : rows
           const nameWide = widest(
             rows.map(one => one.name),
             26,
@@ -651,15 +711,11 @@ export const register: Register = on => {
                 key={'h-' + group.origin}
                 plain
                 hover={{ scope: 'h-' + group.origin, dimColor: false }}
-                onPress={() =>
-                  void update($, shut, was =>
-                    was.includes(group.origin)
-                      ? was.filter(one => one !== group.origin)
-                      : [...was, group.origin],
-                  )
-                }
+                onPress={() => void unfold($, group.origin, rows.length)}
               >
-                <Text dimColor>{isShut ? '▸  ' : '▾  '}</Text>
+                <Text dimColor>
+                  {moving !== null ? '▿  ' : isShut ? '▸  ' : '▾  '}
+                </Text>
                 <Text weight="semibold">{group.title + '  '}</Text>
                 <Text inverse>{' ' + rows.length + ' '}</Text>
                 <Text size="footnote" dimColor>
@@ -667,8 +723,7 @@ export const register: Register = on => {
                 </Text>
               </Button>
 
-              {!isShut &&
-                rows.map(row => {
+              {seen.map(row => {
                   const isOpen = row.id === picked
                   const scope = 'row-' + row.id
 
@@ -792,7 +847,7 @@ export const register: Register = on => {
                       )}
                     </Box>
                   )
-                })}
+              })}
             </Box>
           )
         })}

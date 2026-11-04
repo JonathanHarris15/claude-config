@@ -45,6 +45,13 @@ export type Scan = {
   isTold: boolean
 }
 
+/**
+ * A group part way open: how many of its rows are drawn right now, and how
+ * many it is heading for. There is no transition prop on any element, so the
+ * unrolling is this count stepped over a handful of frames.
+ */
+export type Reveal = { origin: string; shown: number; to: number }
+
 /** What came of adding one skill to the repo, said in plain words. */
 export type Added = {
   /** The skill it speaks for, so a stale message never sits under another. */
@@ -63,6 +70,7 @@ declare module 'claude-code' {
       isBusy: Shaped<boolean>
       added: Shaped<Added | null>
       find: Shaped<string>
+      anim: Shaped<Reveal | null>
     }
   }
 }

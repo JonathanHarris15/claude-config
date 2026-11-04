@@ -197,3 +197,26 @@ test('a scan an earlier version stored is declined', async ($, on) => {
 
   await ui.unmount()
 })
+
+test('a group part way open draws only the rows that have arrived', async ($, on) => {
+  // What one frame of an unrolling looks like: the repo group is at nought
+  // rows, every other group untouched.
+  const held: Record<string, unknown> = {
+    scan: { shape: 'scan-2', value: SCAN },
+    shut: { shape: 'shut-1', value: [] },
+    anim: { shape: 'anim-1', value: { origin: 'repo', shown: 0, to: 1 } },
+  }
+  on('state.get', (_, e, next) =>
+    e.key in held ? { value: { value: held[e.key], version: 1 } } : next(e),
+  )
+
+  const ui = await $.ui.mount({ ...PANE, surface: 'desktop' })
+
+  expect(await ui.find({ key: 'h-repo' })).toBeDefined()
+  expect(await ui.find({ key: 'b-own/tdd' })).toBeUndefined()
+  // The groups that are not moving still draw in full.
+  expect(await ui.find({ key: 'b-own/twg' })).toBeDefined()
+  expect(await ui.find({ type: 'Text', text: /▿/ })).toBeDefined()
+
+  await ui.unmount()
+})
