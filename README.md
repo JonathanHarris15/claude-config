@@ -131,20 +131,25 @@ machine?" It opens a pane with two views:
   (so they're on every machine), the ones only on this machine (the `twg-*` ones
   the `twg` installer writes, which the allowlist leaves out on purpose), the ones
   claude.ai syncs down from the customize tab, and the ones plugins bring. Each
-  group opens and closes, and every row carries what that skill says it does,
-  read out of its own `SKILL.md`. Click a skill and it opens where it sits, under
-  its own row: the full description, where it lives, and what you can do with it.
+  group opens and closes. A row is the skill's name and nothing else — the pane
+  is narrow, and a half-sentence cut off mid-word is worse than no sentence.
+  Click one and it opens where it sits, under its own row: what it does in full,
+  read out of its own `SKILL.md`, where it lives, and what you can do with it.
 - **Config** — everything at the top of `~/.claude`, split into what the repo
   tracks and what it doesn't, each with a plain-words note saying what it is.
 
 The descriptions come in a second pass, so the list is there to read before all
-hundred-odd `SKILL.md` files have been opened.
+hundred-odd `SKILL.md` files have been opened. The filter searches them even
+though no row shows one.
 
 The header shows the branch, how many files are tracked, and whether anything is
 uncommitted, and under it a slim bar: one band per group, as wide as that group's
 share of every skill, solid for the part the repo holds and faint for the part it
 doesn't. Each group header wears the same colour, so the bar and the list read as
-one thing. Under the bar, the fact in words — "24 of 93 skills travel with you" —
+one thing. The bands grow out of nothing the first time the bar draws, one just
+after another — that one runs inside the vector frame, so it is a real ease
+rather than the stepped count the groups unroll with. Under the bar, the fact in
+words — "24 of 93 skills travel with you" —
 which is also all the terminal shows, having no vectors to draw.
 
 A filled dot marks anything the repo holds and a hollow one anything

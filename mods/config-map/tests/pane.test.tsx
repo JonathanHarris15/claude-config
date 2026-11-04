@@ -96,21 +96,28 @@ test('the pane sorts skills by whether the config repo holds them', async ($, on
   }
 })
 
-test('an open group reads what each skill says it does', async ($, on) => {
-  const held: Record<string, unknown> = {
-    scan: { shape: 'scan-2', value: SCAN },
-    shut: { shape: 'shut-1', value: [] },
-  }
-  on('state.get', (_, e, next) =>
-    e.key in held ? { value: { value: held[e.key], version: 1 } } : next(e),
-  )
+test('a skill row is its name, and what it does waits in the card', async ($, on) => {
+  let picked = ''
+  on('state.get', (_, e, next) => {
+    const held: Record<string, unknown> = {
+      scan: { shape: 'scan-2', value: SCAN },
+      shut: { shape: 'shut-1', value: [] },
+      pick: { shape: 'pick-1', value: picked },
+    }
+    return e.key in held ? { value: { value: held[e.key], version: 1 } } : next(e)
+  })
 
-  const ui = await $.ui.mount({ ...PANE, surface: 'desktop' })
+  // Shut, the list is names: a pane this narrow has no room for a second column.
+  let ui = await $.ui.mount({ ...PANE, surface: 'desktop' })
+  expect(await ui.find({ type: 'Text', text: /^tdd$/ })).toBeDefined()
+  expect(await ui.find({ type: 'Text', text: /Test-driven development/ })).toBeUndefined()
+  expect(await ui.find({ type: 'Text', text: /Atlassian work-data/ })).toBeUndefined()
+  await ui.unmount()
 
-  // The description rides on the row itself, not only in an opened skill.
-  expect(await ui.find({ type: 'Text', text: /Test-driven development/ })).toBeDefined()
-  expect(await ui.find({ type: 'Text', text: /Atlassian work-data/ })).toBeDefined()
-
+  // Opened, the card says it in full.
+  picked = 'own/tdd'
+  ui = await $.ui.mount({ ...PANE, surface: 'desktop' })
+  expect(await ui.find({ type: 'Markdown' })).toBeDefined()
   await ui.unmount()
 })
 
@@ -235,6 +242,9 @@ test('the header says what share of the skills the repo holds', async ($, on) =>
   const bar = await seen.find({ type: 'Svg' })
   expect(bar).toBeDefined()
   expect(bar?.props?.source).toMatch(/<rect/)
+  // The bands grow themselves in, which is the frame's own ease.
+  expect(bar?.props?.source).toMatch(/<animate attributeName="width"/)
+  expect(bar?.props?.isInteractive).toBe(true)
   expect(bar?.props?.alt).toMatch(/1 of 3 skills/)
   expect(await seen.find({ type: 'Text', text: /1 of 3 skills travel with you/ })).toBeDefined()
   await seen.unmount()

@@ -128,9 +128,14 @@ function widest(names: readonly string[], cap: number): number {
  * of every skill, solid for the part the repo holds and faint for the part it
  * does not. Answers the pane's question without reading a word.
  *
- * It draws nothing and does not move. SMIL would run in the frame, but the
- * markup is the element's data: an animation here would start again on every
- * redraw the pane makes, the six of an unrolling included.
+ * The bands grow out of nothing when the bar first draws, one just after
+ * another. That runs in the frame itself, so it is a real ease and not the
+ * stepped count the groups unroll with.
+ *
+ * The markup is the element's data, so this plays once: the same string on a
+ * later redraw is the same element, and nothing remounts. Each rect also
+ * carries its finished width, so a surface that draws the markup as a flat
+ * image shows the whole bar rather than nothing at all.
  */
 function coverBar(skills: readonly SkillRow[]): string {
   const bands = GROUPS.map(group => {
@@ -145,25 +150,55 @@ function coverBar(skills: readonly SkillRow[]): string {
   const total = bands.reduce((n, one) => n + one.all, 0)
   if (total === 0) return ''
 
+  // All of them finish together; a band's own wait is held inside its curve,
+  // since a `begin` later than nought would show the width before it ran.
+  const WHOLE = 0.62
+  const WAIT = 0.07
+  const grow = (to: number, turn: number): string => {
+    const held = (turn * WAIT) / WHOLE
+    const far = to.toFixed(2)
+    const [values, keyTimes, keySplines] =
+      turn === 0
+        ? ['0;' + far, '0;1', '0.22 1 0.36 1']
+        : ['0;0;' + far, '0;' + held.toFixed(3) + ';1', '0 0 1 1;0.22 1 0.36 1']
+    return (
+      '<animate attributeName="width" values="' + values +
+      '" keyTimes="' + keyTimes +
+      '" calcMode="spline" keySplines="' + keySplines +
+      '" dur="' + WHOLE + 's" fill="freeze"/>'
+    )
+  }
+
   const parts: string[] = []
   let at = 0
+  let turn = 0
   for (const band of bands) {
     // A hairline of nothing between bands, so they read apart at any width.
     const gap = at === 0 ? 0 : 0.4
     const span = (band.all / total) * 100 - gap
     const solid = (band.kept / total) * 100 - gap
     const x = (at + gap).toFixed(2)
-    parts.push(
-      '<rect x="' + x + '" y="0" width="' + Math.max(0, span).toFixed(2) +
-        '" height="6" fill="' + band.hue + '" fill-opacity="0.24"/>',
-    )
+    const wide = Math.max(0, span)
+    // The faint rect is the part the repo does not hold, so a group it holds
+    // whole has none: the solid one would cover it anyway.
+    if (band.kept < band.all) {
+      parts.push(
+        '<rect x="' + x + '" y="0" width="' + wide.toFixed(2) +
+          '" height="6" fill="' + band.hue + '" fill-opacity="0.24">' +
+          grow(wide, turn) +
+          '</rect>',
+      )
+    }
     if (solid > 0) {
       parts.push(
         '<rect x="' + x + '" y="0" width="' + solid.toFixed(2) +
-          '" height="6" fill="' + band.hue + '"/>',
+          '" height="6" fill="' + band.hue + '">' +
+          grow(solid, turn) +
+          '</rect>',
       )
     }
     at += (band.all / total) * 100
+    turn += 1
   }
 
   // The viewBox is the share itself, stretched to whatever room the slot has.
@@ -733,6 +768,7 @@ export const register: Register = on => {
                 kept + ' of ' + found.skills.length + ' skills are in the config repo'
               }
               height={6}
+              isInteractive
             />
           )}
           <Text size="footnote" dimColor>
@@ -787,12 +823,6 @@ export const register: Register = on => {
               : isShut
                 ? []
                 : rows
-          const nameWide = widest(
-            rows.map(one => one.name),
-            26,
-          )
-          const gistWide = Math.max(10, wide - nameWide - 11)
-
           return (
             <Box key={'g-' + group.origin} flexDirection="column" marginTop={1}>
               <Button
@@ -828,16 +858,10 @@ export const register: Register = on => {
                         <Text color={row.isTracked ? 'success' : 'inactive'}>
                           {row.isTracked ? '● ' : '○ '}
                         </Text>
+                        {/* The name alone. What it does is a click away, in the
+                            card, where there is room to read it whole. */}
                         <Text mono weight={isOpen ? 'semibold' : 'regular'}>
-                          {pad(cut(row.name, nameWide), nameWide)}
-                        </Text>
-                        <Text size="footnote" dimColor hover={{ scope, dimColor: false }}>
-                          {'   ' +
-                            (row.gist
-                              ? cut(row.gist, gistWide)
-                              : found.isTold
-                                ? 'no description'
-                                : '…')}
+                          {row.name}
                         </Text>
                       </Button>
 
