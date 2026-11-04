@@ -220,3 +220,28 @@ test('a group part way open draws only the rows that have arrived', async ($, on
 
   await ui.unmount()
 })
+
+test('the header says what share of the skills the repo holds', async ($, on) => {
+  const held: Record<string, unknown> = {
+    scan: { shape: 'scan-2', value: SCAN },
+    shut: { shape: 'shut-1', value: [] },
+  }
+  on('state.get', (_, e, next) =>
+    e.key in held ? { value: { value: held[e.key], version: 1 } } : next(e),
+  )
+
+  // Where vectors draw, a band per group: the share solid, the rest faint.
+  const seen = await $.ui.mount({ ...PANE, surface: 'desktop' })
+  const bar = await seen.find({ type: 'Svg' })
+  expect(bar).toBeDefined()
+  expect(bar?.props?.source).toMatch(/<rect/)
+  expect(bar?.props?.alt).toMatch(/1 of 3 skills/)
+  expect(await seen.find({ type: 'Text', text: /1 of 3 skills travel with you/ })).toBeDefined()
+  await seen.unmount()
+
+  // The terminal draws no vectors, so the line carries the fact alone.
+  const said = await $.ui.mount({ ...PANE, surface: 'terminal' })
+  expect(await said.find({ type: 'Svg' })).toBeUndefined()
+  expect(await said.find({ type: 'Text', text: /1 of 3 skills travel with you/ })).toBeDefined()
+  await said.unmount()
+})

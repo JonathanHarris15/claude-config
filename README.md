@@ -141,7 +141,13 @@ The descriptions come in a second pass, so the list is there to read before all
 hundred-odd `SKILL.md` files have been opened.
 
 The header shows the branch, how many files are tracked, and whether anything is
-uncommitted. A filled dot marks anything the repo holds and a hollow one anything
+uncommitted, and under it a slim bar: one band per group, as wide as that group's
+share of every skill, solid for the part the repo holds and faint for the part it
+doesn't. Each group header wears the same colour, so the bar and the list read as
+one thing. Under the bar, the fact in words — "24 of 93 skills travel with you" —
+which is also all the terminal shows, having no vectors to draw.
+
+A filled dot marks anything the repo holds and a hollow one anything
 it doesn't, so the whole list is scannable without reading a word. There's a
 filter field where the surface has one — type a name or a few words from a
 description, and every group opens to show what matched. `/config-map` reopens
@@ -155,8 +161,16 @@ on the way shut. The list arrives in order; it does not slide.
 The pane draws itself from whichever surface it's on, so it is not one design:
 the desktop app gets real type sizes, borders and hover highlighting, while the
 terminal gets the same tree in one size. Anything surface-specific — the filter
-field, which the mobile app has no control for yet — is drawn only where it
-exists.
+field, which the mobile app has no control for yet, and the bar, which the
+terminal cannot draw — is drawn only where it exists.
+
+**Why it isn't desktop-only.** Dropping a surface would buy almost nothing. The
+mobile app is short of exactly two elements, a text field and a dropdown, and
+the pane only wants the first. The one element worth having that needs the
+desktop alone is `Client`, a region the mod draws itself with its own frame
+clock — real animation — but it draws in character cells with the terminal's
+tags, so it would cost the type sizes, borders and hover highlighting the pane
+is built on. Not a trade worth making for a tree that opens and shuts.
 
 **Putting a skill in the repo.** Pick an untracked skill and the pane offers to
 add it, which means one of two things depending on where the skill lives:

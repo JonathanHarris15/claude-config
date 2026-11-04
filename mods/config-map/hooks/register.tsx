@@ -84,6 +84,22 @@ const GROUPS: { origin: SkillOrigin; title: string; gist: string }[] = [
   { origin: 'plugin', title: 'From plugins', gist: 'the plugin owns these' },
 ]
 
+/**
+ * One colour per group, worn by the header dot and the band in the bar, so
+ * the two read as the same thing.
+ *
+ * Fixed hues and not theme keys: an Svg is drawn isolated and inherits no
+ * colour from the pane, so these are picked to carry on a light background
+ * and a dark one alike. A Text takes a bare colour string too, which is what
+ * ties the dots to the bands.
+ */
+const HUES: Record<SkillOrigin, string> = {
+  repo: '#3fb950',
+  local: '#d29922',
+  synced: '#a371f7',
+  plugin: '#539bf5',
+}
+
 function firstLine(text: string): string {
   const line = text.split(/\r?\n/).find(one => one.trim())
   return line ? line.trim().slice(0, 160) : ''
@@ -105,6 +121,58 @@ function widest(names: readonly string[], cap: number): number {
   let n = 0
   for (const one of names) n = Math.max(n, one.length)
   return Math.min(cap, n)
+}
+
+/**
+ * The bar under the header: one band per group, as wide as that group's share
+ * of every skill, solid for the part the repo holds and faint for the part it
+ * does not. Answers the pane's question without reading a word.
+ *
+ * It draws nothing and does not move. SMIL would run in the frame, but the
+ * markup is the element's data: an animation here would start again on every
+ * redraw the pane makes, the six of an unrolling included.
+ */
+function coverBar(skills: readonly SkillRow[]): string {
+  const bands = GROUPS.map(group => {
+    const rows = skills.filter(one => one.origin === group.origin)
+    return {
+      hue: HUES[group.origin],
+      all: rows.length,
+      kept: rows.filter(one => one.isTracked).length,
+    }
+  }).filter(one => one.all > 0)
+
+  const total = bands.reduce((n, one) => n + one.all, 0)
+  if (total === 0) return ''
+
+  const parts: string[] = []
+  let at = 0
+  for (const band of bands) {
+    // A hairline of nothing between bands, so they read apart at any width.
+    const gap = at === 0 ? 0 : 0.4
+    const span = (band.all / total) * 100 - gap
+    const solid = (band.kept / total) * 100 - gap
+    const x = (at + gap).toFixed(2)
+    parts.push(
+      '<rect x="' + x + '" y="0" width="' + Math.max(0, span).toFixed(2) +
+        '" height="6" fill="' + band.hue + '" fill-opacity="0.24"/>',
+    )
+    if (solid > 0) {
+      parts.push(
+        '<rect x="' + x + '" y="0" width="' + solid.toFixed(2) +
+          '" height="6" fill="' + band.hue + '"/>',
+      )
+    }
+    at += (band.all / total) * 100
+  }
+
+  // The viewBox is the share itself, stretched to whatever room the slot has.
+  return (
+    '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 6" width="100%"' +
+    ' height="6" preserveAspectRatio="none">' +
+    parts.join('') +
+    '</svg>'
+  )
 }
 
 /** The config folder this session reads, however the machine names home. */
@@ -499,6 +567,8 @@ export const register: Register = on => {
     const { Box, Text, Button, Markdown } = table
     // The mobile app draws no field yet, so the filter is offered where there is one.
     const Field = 'Input' in table ? table.Input : undefined
+    // The terminal draws no vectors, so the bar is offered where they draw.
+    const Picture = 'Svg' in table ? table.Svg : undefined
 
     const found = await read($, scan)
     const which = await read($, view)
@@ -642,6 +712,8 @@ export const register: Register = on => {
       row.gist.toLowerCase().includes(needle) ||
       row.owner.toLowerCase().includes(needle)
 
+    const kept = found.skills.filter(one => one.isTracked).length
+
     const groups = GROUPS.map(group => ({
       group,
       rows: found.skills.filter(one => one.origin === group.origin && hits(one)),
@@ -651,6 +723,22 @@ export const register: Register = on => {
     return (
       <Box flexDirection="column">
         {head}
+
+        <Box flexDirection="column" gap={1} marginTop={1}>
+          {Picture !== undefined && found.skills.length > 0 && (
+            <Picture
+              key="bar"
+              source={coverBar(found.skills)}
+              alt={
+                kept + ' of ' + found.skills.length + ' skills are in the config repo'
+              }
+              height={6}
+            />
+          )}
+          <Text size="footnote" dimColor>
+            {kept + ' of ' + found.skills.length + ' skills travel with you'}
+          </Text>
+        </Box>
 
         {Field !== undefined && (
           <Box marginTop={1}>
@@ -714,8 +802,9 @@ export const register: Register = on => {
                 onPress={() => void unfold($, group.origin, rows.length)}
               >
                 <Text dimColor>
-                  {moving !== null ? '▿  ' : isShut ? '▸  ' : '▾  '}
+                  {moving !== null ? '▿ ' : isShut ? '▸ ' : '▾ '}
                 </Text>
+                <Text color={HUES[group.origin]}>{'▌ '}</Text>
                 <Text weight="semibold">{group.title + '  '}</Text>
                 <Text inverse>{' ' + rows.length + ' '}</Text>
                 <Text size="footnote" dimColor>
