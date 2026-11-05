@@ -3,8 +3,8 @@ import type { EngineInterface, Register } from 'claude-code'
 
 import type { Opened } from '../types'
 
-const PANE = 'config-map'
-const TITLE = 'Claude config'
+/** The side pane earlier versions opened. Only ever closed now. */
+const OLD_PANE = 'config-map'
 
 // Change a tag when a value's fields change: it declines what an earlier
 // version stored, which outlives a reload.
@@ -89,36 +89,40 @@ export const register: Register = on => {
       name: 'config-map',
       description: 'Open the config dashboard',
     })
-    void $.ui.open({ id: PANE, title: TITLE })
+    // A session running the old version still has the side pane open.
+    void $.ui.close({ id: OLD_PANE }).catch(() => {})
 
     return next(e)
   })
 
   on('command.run', { command: 'config-map' }, async $ => {
-    await $.ui.open({ id: PANE, title: TITLE })
     const result = await openDashboard($, true)
 
     return { text: result.trouble || 'Config dashboard: ' + result.url }
   })
 
-  on('ui.render', { component: 'Pane', requestId: PANE }, async ($, e) => {
+  on('ui.render', { component: 'AbovePrompt' }, async ($, e, next) => {
+    if (e.props.hasSurvey) return next(e)
+
     const { Box, Text, Button, Link } = $.ui.resolve(e)
     const last = await read($, opened)
     const busy = await read($, isBusy)
 
     return (
-      <Box flexDirection="column" gap={1} paddingY={1}>
-        <Button key="open" variant="primary" onPress={() => void openDashboard($, true)}>
-          {busy ? 'Opening…' : 'Open config dashboard'}
-        </Button>
-        {last?.trouble ? <Text color="error">{last.trouble}</Text> : null}
-        {last?.where ? <Text dimColor>{SAID[last.where]}</Text> : null}
-        {last?.url ? <Link href={last.url} /> : null}
-        {last?.where === 'pane' ? (
-          <Button key="outside" onPress={() => void openDashboard($, false)}>
-            Open in my browser instead
+      <Box flexDirection="column">
+        <Box gap={1} alignItems="center">
+          <Button key="open" onPress={() => void openDashboard($, true)}>
+            {busy ? 'Opening…' : 'Open config dashboard'}
           </Button>
-        ) : null}
+          {last?.where === 'pane' ? (
+            <Button key="outside" onPress={() => void openDashboard($, false)}>
+              Open in my browser instead
+            </Button>
+          ) : null}
+          {last?.where ? <Text dimColor>{SAID[last.where]}</Text> : null}
+          {last?.url ? <Link href={last.url} /> : null}
+        </Box>
+        {last?.trouble ? <Text color="error">{last.trouble}</Text> : null}
       </Box>
     )
   })

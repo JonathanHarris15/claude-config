@@ -1,15 +1,14 @@
 import { expect, test } from 'claude-code/testing'
 
-const PANE = {
+const BAND = {
   plugin: 'config-map',
-  component: 'Pane',
-  requestId: 'config-map',
+  component: 'AbovePrompt',
   props: {
-    title: 'Claude config',
-    isFocused: false,
-    bodyColumns: 60,
-    placement: 'dock',
-    scroll: { offset: 0, bodyRows: 40 },
+    hasSurvey: false,
+    isWorking: false,
+    maxRows: 10,
+    bodyColumns: 80,
+    scroll: { offset: 0, bodyRows: 9 },
     view: {},
   },
 } as const
@@ -34,10 +33,10 @@ function machine(on: any, { hasPane = true, answer = { url: URL_HOME, started: t
   return calls
 }
 
-test('the pane is one button, on every surface', async ($, on) => {
+test('the band is one button, on every surface that has a band', async ($, on) => {
   machine(on)
-  for (const surface of ['terminal', 'desktop', 'vscode', 'mobile'] as const) {
-    const ui = await $.ui.mount({ ...PANE, surface })
+  for (const surface of ['terminal', 'desktop'] as const) {
+    const ui = await $.ui.mount({ ...BAND, surface })
     expect(await ui.find({ key: 'open' })).toBeDefined()
     expect(await ui.find({ key: 'outside' })).toBeUndefined()
     await ui.unmount()
@@ -46,7 +45,7 @@ test('the pane is one button, on every surface', async ($, on) => {
 
 test('the button starts the dashboard and shows it in the browser pane', async ($, on) => {
   const calls = machine(on)
-  const ui = await $.ui.mount({ ...PANE, surface: 'desktop' })
+  const ui = await $.ui.mount({ ...BAND, surface: 'desktop' })
   await ui.press({ key: 'open' })
 
   expect(calls.runs[0]?.[1]).toBe('/home/me/.claude/dashboard/start.mjs')
@@ -59,7 +58,7 @@ test('the button starts the dashboard and shows it in the browser pane', async (
 
 test('with no browser pane it falls back to the machine browser', async ($, on) => {
   const calls = machine(on, { hasPane: false })
-  const ui = await $.ui.mount({ ...PANE, surface: 'desktop' })
+  const ui = await $.ui.mount({ ...BAND, surface: 'desktop' })
   await ui.press({ key: 'open' })
 
   expect(calls.runs.some(argv => argv.includes('--open'))).toBe(true)
@@ -69,7 +68,7 @@ test('with no browser pane it falls back to the machine browser', async ($, on) 
 
 test('a launcher that fails says why, and opens nothing', async ($, on) => {
   const calls = machine(on, { answer: { error: 'Something else is using port 4915.' } })
-  const ui = await $.ui.mount({ ...PANE, surface: 'desktop' })
+  const ui = await $.ui.mount({ ...BAND, surface: 'desktop' })
   await ui.press({ key: 'open' })
 
   expect(await ui.find({ type: 'Text', text: /port 4915/ })).toBeDefined()
@@ -77,11 +76,23 @@ test('a launcher that fails says why, and opens nothing', async ($, on) => {
   await ui.unmount()
 })
 
-test('what the old pane stored is declined', async ($, on) => {
+test('what an older version stored is declined', async ($, on) => {
   machine(on)
   on('state.get', () => ({ value: { value: { shape: 'opened-0', value: { url: 'old' } }, version: 1 } }))
-  const ui = await $.ui.mount({ ...PANE, surface: 'desktop' })
+  const ui = await $.ui.mount({ ...BAND, surface: 'desktop' })
   expect(await ui.find({ key: 'open' })).toBeDefined()
   expect(await ui.find({ key: 'outside' })).toBeUndefined()
+  await ui.unmount()
+})
+
+test('the band steps aside for a survey', async ($, on) => {
+  machine(on)
+  on('ui.render', ($: any, e: any) => {
+    const { Text } = $.ui.resolve(e)
+    return <Text key="survey">Survey</Text>
+  })
+  const ui = await $.ui.mount({ ...BAND, surface: 'desktop', props: { ...BAND.props, hasSurvey: true } })
+  expect(await ui.find({ type: 'Text', text: /Survey/ })).toBeDefined()
+  expect(await ui.find({ key: 'open' })).toBeUndefined()
   await ui.unmount()
 })

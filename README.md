@@ -125,7 +125,7 @@ a folder under `mods/`, and `settings.json` loads them by naming them in
 `CLAUDE_CODE_PLUGIN_DIRS`. The path uses `~`, so the same setting works on
 Windows and Mac.
 
-**`config-map`** is one button: it starts the config dashboard and opens it,
+**`config-map`** is one button above the chat bar: it starts the config dashboard and opens it,
 in the app's browser pane where there is one and your own browser otherwise.
 `/config-map` does the same. Its folder holds the whole mod: `plugin.json` names
 it, `hooks/register.tsx` is the code, `types/index.d.ts` declares the values it
