@@ -10,7 +10,8 @@ My personal Claude Code configuration, synced across machines.
 | `agents/` | Custom subagents. Markdown with frontmatter; the frontmatter sets the model, tools, and description. |
 | `workflows/` | Multi-agent orchestration scripts. Plain JS that fans out subagents with real control flow — loops, pipelines, adversarial verification. |
 | `commands/` | Custom slash commands. |
-| `mods/` | Mods — code that changes Claude's own interface. `config-map` is a pane listing every skill on the machine and the whole config folder, marking what this repo tracks. |
+| `mods/` | Mods — code that changes Claude's own interface. `config-map` is a button that opens the dashboard. |
+| `dashboard/` | A local page for managing all of this, and for seeing how each thing syncs. |
 | `settings.json` | Global settings: effort level, theme, permission allowlist, hooks, and the `CLAUDE_CODE_PLUGIN_DIRS` that loads the mods. |
 | `CLAUDE.md` | Instructions prepended to every session, in every project, on every machine. |
 
@@ -124,80 +125,50 @@ a folder under `mods/`, and `settings.json` loads them by naming them in
 `CLAUDE_CODE_PLUGIN_DIRS`. The path uses `~`, so the same setting works on
 Windows and Mac.
 
-**`config-map`** answers "what have I actually got, and which of it survives a new
-machine?" It opens a pane with two views:
+**`config-map`** is one button: it starts the config dashboard and opens it,
+in the app's browser pane where there is one and your own browser otherwise.
+`/config-map` does the same. Its folder holds the whole mod: `plugin.json` names
+it, `hooks/register.tsx` is the code, `types/index.d.ts` declares the values it
+keeps between draws, and `tests/` is run with `claude plugin test mods/config-map`.
+The engine writes a `.claude-plugin/types/` beside it at every load, naming the
+build; that stays untracked, since each machine regenerates it.
 
-- **Skills** — every skill on the machine, in four groups: the ones in this repo
-  (so they're on every machine), the ones only on this machine (the `twg-*` ones
-  the `twg` installer writes, which the allowlist leaves out on purpose), the ones
-  claude.ai syncs down from the customize tab, and the ones plugins bring. Each
-  group opens and closes. A row is the skill's name and nothing else — the pane
-  is narrow, and a half-sentence cut off mid-word is worse than no sentence.
-  Click one and it opens where it sits, under its own row: what it does in full,
-  read out of its own `SKILL.md`, where it lives, and what you can do with it.
-- **Config** — everything at the top of `~/.claude`, split into what the repo
-  tracks and what it doesn't, each with a plain-words note saying what it is.
+`CLAUDE_CODE_PLUGIN_DIRS` splits on `:` on a Mac and `;` on Windows, so with two or
+more mods on, one synced `settings.json` only works on one kind of machine. The
+dashboard warns before it writes a list like that.
 
-The descriptions come in a second pass, so the list is there to read before all
-hundred-odd `SKILL.md` files have been opened. The filter searches them even
-though no row shows one.
+## The config dashboard
 
-The header shows the branch, how many files are tracked, and whether anything is
-uncommitted, and under it a slim bar: one band per group, as wide as that group's
-share of every skill, solid for the part the repo holds and faint for the part it
-doesn't. Each group header wears the same colour, so the bar and the list read as
-one thing. The bands grow out of nothing the first time the bar draws, one just
-after another — that one runs inside the vector frame, so it is a real ease
-rather than the stepped count the groups unroll with. Under the bar, the fact in
-words — "24 of 93 skills travel with you" —
-which is also all the terminal shows, having no vectors to draw.
+A local page for seeing and changing everything in here. It needs Node and nothing
+else, so it runs from a fresh pull on any machine. Press the button in the Claude
+pane, or run:
 
-A filled dot marks anything the repo holds and a hollow one anything
-it doesn't, so the whole list is scannable without reading a word. There's a
-filter field where the surface has one — type a name or a few words from a
-description, and every group opens to show what matched. `/config-map` reopens
-the pane; `refresh` re-reads the disk.
+```sh
+node ~/.claude/dashboard/start.mjs --open
+```
 
-Groups roll open and shut rather than snapping. No element takes a height or an
-opacity, so there is no transition to ask for — the pane steps the number of rows
-it draws over six frames instead, about 110ms, easing out on the way open and in
-on the way shut. The list arrives in order; it does not slide.
+It lives at `http://127.0.0.1:4915/`, answers only this machine, and stops itself
+after an hour with no page open.
 
-The pane draws itself from whichever surface it's on, so it is not one design:
-the desktop app gets real type sizes, borders and hover highlighting, while the
-terminal gets the same tree in one size. Anything surface-specific — the filter
-field, which the mobile app has no control for yet, and the bar, which the
-terminal cannot draw — is drawn only where it exists.
+- **Sync** shows how each thing reaches other machines: through git, waiting to be
+  committed or pushed, through your claude.ai account, by plugin install, or not at
+  all. Below that, everything else at the top of this folder.
+- **Skills, Commands, Agents, Workflows, Hooks, Mods, Settings** list what is here,
+  with a text editor for anything you own and a read-only view of what claude.ai or
+  a plugin owns. Settings also has a form; Hooks has one too, since a hook is only
+  real once a settings file names it.
+- **Skill folders** are labels kept in `dashboard/folders.json`, which git syncs. The
+  skills stay where they are on disk, because Claude only finds a skill directly
+  under `skills/`.
+- **Add to repo** names a left-out skill in the allow list. **Copy into repo** copies
+  a claude.ai or plugin skill into `skills/`, leaving the original with its owner.
+  Both only stage the change. `/sync-config` commits and pushes it, so nothing leaves
+  the machine without you looking first; the dashboard itself never commits or pushes.
+- **Delete** moves the thing to `backups/dashboard-trash/`, on this machine only.
 
-**Why it isn't desktop-only.** Dropping a surface would buy almost nothing. The
-mobile app is short of exactly two elements, a text field and a dropdown, and
-the pane only wants the first. The one element worth having that needs the
-desktop alone is `Client`, a region the mod draws itself with its own frame
-clock — real animation — but it draws in character cells with the terminal's
-tags, so it would cost the type sizes, borders and hover highlighting the pane
-is built on. Not a trade worth making for a tree that opens and shuts.
-
-**Putting a skill in the repo.** Pick an untracked skill and the pane offers to
-add it, which means one of two things depending on where the skill lives:
-
-- One already sitting in `skills/` — the `twg-*` ones — is **tracked where it
-  is**. Nothing moves; the pane appends an explicit `!skills/<name>/` pair under
-  a marker comment, so the allowlist stays an allowlist with one more named
-  exception.
-- One the app or a plugin owns is **copied into `skills/<name>/`**, and the
-  original stays where it is. Tracking those in place would put git and the
-  thing that writes them in a fight over the same folder. The engine writes
-  text and not bytes, so a binary file (a font, an image) is left behind and
-  named rather than half-copied.
-
-Either way the result is staged, not committed — `/sync-config` commits and
-pushes it, so nothing leaves the machine without you looking at it first.
-
-Its own folder holds the whole mod: `plugin.json` names it, `hooks/register.tsx`
-is the code, `types/index.d.ts` declares the values it keeps between draws, and
-`tests/` is run with `claude plugin test mods/config-map`. The engine writes a
-`.claude-plugin/types/` beside it at every load, naming the build; that stays
-untracked, since each machine regenerates it.
+It reads and writes only the folders above plus `settings.json`,
+`settings.local.json` and `CLAUDE.md`, and refuses any request another website could
+have sent, because those files can run code. Tests: `node --test 'dashboard/test/*.test.mjs'`.
 
 ## The .gitignore is an allowlist, on purpose
 

@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Claude Config</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<header class="top">
+  <h1>Claude Config</h1>
+  <button class="pill" id="git-pill" data-act="tab" data-tab="sync"></button>
+  <span class="grow"></span>
+  <span class="machine" id="machine"></span>
+  <button class="ghost" data-act="refresh" title="Read the disk again">Refresh</button>
+</header>
+<div id="banner" class="banner" hidden></div>
+<div class="shell" id="shell">
+  <nav class="nav" id="nav" aria-label="Sections"></nav>
+  <section class="list" id="list" aria-label="Items"></section>
+  <main class="detail" id="detail"></main>
+</div>
+<div id="toast" class="toast" role="status" hidden></div>
+<dialog id="dialog"><form id="dialog-form">
+  <h2 id="dialog-title"></h2>
+  <p id="dialog-text"></p>
+  <input id="dialog-input" autocomplete="off" spellcheck="false">
+  <div class="row end">
+    <button class="ghost" type="button" id="dialog-cancel">Cancel</button>
+    <button class="primary" type="submit" id="dialog-ok">OK</button>
+  </div>
+</form></dialog>
+<script src="app.js"></script>
+</body>
+</html>

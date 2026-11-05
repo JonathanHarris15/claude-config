@@ -27,6 +27,11 @@
 !mods/
 !mods/**
 
+# The local config dashboard: server, page, and the skill folders you arrange
+# in it. Runs from a fresh pull on any machine with Node.
+!dashboard/
+!dashboard/**
+
 # Per-space working notes, written from the board's sidebar. Small, hand-kept,
 # and worth having on every machine.
 !board/
