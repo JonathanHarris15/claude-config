@@ -1,7 +1,7 @@
 ---
 name: create-epic
-description: Shape a whole project into a JIRA epic and split it into the sibling tickets it's actually made of, ordered by what blocks what and dated. Use when work arrives project-sized — several demoable checkpoints, or you keep saying "and then also…" — whether it arrives cold as a rough idea or as a To Plan ticket that turned out to be five tickets.
-argument-hint: "The project idea (a rough sentence is fine), or an existing epic key to re-chart"
+description: Shape a whole project into an epic, on Jira or Notion, and split it into the sibling tickets it's actually made of, ordered by what blocks what and dated. Use when work arrives project-sized — several demoable checkpoints, or you keep saying "and then also…" — whether it arrives cold as a rough idea or as a To Plan ticket that turned out to be five tickets.
+argument-hint: "The project idea (a rough sentence is fine), or an existing epic's key or name to re-chart"
 ---
 
 # Create Epic
@@ -22,13 +22,13 @@ sub-tasks — that's `to-issues`, later, per ticket, after `to-prd`.
 - **Escalated** — `/plan-ticket` found a `To Plan` ticket that is really a project (see
   [ROUTING.md](../plan-ticket/ROUTING.md)). The ticket is the seed. Skim Discover, since some
   of it is already written down, and close that ticket with a comment linking the new epic.
-- **Re-chart** — `/create-epic <EPIC-KEY>` on an epic that already exists. Skip to Re-chart.
+- **Re-chart** — `/create-epic <EPIC>` on an epic that already exists. Skip to Re-chart.
 
 ## Phase 1: Discover — find the shape
 
 Turn a rough idea into a crisp problem statement and a reason this project exists. Call the
 Skill tool twice, for **"grilling"** and **"domain-modeling"** — grilling runs the interview in
-rounds, domain-modeling keeps `CONTEXT.md` and the ADRs honest as terms settle. This phase is
+rounds, domain-modeling keeps the glossary and the ADRs honest as terms settle. This phase is
 that interview, aimed at the four bullets below.
 
 Read the room first: *is the vision clear, or are we still working out what this even is?*
@@ -44,7 +44,7 @@ Read the room first: *is the vision clear, or are we still working out what this
 
 **Do not fake certainty I don't have.** If I open with "I want to build X" but can't say why or
 for whom, that's a signal to keep grilling, not a green light to decompose. It is correct for a
-cold session to spend most of its time here. The well-shaped epic is the deliverable; the JIRA
+cold session to spend most of its time here. The well-shaped epic is the deliverable; the ticket
 tree is just how it gets written down.
 
 Converge only when you can write, and I agree with:
@@ -59,8 +59,8 @@ Converge only when you can write, and I agree with:
 
 - **Where does this live?** Which modules and areas it touches. Explore the codebase and prefer
   extending existing seams over inventing new structure.
-- **Term conflicts.** If my framing uses language that clashes with `CONTEXT.md`, or isn't in
-  it, resolve that now and write it down. `CONTEXT.md` is a glossary and nothing else — the
+- **Term conflicts.** If my framing uses language that clashes with the glossary, or isn't in
+  it, resolve that now and write it down. The glossary is a glossary and nothing else — the
   scope and the plan live on the epic, not in it.
 - **Constraints and dependencies.** Deadlines, other people, tech constraints, what must ship
   first.
@@ -75,8 +75,8 @@ is a **per-ticket** judgement, and a healthy epic usually has both:
 - **Feature** — a demoable deliverable. A vertical slice, thin path through every layer,
   visible on its own. These are the checkpoints you sequence and date. Prefer several thin
   Features over a few thick ones.
-- **Investigation ticket** — a question whose output is a *decision*, not code. Label
-  `investigation`, summary prefixed `[research]`, `[prototype]`, `[grill]` or `[task]`, no due
+- **Investigation ticket** — a question whose output is a *decision*, not code. Marked as an
+  investigation, title prefixed `[research]`, `[prototype]`, `[grill]` or `[task]`, no due
   date. It **blocks** whatever it gates.
 
 **The test is one question: can you name this as a demoable slice right now, or is it still a
@@ -117,12 +117,12 @@ If there's no epic deadline, that's a valid answer — skip dates and say so. Bu
 
 ## Phase 5: Publish
 
-See [JIRA.md](../plan-ticket/JIRA.md) for the connector, the three levels, and how to create,
-link and edit issues. In order:
+See [TRACKER.md](../plan-ticket/TRACKER.md) to find this project's tracker, and its backend file
+for how to create and link things. In order:
 
-1. Confirm site, project, and issue types with me.
-2. Create the **Epic**. Its description is the vision from Phases 1–2 plus the two sections
-   JIRA can't hold anywhere else — **Fog** and **Out of scope**:
+1. Confirm the project and its types with me.
+2. Create the **Epic**. Its body is the vision from Phases 1–2 plus the two sections
+   the tracker can't hold anywhere else — **Fog** and **Out of scope**:
 
    - `## Why now`, `## Goals & non-goals`, `## Success looks like` — from Phase 1.
    - `## Fog` — questions you can see coming but can't sharply ticket yet. Not a to-do list; a
@@ -135,16 +135,15 @@ link and edit issues. In order:
    graduate into several tickets, or none.
 
    Don't keep a running "decisions so far" list on the epic. Closed tickets carry their own
-   decision comments and JIRA already shows them; the hard ones become ADRs. Restating them
+   decision comments and the tracker already shows them; the hard ones become ADRs. Restating them
    here just goes stale.
 
 3. Create each ticket under the Epic. A **Feature** uses the project's level-0 Feature type,
-   with its description written per [FEATURE-STYLE.md](FEATURE-STYLE.md). An **investigation
-   ticket** is also level-0 — use `Task`, `Story`, or a `Spike` type if the project has one —
-   carrying the `investigation` label, the `[research]` / `[prototype]` / `[grill]` / `[task]`
-   prefix in its summary, and **no `duedate`**. The label is what marks it as decision work,
-   whatever type it ended up as.
-4. Wire the **Blocks** links from Phase 4.
+   with its body written per [FEATURE-STYLE.md](FEATURE-STYLE.md). An **investigation ticket** is
+   also level-0, carrying the `[research]` / `[prototype]` / `[grill]` / `[task]` prefix in its
+   title and **no due date**. Mark it as decision work the way the backend file says: the
+   `investigation` label on Jira, `Research` type on Notion.
+4. Wire the **blockers** from Phase 4.
 5. Set due dates — the epic's, and each Feature's.
 6. Record **epic-level ADRs** for the hard-to-reverse calls made along the way: the big bets,
    build-vs-buy, a boundary that constrains everything under it. Only when all three hold —
@@ -154,7 +153,7 @@ link and edit issues. In order:
 7. **Put every ticket in `To Plan`.** They are unspecced by definition, and the board's
    integrity rule forbids an unspecced ticket sitting further right.
 
-**Hand off and stop.** Report the epic key and link, and the tickets, all in `To Plan`. From
+**Hand off and stop.** Report the epic and its link, and the tickets, all in `To Plan`. From
 here each one is picked up by `/plan-ticket <KEY>`, which routes it — including the
 investigation tickets, whose `[research]` / `[prototype]` / `[grill]` prefix tells it which lane
 to take. Tell me I can run `/plan-ticket ALL` to work the whole column.
@@ -163,7 +162,7 @@ Charting is one session's work. Don't start resolving anything now.
 
 ## Re-chart
 
-`/create-epic <EPIC-KEY>` on an epic that already exists. Use it when investigation tickets have
+`/create-epic <EPIC>` on an epic that already exists. Use it when investigation tickets have
 closed and the fog has moved.
 
 1. Read the epic and its children. Note which are closed and what they decided.

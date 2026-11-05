@@ -6,7 +6,7 @@ My personal Claude Code configuration, synced across machines.
 
 | Path | What it is |
 | --- | --- |
-| `skills/` | Custom skills — a JIRA-native planning chain (`create-epic` → `plan-ticket` → `grill-with-docs` → `to-prd` → `to-issues` → `implement` → `review`), plus the two pieces `grill-with-docs` composes (`grilling`, `domain-modeling`), the design chain (`design-prototype`, `design-push`, `design-pull`, `design-sync`), and `tdd`, `diagnose`, `prototype`, `research`, `codebase-design`, `improve-codebase-architecture`, `wizard`, `writing-for-agents`, `retro`, `sync-config`, `wait-what`. |
+| `skills/` | Custom skills — a ticket planning chain that works on Jira or Notion (`create-epic` → `plan-ticket` → `grill-with-docs` → `to-prd` → `to-issues` → `implement` → `review`), plus the two pieces `grill-with-docs` composes (`grilling`, `domain-modeling`), the design chain (`design-prototype`, `design-push`, `design-pull`, `design-sync`), and `tdd`, `diagnose`, `prototype`, `research`, `codebase-design`, `improve-codebase-architecture`, `wizard`, `writing-for-agents`, `retro`, `sync-config`, `wait-what`. |
 | `agents/` | Custom subagents. Markdown with frontmatter; the frontmatter sets the model, tools, and description. |
 | `workflows/` | Multi-agent orchestration scripts. Plain JS that fans out subagents with real control flow — loops, pipelines, adversarial verification. |
 | `commands/` | Custom slash commands. |
@@ -15,25 +15,25 @@ My personal Claude Code configuration, synced across machines.
 | `settings.json` | Global settings: effort level, theme, permission allowlist, hooks, and the `CLAUDE_CODE_PLUGIN_DIRS` that loads the mods. |
 | `CLAUDE.md` | Instructions prepended to every session, in every project, on every machine. |
 
-## The JIRA workflow
+## The ticket workflow
 
-The skills in here are not a grab-bag — most of them are one workflow, and **the JIRA
-board is its spine**. Every piece of work lives on the board, and the skills move it
+The skills in here are not a grab-bag — most of them are one workflow, and **the board
+is its spine**, in Jira or Notion. Every piece of work lives on the board, and the skills move it
 across the board rather than working alongside it.
 
 ### The board
 
-Six columns. **Only level-0 tickets ride it** — Epics group them (never a card),
+Five columns. **Only level-0 tickets ride it** — Epics group them (never a card),
 sub-tasks live inside a card (never a card of their own).
 
 ```
-To Plan  →  To Do  →  On Deck  →  In Progress  →  In Review  →  Done
+To Plan  →  To Do  →  In Progress  →  In Review  →  Done
 ```
 
 - **To Plan** — the inbox. Anything, at any stage. A title you scratched down mid-feature
   is as welcome as a fully-argued proposal.
-- **To Do / On Deck** — specced and ready. `To Do` means the next step is buildable without
-  you; `On Deck` has judgment left in it and is *yours*.
+- **To Do** — specced and ready. Each sub-task is marked `afk` or `hitl`, and those marks say
+  whether an agent can start or you have to go first.
 - **In Progress / In Review / Done** — being built.
 
 **The rule that makes it worth trusting: nothing sits right of `To Plan` without a PRD
@@ -41,16 +41,18 @@ on it.** Those columns are a promise that the thinking is finished. The rule is 
 the doors — `plan-ticket` won't land a ticket without one, `implement` won't build one.
 
 The full contract is [`skills/plan-ticket/BOARD.md`](skills/plan-ticket/BOARD.md) — what the
-columns and levels mean. [`skills/plan-ticket/JIRA.md`](skills/plan-ticket/JIRA.md) is the
-other half: how the skills actually touch JIRA. Both are shared reference, not skills.
+columns and levels mean. [`skills/plan-ticket/TRACKER.md`](skills/plan-ticket/TRACKER.md) is the
+other half: how a skill finds out what a project uses. It points to
+[`JIRA.md`](skills/plan-ticket/JIRA.md) and [`NOTION.md`](skills/plan-ticket/NOTION.md), which say
+how to touch each one. All are shared reference, not skills.
 
 ### Using it in a project
 
 ```sh
-/plan-ticket METH-48 # take one ticket from To Plan onto the board
+/plan-ticket PROJ-48 # take one ticket from To Plan onto the board
 /plan-ticket 10      # plan the 10 smallest, cheapest first
 /plan-ticket ALL     # queue up and work the whole To Plan column
-/implement METH-48   # build a ticket that's ready
+/implement PROJ-48   # build a ticket that's ready
 /implement 6         # build 6 decision-free tickets unattended, one PR back
 /implement ALL       # same, for everything eligible
 ```
@@ -66,11 +68,20 @@ own. Anything that surprises it gets parked on the board with a note and the run
 The bar for trivial is deliberately strict: if there is one thing worth asking you, it isn't
 trivial and it goes down the normal lane instead.
 
-No site, project key, issue-type name or status is hardcoded in any skill. They're read
-from a `<!-- jira-config -->` block in the project's own `CLAUDE.md`, and if there isn't
-one, `plan-ticket` discovers them from JIRA on its first run and offers to write the block
-for next time. That's what lets you clone this repo into someone else's JIRA and have it
-work.
+No tracker, project key, type name or status is hardcoded in any skill. They're read from a
+`<!-- tracker-config -->` block in the project's own `CLAUDE.md` (an older
+`<!-- jira-config -->` block still counts), and if there isn't one, `plan-ticket` discovers them on
+its first run and offers to write the block for next time. Tickets and docs are separate switches,
+so a project can keep tickets in Jira and its glossary and ADRs in Notion.
+
+On Notion, epics are a separate database, blockers are a relation between tickets, and sub-tasks
+are a checklist in the ticket's body. New projects go in Notion; Jira is being phased out.
+
+**Keeping Notion projects alike.** Copies in Notion don't follow their template, so the template is a
+file: [`skills/notion-project/STANDARD.md`](skills/notion-project/STANDARD.md). `/notion-project new
+<SHORT>` builds a teamspace from it, and `/notion-project check ALL` adds whatever a project is
+missing. To change how every project works, edit the file and run the check. Short names come from
+the teamspace names (`WARD - Wardrobe App`), so a project needs no repo to be planned.
 
 ### How planning actually happens
 
@@ -90,8 +101,7 @@ feature or a whole quarter. So it reads two dials — *how big* and *how formed*
                                                      │
                               /to-prd → /to-issues ──┘
                                         │
-                                        └─→ next step buildable? → To Do
-                                            needs your judgment?  → On Deck
+                                        └─→ To Do
 ```
 
 The lanes flow into each other — a grilling that hits a factual unknown hands to research,
@@ -111,7 +121,7 @@ would back, because reacting is far easier than inventing.
 You can unblock a stalled ticket in two minutes. You cannot easily undo a plausible-looking
 PR built on a decision it invented and never mentioned — because it *looks* finished, so it
 gets reviewed as if it were. So when the PRD doesn't answer something, it does not pick the
-sensible option. It stops, moves the ticket to `On Deck`, and says exactly what it needed.
+sensible option. It stops, marks that step `hitl`, puts the ticket back in `To Do`, and says exactly what it needed.
 
 It refuses to start on a red test suite (you cannot detect a regression against a broken
 baseline), it never merges its own PR, and it will not weaken a test to make it pass — a

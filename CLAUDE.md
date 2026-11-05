@@ -41,6 +41,12 @@ me. Say "the Mac build works" before you say METH-311.
 - Domain language and the current model live in `CONTEXT.md` at the repo root.
   When code and `CONTEXT.md` disagree about what a thing is called, that's a bug
   in one of them — say so rather than silently picking one.
+- New projects live in Notion, in a teamspace named `SHORT - Project`, with ADRs
+  under Decisions and the glossary under Specs. Those replace `docs/adr/` and
+  `CONTEXT.md` there. Jira is being phased out, and older projects still on it say
+  so in a config block. See `skills/plan-ticket/TRACKER.md`.
+- A project may have no code yet. `/notion-project` sets up a teamspace and keeps
+  each one matching the standard.
 - Prefer test-first at real seams. Don't test-drive through mocks of code I own.
 
 ## How I want you to work

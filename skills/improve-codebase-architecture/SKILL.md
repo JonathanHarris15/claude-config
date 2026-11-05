@@ -1,6 +1,6 @@
 ---
 name: improve-codebase-architecture
-description: Find deepening opportunities in a codebase, informed by the domain language in CONTEXT.md and the decisions in docs/adr/. Use when the user wants to improve architecture, find refactoring opportunities, consolidate tightly-coupled modules, or make a codebase more testable and AI-navigable.
+description: Find deepening opportunities in a codebase, informed by the project's glossary and ADRs. Use when the user wants to improve architecture, find refactoring opportunities, consolidate tightly-coupled modules, or make a codebase more testable and AI-navigable.
 ---
 
 # Improve Codebase Architecture
@@ -11,7 +11,7 @@ Surface architectural friction and propose **deepening opportunities** — refac
 
 This skill is also _informed_ by the project's domain model. The domain language gives names to good seams; ADRs record decisions the skill should not re-litigate.
 
-**Where the output goes.** This skill *generates work* — it doesn't do it. If the project is linked to JIRA (a `<!-- jira-config -->` block in its `CLAUDE.md`), offer to file each agreed opportunity as a ticket in the **`To Plan`** column, one per refactor, with what you found and why it matters. They then come through `/plan-ticket` like anything else. Don't file them further right than `To Plan` — a refactor you've named is not a refactor you've specced. Don't file the ones the user didn't agree with.
+**Where the output goes.** This skill *generates work* — it doesn't do it. If the project has a tracker (see [TRACKER.md](../plan-ticket/TRACKER.md)), offer to file each agreed opportunity as a ticket in the **`To Plan`** column, one per refactor, with what you found and why it matters. They then come through `/plan-ticket` like anything else. Don't file them further right than `To Plan` — a refactor you've named is not a refactor you've specced. Don't file the ones the user didn't agree with.
 
 ## Process
 
@@ -22,7 +22,7 @@ This skill is also _informed_ by the project's domain model. The domain language
 - If the user named a direction — a module, a subsystem, a pain point — take it, and skip the inference below.
 - Otherwise, walk back a good stretch of the commit history (`git log --oneline`) to find the hot spots — the files and areas that keep coming up — and let those paths pull your attention first. If the changes are scattered with no clear hot spot, widen the net.
 
-Read the project's domain glossary (`CONTEXT.md`) and any ADRs in the area you're touching first.
+Read the project's glossary and any ADRs in the area you're touching first, wherever they live (see [TRACKER.md](../plan-ticket/TRACKER.md)).
 
 Then use the Agent tool with `subagent_type=Explore` to walk the codebase. Don't follow rigid heuristics — explore organically and note where you experience friction:
 
@@ -53,7 +53,7 @@ Each candidate card includes:
 
 End the report with a **Top recommendation** section: which candidate you'd tackle first and why.
 
-**Use CONTEXT.md vocabulary for the domain.** If `CONTEXT.md` defines "Order," talk about "the Order intake module" — not "the FooBarHandler."
+**Use the glossary's vocabulary for the domain.** If it defines "Order," talk about "the Order intake module" — not "the FooBarHandler."
 
 **ADR conflicts**: if a candidate contradicts an existing ADR, only surface it when the friction is real enough to warrant revisiting the ADR. Mark it clearly (e.g. _"contradicts ADR-0007 — but worth reopening because…"_).
 
@@ -70,6 +70,6 @@ Two references do the technical work here, both reached from the `codebase-desig
 
 Side effects happen inline as decisions crystallize — run the **`/domain-modeling`** skill to keep the domain model current as you go:
 
-- **Naming a deepened module after a concept not in `CONTEXT.md`?** Add the term to `CONTEXT.md`. Create the file lazily if it doesn't exist.
-- **Sharpening a fuzzy term?** Update `CONTEXT.md` right there.
+- **Naming a deepened module after a concept not in the glossary?** Add the term. Create the glossary lazily if it doesn't exist.
+- **Sharpening a fuzzy term?** Update the glossary right there.
 - **User rejects a candidate with a load-bearing reason?** Offer an ADR: _"Want me to record this as an ADR so future architecture reviews don't re-suggest it?"_ Only offer when the reason would actually help a future explorer — skip ephemeral or self-evident reasons.

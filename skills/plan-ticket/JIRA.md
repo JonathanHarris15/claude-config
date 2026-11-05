@@ -1,9 +1,24 @@
 # Working with JIRA
 
-The shared mechanics. `create-epic`, `plan-ticket`, `to-prd`, `to-issues` and `implement` all
-use this file; each one names only the extra tools and the moves that are its own.
-
+How to do the actions in [TRACKER.md](./TRACKER.md) on a project whose tickets live in Jira.
 [BOARD.md](./BOARD.md) says what the columns and levels *mean*. This says how to touch them.
+Docs are a separate switch: see TRACKER.md.
+
+| Action | Tools |
+| --- | --- |
+| Read a ticket | `getJiraIssue` with `summary, description, issuetype, status, labels, parent, issuelinks, comment, subtasks, assignee` |
+| List a column | `searchJiraIssuesUsingJql`: see [Finding work](#finding-work) |
+| Create a ticket or epic | `createJiraIssue`: see [Creating an issue](#creating-an-issue) |
+| Read an epic | `getJiraIssue`, then JQL for `parent = KEY` |
+| Write the body | `editJiraIssue` on `description`: see [Editing](#editing-without-destroying) |
+| Add a label | `editJiraIssue`, re-setting the whole list |
+| Add a blocker | `createIssueLink`: see [Dependency links](#dependency-links) |
+| Move a ticket | `getTransitionsForJiraIssue`, then `transitionJiraIssue`: see [Transitions](#transitions) |
+| Comment | `addCommentToJiraIssue` with `contentFormat: "markdown"` |
+| Close a ticket | Comment why, then transition to Done |
+| Add sub-tasks | `createJiraIssue` at the sub-task level: see [Sub-tasks](#sub-tasks) |
+| Tick a sub-task | Transition that sub-task to Done |
+| Link code | See [GitHub linkage](#github-linkage) |
 
 ## Loading the tools
 
@@ -16,11 +31,9 @@ ToolSearch → jira create issue
 
 The connector's server prefix differs per install, and changes if it's reinstalled, so
 **never hardcode it** — read the prefix off what that first call returns, then load everything
-you need in one further `ToolSearch → select:…` using that prefix. The skill that sent you here
-names its own list; these are the ones nearly everything needs:
-
-`getAccessibleAtlassianResources`, `getJiraIssue`, `editJiraIssue`, `addCommentToJiraIssue`,
-`searchJiraIssuesUsingJql`.
+you need in one further `ToolSearch → select:…` using that prefix. Nearly everything needs
+`getAccessibleAtlassianResources`, `getJiraIssue`, `editJiraIssue`, `addCommentToJiraIssue`
+and `searchJiraIssuesUsingJql`. Load the rest from the table above as you need them.
 
 ## Knowing where you are
 
@@ -32,9 +45,10 @@ names its own list; these are the ones nearly everything needs:
 3. **Real type and status names** — `getJiraProjectIssueTypesMetadata`. Every project names
    things differently. Don't assume names verbatim; use what the metadata says.
 
-A project that has been set up already carries a `<!-- jira-config -->` block in its
-`CLAUDE.md` with the cloudId, project key, and real type names. Read that first and skip the
-discovery. If there isn't one, discover once and offer to write it.
+A project that has been set up already carries a `<!-- jira-config -->` or
+`<!-- tracker-config -->` block in its `CLAUDE.md` with the cloudId, project key, and real type
+names. Read that first and skip the discovery. If there isn't one, discover once and offer to
+write it.
 
 ## The three levels
 
@@ -98,12 +112,22 @@ with an `id` and a target status name. Pick the one matching where you're going,
 - **Never invent a status name.** If no transition matches the phase you're in (the project has
   no "In Review", say), skip it rather than forcing one.
 
+## Sub-tasks
+
+Read the ticket to confirm it really is level-0 and to get its `projectKey`, then take the real
+sub-task type name from the project metadata (`getJiraProjectIssueTypesMetadata`). It is JIRA's
+`Subtask`, which projects often rename to "Task".
+
+Create each one with `parent` set to the ticket's key, the description as markdown with acceptance
+criteria as a checklist, and labels tagging AFK or HITL plus the epic, e.g.
+`{"labels": ["afk", "epic-<slug>"]}`. Link sub-tasks to each other only within the ticket.
+
 ## Finding work
 
 JQL through `searchJiraIssuesUsingJql`. The ready queue:
 
 ```
-project = PROJ AND status IN ("To Do", "On Deck") ORDER BY created ASC
+project = PROJ AND status = "To Do" ORDER BY created ASC
 ```
 
 Filter out anything with an open blocker in its `issuelinks` — JQL won't do that for you.

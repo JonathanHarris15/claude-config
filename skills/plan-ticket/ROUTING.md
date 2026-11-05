@@ -100,7 +100,7 @@ because a fog ticket gives you nothing to push against, you must **lead with you
 own reading**: name the two or three genuinely different things the ticket could
 mean, say which you'd back and why, and let the user react. Reacting is far easier
 than inventing. Only once the change has a name do you start sharpening it against
-`CONTEXT.md`.
+the glossary.
 
 **Say you're doing this.** "This is fog, so I'm starting wider than usual" is worth
 a sentence — otherwise the grilling looks like it's missing the point.
@@ -126,7 +126,7 @@ If the unknown is about *feel* rather than fact — "would this even be nice to 
 and pinned against the domain model — sharpening terms, resolving edge cases, finding
 the decisions you didn't notice you were making.
 
-**What it needs:** Relentless one-at-a-time interrogation against `CONTEXT.md` and
+**What it needs:** Relentless one-at-a-time interrogation against the glossary and
 the ADRs. That's `grill-with-docs`. **This is the default lane** — most tickets that
 aren't fog and aren't blocked on a fact land here.
 
@@ -157,9 +157,9 @@ say what you need.
 Whatever lane a ticket took, it ends the same way:
 
 ```
-   → /to-prd      (PRD written onto the ticket's own description)
-   → /to-issues   (real sub-tasks created under it)
-   → land it      (To Do / On Deck — see BOARD.md)
+   → /to-prd      (PRD written onto the ticket's own body)
+   → /to-issues   (sub-tasks added to it)
+   → land it      (To Do — see BOARD.md)
 ```
 
 The lane is *how the fog cleared*. The convergence is *how it gets on the board*.

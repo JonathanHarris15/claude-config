@@ -1,6 +1,6 @@
 ---
 name: review
-description: "Review a change along three axes at once, in parallel sub-agents: Standards (does it follow the repo's documented standards and the code-smell baseline?), Spec (does it do what the ticket's PRD asked for?), and Domain (does it speak the language in CONTEXT.md and respect the ADRs?). Use when reviewing a branch, a PR, work in progress, or a finished ticket before it ships."
+description: "Review a change along three axes at once, in parallel sub-agents: Standards (does it follow the repo's documented standards and the code-smell baseline?), Spec (does it do what the ticket's PRD asked for?), and Domain (does it speak the language in the project's glossary and respect the ADRs?). Use when reviewing a branch, a PR, work in progress, or a finished ticket before it ships."
 ---
 
 # Review
@@ -38,7 +38,7 @@ Confirm `git rev-parse <fixed-point>` resolves and the diff is non-empty **befor
 
 The spec is the originating ticket, in this order:
 
-1. An issue key in the branch name or the commit messages (`METH-124`, `PROJ-48`). Fetch the issue and take its **description** — that is the PRD, and its `## Problem Statement` and `## Acceptance Criteria` are what the Spec axis measures against. Use the `<!-- jira-config -->` block in the project's `CLAUDE.md` for the connection.
+1. A ticket key in the branch name or the commit messages (`PROJ-48`). Read the ticket and take its **body** — that is the PRD, and its `## Problem Statement` and `## Acceptance Criteria` are what the Spec axis measures against. [TRACKER.md](../plan-ticket/TRACKER.md) says where the project's tickets live.
 2. A path the user passed in.
 3. A spec file under `docs/` matching the branch or feature.
 4. Nothing found: ask. If the user says there is no spec, skip the Spec sub-agent and say so in the report.
@@ -81,9 +81,11 @@ One message, three tool calls, so they run at once.
 
 > Report: (a) acceptance criteria that are missing or only partly met; (b) behaviour in the diff nobody asked for — scope creep; (c) criteria that look implemented but where the implementation looks wrong. Quote the criterion for every finding. Under 400 words.
 
-**Domain** (`subagent_type=domain-language`). Give it the diff and let it do its own job: names that drift from `CONTEXT.md`, concepts the code invented that the model doesn't have, model terms the code quietly renamed. Add: check the change against the ADRs in `docs/adr/` covering this area and flag anything that contradicts one.
+**Domain** (`subagent_type=domain-language`). Give it the diff and let it do its own job: names that drift from the glossary, concepts the code invented that the model doesn't have, model terms the code quietly renamed. Add: check the change against the ADRs covering this area and flag anything that contradicts one.
 
-If the spec is missing, skip that sub-agent. If the repo has no `CONTEXT.md`, skip Domain and say so — don't have it invent a model.
+**This agent can only read files.** On a project whose Docs are in Notion, fetch the glossary and the ADRs for this area yourself and paste them into its prompt.
+
+If the spec is missing, skip that sub-agent. If the project has no glossary, skip Domain and say so — don't have it invent a model.
 
 ## 5. Report
 

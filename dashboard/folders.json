@@ -1,8 +1,8 @@
 {
   "folders": [
     {
-      "name": "JIRA workflow",
-      "skills": ["own/create-epic", "own/plan-ticket", "own/grill-with-docs", "own/grilling", "own/domain-modeling", "own/to-prd", "own/to-issues", "own/implement", "own/review"]
+      "name": "Ticket workflow",
+      "skills": ["own/notion-project", "own/create-epic", "own/plan-ticket", "own/grill-with-docs", "own/grilling", "own/domain-modeling", "own/to-prd", "own/to-issues", "own/implement", "own/review"]
     },
     {
       "name": "Design",

@@ -1,63 +1,64 @@
 # The board contract
 
-The canonical description of the workflow every JIRA skill in this config assumes.
+The canonical description of the workflow every ticket skill in this config assumes.
 `plan-ticket`, `create-epic`, `to-prd`, `to-issues` and `implement` all obey it.
 
-This file says what the columns and levels **mean**. [JIRA.md](./JIRA.md) says how to
-touch them — the connector, the three levels, creating, linking, editing, transitions.
+This file says what the columns and levels **mean**, on any tracker. [TRACKER.md](./TRACKER.md)
+says how to find out which tracker a project uses, and how to touch it.
 
 If you are reading this because a skill pointed you here: this file is the source
 of truth. Where a skill's prose and this file disagree, this file wins — say so.
 
 ## The three levels
 
-JIRA nests exactly three levels, and this workflow uses all of them for different jobs:
+This workflow uses three levels, each for a different job:
 
-| Level | JIRA hierarchy | Role here | On the board? |
-| --- | --- | --- | --- |
-| **Epic** | 1 | **Grouping.** Answers "what project is this part of." Holds the vision, goals, non-goals. Created by `create-epic`. | **No.** Epics never appear as cards. |
-| **Ticket** | 0 (`Feature` / `Task` / `Bug`) | **The unit of work.** This is what a card *is*. Holds the PRD once planned. | **Yes.** This is the only thing on the board. |
-| **Sub-task** | −1 | **The steps inside a ticket.** Created by `to-issues`. Gives you a live progress count on the card. | **No.** They render inside the parent card. |
+| Level | Role here | On the board? |
+| --- | --- | --- |
+| **Epic** | **Grouping.** Answers "what project is this part of." Holds the vision, goals, non-goals. Created by `create-epic`. | **No.** Epics never appear as cards. |
+| **Ticket** (`Feature`, `Bug` and so on) | **The unit of work.** This is what a card *is*. Holds the PRD once planned. | **Yes.** This is the only thing on the board. |
+| **Sub-task** | **The steps inside a ticket.** Created by `to-issues`. On Notion it is a checklist in the ticket's body. On Jira it is a Jira sub-task. | **No.** They live inside the parent card. |
 
 **A "ticket" in these skills always means a level-0 item** — the thing that rides
 the columns. Never an Epic, never a sub-task.
 
-Issue-type *names* differ per project (some have `Feature`, some only `Story`).
-**Never hardcode them.** Read the real names from the `Issue types` line of the
-project's `CLAUDE.md` Jira block if it has one, and otherwise from
-`getJiraProjectIssueTypesMetadata`.
+Type *names* differ per project (some have `Feature`, some only `Story`).
+**Never hardcode them.** Read the real names from the project's config block if it
+has them, and otherwise from the tracker. See [TRACKER.md](./TRACKER.md).
 
-## The six columns
+## The five columns
 
 ```
-To Plan  →  To Do  →  On Deck  →  In Progress  →  In Review  →  Done
+To Plan  →  To Do  →  In Progress  →  In Review  →  Done
 ```
 
 | Column | Meaning | Who puts things here |
 | --- | --- | --- |
 | **To Plan** | **The inbox.** Anything, at any stage of formulation — a title you scratched down mid-feature, a Feature `create-epic` emitted, a long ticket you wrote by hand, an untriaged bug. Nothing here is specced. | You, `create-epic`, `improve-codebase-architecture` |
-| **To Do** | Specced and ready, **and the next step is buildable without you.** Has a PRD and sub-tasks. Not yet claimed by anyone or anything. | `plan-ticket` |
-| **On Deck** | Ready, **and the next step in it needs you.** A design call, a taste call, something needing your eyes. **Yours to do.** | `plan-ticket` |
+| **To Do** | Specced and ready. Has a PRD and sub-tasks. Not yet claimed by anyone or anything. The sub-tasks say who can start it: see [who can start a ticket](#who-can-start-a-ticket). | `plan-ticket` |
 | **In Progress** | Being built right now. | `implement` |
 | **In Review** | PR open. | `implement` |
 | **Done** | Merged. | The merge queue, or you |
 
-The board order you see in JIRA is cosmetic. What matters is the contract below.
+The board order you see in the tracker is cosmetic. What matters is the contract below.
+
+**A board may still have a column this contract doesn't name**, such as `On Deck` on an older
+Jira board. Never move a ticket into one. If a ticket is sitting in one, treat it as `To Do`.
 
 ## The integrity rule
 
 > **A ticket may not sit right of `To Plan` without a PRD on it.**
 
 This is the load-bearing rule of the whole system, and it is what makes the board
-trustworthy. `To Do` / `On Deck` are a promise that the thinking is finished. A
-ticket in `To Do` that is really still an idea is a lie the board is telling you.
+trustworthy. `To Do` is a promise that the thinking is finished. A ticket in
+`To Do` that is really still an idea is a lie the board is telling you.
 
 Nothing sweeps the board for you, so the rule is upheld at the two doors:
 `plan-ticket` will not land a ticket right of `To Plan` until `to-prd` has run,
 and `implement` refuses to build a ticket that has no PRD. If you find one that
 slipped through anyway, move it back to `To Plan` yourself and say why.
 
-**A ticket "has a PRD"** when its description carries the `to-prd` template — in
+**A ticket "has a PRD"** when its body carries the `to-prd` template — in
 practice, look for a `## Problem Statement` heading *and* an `## Acceptance Criteria`
 heading. A wall of prose, however long and however lovingly written, is **not** a PRD.
 
@@ -78,35 +79,36 @@ promise `To Do` makes is that the thinking is finished; on a typo fix the thinki
 really is finished. What gets skipped is the paperwork, never the thought.
 
 
-## The decision rule — what separates `To Do` from `On Deck`
+## <a name="who-can-start-a-ticket"></a>Who can start a ticket
 
-> **A ticket goes to `To Do` if the next thing to do in it can be built without
-> asking you anything. Otherwise it goes to `On Deck`.**
+> **No column decides this. The ticket's sub-tasks do.** Every specced ticket goes to
+> `To Do`, and its sub-tasks say whether an agent can start or you have to go first.
 
-The unit that carries this is **the sub-task**, not the whole ticket. `to-issues`
-classifies every sub-task **AFK** (decision-free — an agent can just build it) or
-**HITL** (needs your judgment: a design call, a taste call, a product call).
+`to-issues` classifies every sub-task **AFK** (decision-free — an agent can just build
+it) or **HITL** (needs your judgment: a design call, a taste call, a product call).
 
 **Walk them in dependency order.** A sub-task is *reachable* if it is AFK **and**
 every sub-task blocking it is Done or itself reachable. A HITL sub-task is never
 reachable, and neither is anything sitting behind one. So a ticket whose sub-tasks
 run AFK, AFK, HITL, AFK has two reachable — and the third is where it stops.
 
-- **First sub-task reachable → `To Do`.** There is real work to start on.
+- **Something reachable** → an agent can start, and it stops at the first thing it can't reach.
 - **Nothing reachable** — every sub-task is HITL, or the only AFK ones sit behind a
-  HITL one → **`On Deck`.** It needs you before it needs a builder.
+  HITL one → **it needs you first.** Unattended runs skip it, and `plan-ticket` says so
+  when it lands the ticket.
 
 Classify honestly. If a sub-task says "pick a sensible layout" or "decide how errors
-surface," it is **HITL**, however small it looks. Mislabelling one `afk` doesn't cost
-a column — it costs a confident guess built on your behalf. When in doubt, `On Deck`.
+surface," it is **HITL**, however small it looks. Mislabelling one `afk` costs a confident
+guess built on your behalf. When in doubt, HITL.
 
 **A trivial ticket has no sub-tasks to classify**, so read the rule against the ticket
 itself: it qualified as trivial precisely because nothing in it needs you. It is AFK by
 definition and goes to `To Do`. If you find yourself wanting to mark one HITL, it was
 misrouted — send it back to `To Plan` and grill it properly.
 
-A ticket in `To Do` may still stop part-way through: `implement` builds what it can
-reach, and when it hits a genuine decision it stops and asks rather than guessing.
+A ticket in `To Do` may stop part-way through: `implement` builds what it can reach, and
+when it hits a genuine decision it stops and asks rather than guessing. The ticket goes
+back to `To Do` with that step marked HITL and a comment saying what it needs.
 
 ## The lifecycle
 
@@ -118,15 +120,8 @@ reach, and when it hits a genuine decision it stops and asks rather than guessin
                               │
                         /plan-ticket
                               │
-              ┌───────────────┴───────────────┐
-              │                               │
-    next step buildable              next step needs
-       without you?                        you?
-              │                               │
-              ▼                               ▼
-          [To Do]  ◀────── decision made ──── [On Deck]
-              │                               │
-              └───────────────┬───────────────┘
+                              ▼
+                           [To Do]
                               │
                          /implement
                               │
@@ -174,7 +169,7 @@ it's dated by the epic it blocks, not on its own.
 a deliverable — labelled `investigation`, summary prefixed `[research]` /
 `[prototype]` / `[grill]` / `[task]`.
 
-These are level-0 tickets and **do** sit on the board, in `To Plan` or `On Deck`.
+These are level-0 tickets and **do** sit on the board, in `To Plan`.
 But they are the one exception to the integrity rule: **an investigation ticket
 never gets a PRD**, because its output is a decision comment, not code. They are
 closed by `/plan-ticket`, which routes each one by its prefix and posts the

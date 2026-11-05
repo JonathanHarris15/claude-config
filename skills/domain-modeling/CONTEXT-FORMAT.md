@@ -1,4 +1,8 @@
-# CONTEXT.md Format
+# Glossary Format
+
+This is the format for the glossary wherever it lives: `CONTEXT.md` in the repo, or a `Glossary` page
+in Notion (see [TRACKER.md](../plan-ticket/TRACKER.md)). The file names below are for the repo; on
+Notion, each context gets its own `Glossary — <Context>` page.
 
 ## Structure
 
