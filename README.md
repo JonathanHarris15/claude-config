@@ -10,7 +10,7 @@ My personal Claude Code configuration, synced across machines.
 | `agents/` | Custom subagents. Markdown with frontmatter; the frontmatter sets the model, tools, and description. |
 | `workflows/` | Multi-agent orchestration scripts. Plain JS that fans out subagents with real control flow — loops, pipelines, adversarial verification. |
 | `commands/` | Custom slash commands. |
-| `mods/` | Mods — code that changes Claude's own interface. `config-map` is a button that opens the dashboard. |
+| `mods/` | Mods — code that changes Claude's own interface. `config-map` opens the dashboard; `commit-tree` draws the repo's commit tree. |
 | `dashboard/` | A local page for managing all of this, and for seeing how each thing syncs. |
 | `settings.json` | Global settings: effort level, theme, permission allowlist, hooks, and the `CLAUDE_CODE_PLUGIN_DIRS` that loads the mods. |
 | `CLAUDE.md` | Instructions prepended to every session, in every project, on every machine. |
@@ -132,9 +132,10 @@ a failing test it didn't expect is a **stop**, not an obstacle.
 
 A mod is a plugin that changes Claude's own interface rather than what it knows —
 a pane beside the chat, a row above the prompt, a hook on tool calls. Each one is
-a folder under `mods/`, and `settings.json` loads them by naming them in
-`CLAUDE_CODE_PLUGIN_DIRS`. The path uses `~`, so the same setting works on
-Windows and Mac.
+a folder under `mods/`, and `settings.json` loads them with a single
+`CLAUDE_CODE_PLUGIN_DIRS` of `~/.claude/mods` — the folder that holds them, not
+each mod in turn. Every mod inside it loads, so adding one is just adding a
+folder. The path uses `~`, so the same setting works on Windows and Mac.
 
 **`config-map`** is one button above the chat bar: it starts the config dashboard and opens it,
 in the app's browser pane where there is one and your own browser otherwise.
@@ -144,9 +145,26 @@ keeps between draws, and `tests/` is run with `claude plugin test mods/config-ma
 The engine writes a `.claude-plugin/types/` beside it at every load, naming the
 build; that stays untracked, since each machine regenerates it.
 
-`CLAUDE_CODE_PLUGIN_DIRS` splits on `:` on a Mac and `;` on Windows, so with two or
-more mods on, one synced `settings.json` only works on one kind of machine. The
-dashboard warns before it writes a list like that.
+**`commit-tree`** is a second button on that row. It opens a read-only pane
+holding the repository's commit tree: the branch you are on and how far it has
+drifted, every branch here and on a remote with the checked-out one marked, and
+then git's own graph, newest commit at the top and oldest at the bottom, each
+row labelled with its hash, date, branch and tag names, and subject. The arrow
+keys scroll it while the pane has focus, and it re-reads itself every fifteen
+seconds. `/commit-tree` opens it too. Same layout as above, tested with
+`claude plugin test mods/commit-tree`.
+
+Both mods draw on the band above the prompt, which is **one drawing shared by
+every mod**: a mod that returns its own tree there replaces what the mods beneath
+it drew. So each one takes what `next(e)` gives it and lays its own row beside it,
+and the buttons sit in a row instead of hiding each other. A new mod that draws
+there has to do the same.
+
+Naming the folder rather than each mod also steps around a trap. A list of paths
+is split per platform, and on Windows a `;`-joined list does not load at all,
+while a `:`-joined list of `~` paths does not either — only a single path is
+reliably read. The dashboard's mod on/off switch still writes a per-mod list, so
+it is out of step with this setting and needs updating.
 
 ## The config dashboard
 

@@ -104,25 +104,31 @@ export const register: Register = on => {
   on('ui.render', { component: 'AbovePrompt' }, async ($, e, next) => {
     if (e.props.hasSurvey) return next(e)
 
+    // The band is one drawing for every mod, so wrap what is drawn beneath
+    // rather than answer in its place: another mod's row keeps its seat.
+    const beneath = await next(e)
     const { Box, Text, Button, Link } = $.ui.resolve(e)
     const last = await read($, opened)
     const busy = await read($, isBusy)
 
     return (
-      <Box flexDirection="column">
-        <Box gap={1} alignItems="center">
-          <Button key="open" onPress={() => void openDashboard($, true)}>
-            {busy ? 'Opening…' : 'Open config dashboard'}
-          </Button>
-          {last?.where === 'pane' ? (
-            <Button key="outside" onPress={() => void openDashboard($, false)}>
-              Open in my browser instead
+      <Box flexDirection="row" gap={1} alignItems="center">
+        <Box flexDirection="column">
+          <Box gap={1} alignItems="center">
+            <Button key="open" onPress={() => void openDashboard($, true)}>
+              {busy ? 'Opening…' : 'Open config dashboard'}
             </Button>
-          ) : null}
-          {last?.where ? <Text dimColor>{SAID[last.where]}</Text> : null}
-          {last?.url ? <Link href={last.url} /> : null}
+            {last?.where === 'pane' ? (
+              <Button key="outside" onPress={() => void openDashboard($, false)}>
+                Open in my browser instead
+              </Button>
+            ) : null}
+            {last?.where ? <Text dimColor>{SAID[last.where]}</Text> : null}
+            {last?.url ? <Link href={last.url} /> : null}
+          </Box>
+          {last?.trouble ? <Text color="error">{last.trouble}</Text> : null}
         </Box>
-        {last?.trouble ? <Text color="error">{last.trouble}</Text> : null}
+        {beneath}
       </Box>
     )
   })

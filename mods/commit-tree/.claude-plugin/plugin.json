@@ -1,0 +1,9 @@
+{
+  "name": "commit-tree",
+  "version": "0.1.0",
+  "description": "A button that opens a read-only, scrollable picture of the repo's commit tree",
+  "author": {
+    "name": "Jonathan Harris"
+  },
+  "types": "./types/index.d.ts"
+}

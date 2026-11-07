@@ -15,9 +15,25 @@ const BAND = {
 
 const URL_HOME = 'http://127.0.0.1:4915/'
 
-/** Stands for the machine: what the launcher answers, and whether the pane exists. */
-function machine(on: any, { hasPane = true, answer = { url: URL_HOME, started: true } as object } = {}) {
+/**
+ * Stands for the machine: what the launcher answers, whether the pane exists,
+ * and the engine beneath the mods, which is what the band wraps.
+ */
+function machine(
+  on: any,
+  {
+    hasPane = true,
+    answer = { url: URL_HOME, started: true } as object,
+    beneath = null as null | ((...a: any[]) => any),
+  } = {},
+) {
   const calls = { pane: [] as unknown[], runs: [] as string[][] }
+  on('ui.render', ($: any, e: any) => {
+    if (beneath) return beneath($, e)
+    const { Box } = $.ui.resolve(e)
+
+    return <Box />
+  })
   on('env.get', (_: unknown, e: { name?: string; key?: string }) => ({
     value: (e.name ?? e.key) === 'HOME' ? '/home/me' : undefined,
   }))
@@ -86,10 +102,11 @@ test('what an older version stored is declined', async ($, on) => {
 })
 
 test('the band steps aside for a survey', async ($, on) => {
-  machine(on)
-  on('ui.render', ($: any, e: any) => {
-    const { Text } = $.ui.resolve(e)
-    return <Text key="survey">Survey</Text>
+  machine(on, {
+    beneath: ($: any, e: any) => {
+      const { Text } = $.ui.resolve(e)
+      return <Text key="survey">Survey</Text>
+    },
   })
   const ui = await $.ui.mount({ ...BAND, surface: 'desktop', props: { ...BAND.props, hasSurvey: true } })
   expect(await ui.find({ type: 'Text', text: /Survey/ })).toBeDefined()

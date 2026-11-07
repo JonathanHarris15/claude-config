@@ -38,7 +38,7 @@
   "agentPushNotifEnabled": true,
   "model": "claude-opus-5-5",
   "env": {
-    "CLAUDE_CODE_PLUGIN_DIRS": "~/.claude/mods/config-map"
+    "CLAUDE_CODE_PLUGIN_DIRS": "~/.claude/mods"
   },
   "hooks": {
     "SessionStart": [
