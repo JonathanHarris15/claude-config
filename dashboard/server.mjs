@@ -228,6 +228,25 @@ async function handleApi(root, req, url, body) {
     case 'POST /api/track':
       return trackSkill(root, body.id)
 
+    case 'POST /api/mod-on': {
+      // On and off is where the folder sits. The loader skips a dot-named one,
+      // and git tracks it either way, so the choice syncs with everything else.
+      const name = String(body.name ?? '').replace(/^\.+/, '')
+      if (!NAME.test(name)) throw new Refused(400, 'That is not a mod name.')
+      const on = body.on === true
+      const from = path.join(root, 'mods', on ? '.' + name : name)
+      const to = path.join(root, 'mods', on ? name : '.' + name)
+      if (!(await exists(from))) {
+        if (await exists(to)) return { name, isOn: on } // Already where it should be.
+        throw new Refused(404, 'mods/' + name + ' does not exist.')
+      }
+      if (await exists(to)) {
+        throw new Refused(409, 'Both mods/' + name + ' and mods/.' + name + ' exist. Sort that out by hand.')
+      }
+      await rename(from, to)
+      return { name, isOn: on }
+    }
+
     case 'POST /api/folders': {
       if (!Array.isArray(body.folders)) throw new Refused(400, 'No folders given.')
       const folders = body.folders.map(one => ({

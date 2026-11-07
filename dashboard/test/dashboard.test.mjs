@@ -90,6 +90,42 @@ test('mods say whether settings turn them on', async () => {
   assert.equal(mods.find(one => one.name === 'off').isOn, false)
 })
 
+test('naming the mods folder turns every mod on', async () => {
+  const file = path.join(root, 'settings.json')
+  const was = fs.readFileSync(file, 'utf8')
+  const value = JSON.parse(was)
+  value.env.CLAUDE_CODE_PLUGIN_DIRS = '~/.claude/mods'
+  fs.writeFileSync(file, JSON.stringify(value))
+  const { mods } = (await state()).items
+  assert.equal(mods.find(one => one.name === 'on').isOn, true)
+  assert.equal(mods.find(one => one.name === 'off').isOn, true)
+  fs.writeFileSync(file, was)
+})
+
+test('the switch turns a mod off by dot-naming its folder, and back on', async () => {
+  assert.equal((await call('POST', '/api/mod-on', { name: 'on', on: false })).status, 200)
+  assert.ok(fs.existsSync(path.join(root, 'mods/.on')))
+  assert.ok(!fs.existsSync(path.join(root, 'mods/on')))
+
+  // The dot belongs to the folder, not the name, and the mod reads as off.
+  const mod = (await state()).items.mods.find(one => one.name === 'on')
+  assert.equal(mod.isOn, false)
+  assert.equal(mod.path, 'mods/.on')
+
+  assert.equal((await call('POST', '/api/mod-on', { name: 'on', on: true })).status, 200)
+  assert.ok(fs.existsSync(path.join(root, 'mods/on')))
+  assert.equal((await state()).items.mods.find(one => one.name === 'on').isOn, true)
+})
+
+test('a dot folder that is no mod is not listed as one', async () => {
+  fs.mkdirSync(path.join(root, 'mods/.notes'), { recursive: true })
+  assert.equal(
+    (await state()).items.mods.find(one => one.name === 'notes'),
+    undefined,
+  )
+  fs.rmSync(path.join(root, 'mods/.notes'), { recursive: true })
+})
+
 test('hooks in settings are listed', async () => {
   const [hook] = (await state()).hooks
   assert.equal(hook.event, 'Stop')

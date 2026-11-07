@@ -163,8 +163,14 @@ there has to do the same.
 Naming the folder rather than each mod also steps around a trap. A list of paths
 is split per platform, and on Windows a `;`-joined list does not load at all,
 while a `:`-joined list of `~` paths does not either — only a single path is
-reliably read. The dashboard's mod on/off switch still writes a per-mod list, so
-it is out of step with this setting and needs updating.
+reliably read.
+
+That leaves on and off to the folder names, which is where they now live: **a mod
+is off when its folder is dot-named**, `mods/.commit-tree`, because the loader
+skips those. Git tracks a dot-named folder like any other, so the choice syncs to
+your other machines with everything else, and nothing is deleted to turn a mod
+off. The dashboard's switch does the rename, and turning one on also makes sure
+`settings.json` names the folder.
 
 ## The config dashboard
 

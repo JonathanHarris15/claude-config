@@ -156,10 +156,10 @@ export async function walk(abs) {
   return out
 }
 
-const dirsIn = async abs => {
+const dirsIn = async (abs, { hidden = false } = {}) => {
   try {
     return (await fs.readdir(abs, { withFileTypes: true }))
-      .filter(one => one.isDirectory() && !one.name.startsWith('.'))
+      .filter(one => one.isDirectory() && (hidden || !one.name.startsWith('.')))
       .map(one => one.name)
       .sort()
   } catch {
@@ -351,11 +351,22 @@ export async function scan(root) {
 
   // --- Mods, and which of them settings.json turns on
   const settings = (await readJson(path.join(root, 'settings.json'))) ?? {}
-  const namedDirs = String(settings.env?.CLAUDE_CODE_PLUGIN_DIRS ?? '').replace(/\\/g, '/')
-  for (const name of await dirsIn(path.join(root, 'mods'))) {
-    const rel = 'mods/' + name
+  const named = String(settings.env?.CLAUDE_CODE_PLUGIN_DIRS ?? '')
+    .replace(/\\/g, '/')
+    .split(/;|(?<=.{2}):/)
+    .map(one => one.trim().replace(/\/+$/, ''))
+    .filter(Boolean)
+  // One path naming the mods folder loads every mod inside it. An older
+  // settings.json naming one mod at a time still reads correctly.
+  const loadsAll = named.some(one => one.endsWith('/mods'))
+  // A mod is off when its folder is dot-named: the loader skips those, and git
+  // tracks them either way, so the choice syncs like everything else here.
+  for (const folder of await dirsIn(path.join(root, 'mods'), { hidden: true })) {
+    const name = folder.replace(/^\./, '')
+    const rel = 'mods/' + folder
     const files = await relAll(path.join(root, rel))
     const manifest = await readJson(path.join(root, rel, '.claude-plugin', 'plugin.json'))
+    if (folder.startsWith('.') && !manifest) continue // A dot folder that is no mod.
     items.mods.push({
       id: 'mod/' + name,
       kind: 'mod',
@@ -365,7 +376,7 @@ export async function scan(root) {
       files: files.filter(one => !one.includes('/.claude-plugin/types/')),
       main: files.find(one => /\/hooks\/register\.tsx?$/.test(one)) ?? files[0] ?? '',
       isEditable: true,
-      isOn: namedDirs.split(/;|(?<=.{2}):/).some(one => one.trim().replace(/\/+$/, '').endsWith('/mods/' + name)),
+      isOn: !folder.startsWith('.') && (loadsAll || named.some(one => one.endsWith('/mods/' + name))),
       owner: '',
       ...routeOf(files.filter(one => !one.includes('/.claude-plugin/types/')), git),
     })

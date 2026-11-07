@@ -378,7 +378,7 @@ function itemHead(item) {
     }
   }
   if (item.kind === 'mod') {
-    actions.push(`<label class="switch small"><input type="checkbox" id="mod-on" data-name="${esc(item.name)}" ${item.isOn ? 'checked' : ''}> On in settings.json</label>`)
+    actions.push(`<label class="switch small"><input type="checkbox" id="mod-on" data-name="${esc(item.name)}" ${item.isOn ? 'checked' : ''}> On</label>`)
   }
   if (item.isEditable) actions.push(`<button class="danger" data-act="delete" data-path="${esc(item.path)}" data-name="${esc(item.name)}">Delete</button>`)
   return `<div class="head">
@@ -590,26 +590,24 @@ async function moveSkill(id, name) {
 
 const pathList = text => String(text ?? '').split(/;|(?<=.{2}):/).map(one => one.trim()).filter(Boolean)
 
+/**
+ * On and off is where a mod's folder sits: the loader skips a dot-named one.
+ * A list of one path per mod cannot be written portably -- the separator
+ * differs per machine and settings.json syncs -- so one path names the folder
+ * that holds them all, and the folder names carry the choice.
+ */
 async function setModOn(name, on) {
-  const sep = S.data.platform === 'win32' ? ';' : ':'
-  const settings = JSON.parse((await api('GET', '/api/file?path=settings.json')).text)
-  const dirs = pathList(settings.env?.CLAUDE_CODE_PLUGIN_DIRS).filter(one => !one.replace(/\\/g, '/').replace(/\/+$/, '').endsWith('/mods/' + name))
-  if (on) dirs.push('~/.claude/mods/' + name)
-  if (dirs.length > 1) {
-    const sure = await ask({
-      title: 'This setting will only work on one kind of machine',
-      text: `With two or more mods on, the list needs "${sep}" between them here, but ${sep === ':' ? 'Windows needs ";"' : 'a Mac needs ":"'}. settings.json syncs, so your other machines would fail to load these mods.`,
-      okLabel: 'Do it anyway',
-      danger: true,
-    })
-    if (!sure) return false
+  if (on) {
+    const settings = JSON.parse((await api('GET', '/api/file?path=settings.json')).text || '{}')
+    const named = pathList(settings.env?.CLAUDE_CODE_PLUGIN_DIRS).map(one => one.replace(/\\/g, '/').replace(/\/+$/, ''))
+    if (!named.some(one => one.endsWith('/mods'))) {
+      await changeJson('settings.json', value => {
+        value.env ??= {}
+        value.env.CLAUDE_CODE_PLUGIN_DIRS = '~/.claude/mods'
+      })
+    }
   }
-  await changeJson('settings.json', value => {
-    value.env ??= {}
-    if (dirs.length) value.env.CLAUDE_CODE_PLUGIN_DIRS = dirs.join(sep)
-    else delete value.env.CLAUDE_CODE_PLUGIN_DIRS
-    emptyLeft(value, 'env')
-  })
+  await api('POST', '/api/mod-on', { name, on })
   toast((on ? 'On' : 'Off') + ' for new sessions.')
   return true
 }
