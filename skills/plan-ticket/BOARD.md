@@ -38,7 +38,7 @@ To Plan  →  To Do  →  In Progress  →  In Review  →  Done
 | **To Do** | Specced and ready. Has a PRD and sub-tasks. Not yet claimed by anyone or anything. The sub-tasks say who can start it: see [who can start a ticket](#who-can-start-a-ticket). | `plan-ticket` |
 | **In Progress** | Being built right now. | `implement` |
 | **In Review** | PR open. | `implement` |
-| **Done** | Merged. | The merge queue, or you |
+| **Done** | Merged. | The tracker, `implement`, or you |
 
 The board order you see in the tracker is cosmetic. What matters is the contract below.
 
@@ -106,9 +106,10 @@ itself: it qualified as trivial precisely because nothing in it needs you. It is
 definition and goes to `To Do`. If you find yourself wanting to mark one HITL, it was
 misrouted — send it back to `To Plan` and grill it properly.
 
-A ticket in `To Do` may stop part-way through: `implement` builds what it can reach, and
-when it hits a genuine decision it stops and asks rather than guessing. The ticket goes
-back to `To Do` with that step marked HITL and a comment saying what it needs.
+A ticket in `To Do` may stop part-way through: `implement` builds what it can reach and
+stops at the first HITL sub-task. The ticket goes back to `To Do` with a comment saying
+what it needs. A decision nobody marked is different: if an AFK sub-task turns out to hold
+one, `implement` makes its best call, keeps going, and lists the call at the top of the PR.
 
 ## The lifecycle
 
@@ -128,26 +129,11 @@ back to `To Do` with that step marked HITL and a comment saying what it needs.
                    [In Progress] → [In Review] → [Done]
 ```
 
-## The merge queue
+## Merging
 
-`implement` ends at **In Review**: branch pushed, PR open. It does not merge, and it
-does not move a ticket to Done. That is the **merge queue's** job — one agent per
-space, opened from the board, running in its own worktree on an `integration`
-branch. It reads what is In Review, checks each branch against main, picks an
-order (smallest and cleanest first, dependencies before dependants, conflicts
-last), merges one at a time, runs the tests, pushes main, and moves the ticket to
-**Done**. It is the only agent allowed to.
-
-- A ticket labelled **`hold`** stays out of the queue until the label goes.
-- A PR with changes requested or a failing check is skipped, and the queue says why.
-- A conflict that needs the author's judgment goes back to the ticket's agent as a
-  **note** — the queue can put a line into another ticket's conversation. The
-  author rebases in its own worktree, pushes, and the queue tries again next round.
-
-**Shared resources.** Several agents run on one machine. The board takes turns for
-them: a command that matches a shared pattern (the test suite, a build) waits until
-the resource is free and holds it until the command ends. Agents can `claim` and
-`release` anything else by name. The card reads **waiting its turn** while it waits.
+`implement` ends at **In Review**: branch pushed, PR open. It does not merge. Once the
+PR is merged, the ticket moves to **Done**: the tracker does it if it can, and otherwise
+`implement` or you.
 
 ## Bugs
 

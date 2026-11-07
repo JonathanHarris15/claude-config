@@ -45,7 +45,7 @@ Write failing tests that specify the behaviour at the module's interface, before
 - Use domain language from the glossary — never implementation terms like `y_offset`, `line`, or `index` when a precise term exists.
 - Test what the module *does*, not how — tests that depend on internal state or private methods will rot.
 - Cover the cases and edge cases from the issue's acceptance criteria and any grilling, not hypothetical ones.
-- Run the suite to confirm the new tests fail **for the right reason** (not a syntax error or missing import).
+- Run the new tests to confirm they fail **for the right reason** (not a syntax error or missing import).
 
 Not everything is TDD-able. Apply test-first at the pre-agreed seams (pure logic, module interfaces); for glue/UI where a test would just mirror the implementation, say so and build directly.
 
@@ -55,14 +55,15 @@ Implement until the Phase 2 tests pass.
 
 - Extend the identified module. Keep the interface as simple as possible; push complexity inward.
 - Keep changesets **small and focused** so Phase 4 catches regressions close to their cause.
+- **A decision the PRD doesn't settle:** make your best call, note it, and keep going. Phase 7 puts these calls at the top of the PR, so they get reviewed as choices.
 - Log errors to `ERROR_LOG.md` lazily as they arise — one entry per problem, updated iteratively, no duplicates.
 - Tick the ticket's acceptance-criteria checkboxes (in its body) as each is genuinely met, so progress is visible on the board.
 
 ## Phase 4: Guard
 
-After each meaningful change, run the full test suite.
+After each meaningful change, run the tests related to it.
 
-If a test that was passing before this work began is now failing: **stop** and fix the regression before continuing. Do not reach Phase 6 with a regression open. Run a typecheck regularly too, and the full suite once more before shipping.
+If a test that was passing before this work began is now failing: **stop** and fix the regression before continuing. Do not reach Phase 6 with a regression open. Run a typecheck regularly too, and the full suite once, just before you open the PR. If it fails and you can't tell whether this work caused it, run that test on the merge-base.
 
 ## Phase 5: Review
 
@@ -83,12 +84,12 @@ Once tests pass and no regressions remain:
 ## Phase 7: Ship & transition
 
 1. **Commit** with the project's commit style, referencing the ticket key so the tracker links it, e.g. `PROJ-124 add recommendation ranking fn`.
-2. **Open a PR** with the ticket key in the title (e.g. `PROJ-124: recommendation ranking function`). Link it per the backend file.
+2. **Open a PR** with the ticket key in the title (e.g. `PROJ-124: recommendation ranking function`). Link it per the backend file. List at the top of the PR every call you made that the PRD didn't settle, and what you chose.
 3. **Move to In Review** (or the project's review status). If the project has no review step, move it per its workflow.
 4. **On merge → Done.** If the tracker moves it on merge, let it and verify. Otherwise move the ticket to Done yourself once merged. Never leave a merged ticket behind.
 5. **Loop.** If the ticket has more unfinished sub-tasks, pick the next unblocked one and go again from Phase 1 (you don't re-claim — the ticket is already `In Progress`). When every sub-task is done, move the **ticket** to `In Review`, and to `Done` on merge. When every ticket under an epic is Done, the epic is done — tell me.
 
-Report at the end: the ticket key(s) moved, their new statuses, the branch/PR, and what's next in the tree.
+Report at the end: the ticket key(s) moved, their new statuses, the branch/PR, the calls you made, and what's next in the tree.
 
 </phases>
 
@@ -125,31 +126,33 @@ For each ticket in turn:
 3. Run `/review` on that ticket's commit range, and fix what it surfaces before moving on.
 4. **Commit once**, message led by the ticket key, so the ticket is one revertible unit.
 5. Move it to In Review and post a one-line comment saying it is in the batch branch.
-6. Full test suite before the next ticket starts. A batch that breaks on ticket two and keeps
-   building is worse than a batch that stops.
+6. Run the tests related to that ticket before the next one starts, and the full suite once
+   before you open the PR. If the full suite fails, find the ticket that caused it and park it.
 
-At the end, open **one PR** listing every ticket key it contains, and say which commit is which.
+At the end, open **one PR** listing every ticket key it contains. Say which commit is which, and list the calls you made under each ticket.
 
 ## Parking
 
 When a ticket surprises you, **park that ticket and carry on with the next one.** Do not stop
 the batch, and do not push through.
 
-Park it when: a real decision appears that the PRD doesn't settle; the change spreads well past
-what the ticket implied; a test fails for a reason you didn't cause; the ticket turns out not to
-be trivial after all; or you find yourself about to guess.
+Park it when: the change spreads well past what the ticket implied; a test fails for a reason
+you didn't cause; or a trivial ticket turns out to need more than one commit.
+
+A decision the PRD doesn't settle is not a reason to park. Make your best call and keep going,
+as in Phase 3.
 
 To park: revert or drop that ticket's work so the branch stays clean, mark the step that stopped
 you HITL, move the ticket back to `To Do`, and comment plainly what it hit and what it needs. A
 trivial ticket that wasn't trivial goes back to `To Plan` with its `trivial` label removed. Then
 move to the next ticket.
 
-**One honest park beats six confident guesses.** Coming back to "six done, two parked, here's
-why" is the point of the mode.
+Coming back to "six done, two parked, here's why, and these are the calls I made" is the point
+of the mode.
 
 ## Reporting back
 
-Close with a short table — ticket, done or parked, and one line why for each park — plus the PR
+Close with a short table — ticket, done or parked, one line why for each park, and any calls you made — plus the PR
 link and the total. Say plainly if the parked pile is bigger than the done pile; that means the
 planning was optimistic, not that the run failed, and it is worth knowing before the next batch.
 
@@ -182,11 +185,10 @@ listing a column, editing a body without destroying what's on it, and linking co
 **Finding the ready queue** (`implement next`) — list `To Do`, oldest first, and drop anything with
 an open blocker or nothing reachable.
 
-**Stopping honestly.** A `To Do` ticket may legitimately mix `afk` and `hitl` sub-tasks; you
-build the AFK ones you can reach and stop at the first HITL one (see Phase 0.4). If a sub-task
-labelled `afk` turns out to have a decision in it after all, don't guess: stop there too, push
-the branch, mark it HITL, move the ticket back to `To Do`, and comment why. One honest blocker beats six
-confident guesses.
+**Stopping and deciding.** A `To Do` ticket may legitimately mix `afk` and `hitl` sub-tasks; you
+build the AFK ones you can reach and stop at the first HITL one (see Phase 0.4), because someone
+has already said that call needs me. If a sub-task labelled `afk` turns out to have a decision in
+it after all, make your best call, as in Phase 3, and keep going.
 
 **Ticking acceptance criteria** means editing the body — read it first, then re-set it,
 so you don't wipe anything you didn't write. Same for labels: keep exactly one state label if

@@ -63,7 +63,8 @@ trivial — an obvious fix with nothing left to decide, landing in one commit �
 lane: a two-line PRD, a `trivial` label, no sub-tasks, straight to `To Do`. A typo does not
 get thirty minutes of planning. Then `/implement ALL` builds every one of them back to back
 and hands you a single PR with one commit per ticket, so you can drop any one of them on its
-own. Anything that surprises it gets parked on the board with a note and the run carries on.
+own. It makes the calls a PRD left open and lists them in the PR. Anything else that surprises it
+gets parked on the board with a note, and the run carries on.
 
 The bar for trivial is deliberately strict: if there is one thing worth asking you, it isn't
 trivial and it goes down the normal lane instead.
@@ -112,20 +113,20 @@ names a *feeling* rather than a change — the grilling just starts a step wider
 two or three genuinely different readings of the ticket in front of you and says which it
 would back, because reacting is far easier than inventing.
 
-### Stopping beats guessing
+### Keeping going beats stalling
 
 `/implement` is built around one idea:
 
-> **A blocked ticket is a fine outcome. A guessed one is not.**
+> **Committed work you can review beats a blocked ticket.**
 
-You can unblock a stalled ticket in two minutes. You cannot easily undo a plausible-looking
-PR built on a decision it invented and never mentioned — because it *looks* finished, so it
-gets reviewed as if it were. So when the PRD doesn't answer something, it does not pick the
-sensible option. It stops, marks that step `hitl`, puts the ticket back in `To Do`, and says exactly what it needed.
+A branch costs nothing to undo, and a stalled ticket is no progress at all. So when the PRD
+doesn't answer something, it makes its best call and keeps going. The risk is a plausible-looking
+PR built on a decision nobody mentioned, because it *looks* finished and gets reviewed as if it
+were. So every call goes at the top of the PR, where you review it as a choice.
 
-It refuses to start on a red test suite (you cannot detect a regression against a broken
-baseline), it never merges its own PR, and it will not weaken a test to make it pass — a
-failing test it didn't expect is a **stop**, not an obstacle.
+It still stops at a sub-task marked `hitl`, since someone has already said that call needs you. It
+stops at a regression, it never merges its own PR, and it will not weaken a test to make it pass:
+a failing test it didn't expect is a **stop**, not an obstacle.
 
 ## Mods
 

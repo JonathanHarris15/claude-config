@@ -78,7 +78,7 @@ Skills ask for these by name. The backend file says how each one works there.
 | **List a column** | Every ticket in one column, oldest first |
 | **Create a ticket** | A new level-0 ticket, in `To Plan` unless told otherwise |
 | **Write the body** | Replace or edit the ticket's body. Read it first and keep what you didn't write |
-| **Add a label** | `trivial`, `investigation`, `hold` and the like |
+| **Add a label** | `trivial`, `investigation` and the like |
 | **Add a blocker** | Record that one ticket must wait for another |
 | **Move a ticket** | Put it in another column. Never invent a column |
 | **Comment** | Add a short note to the ticket |
