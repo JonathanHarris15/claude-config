@@ -331,39 +331,63 @@ export const register: Register = on => {
     const railsRoom = Math.min(RAILS_ROOM, Math.max(2, ...t.rows.map(one => one.rails.length)))
 
     const branchRow = (one: Branch) => (
-      <Box key={'b-' + one.name}>
-        <Text mono bold={one.isHead} color={one.isHead ? 'success' : undefined}>
-          {(one.isHead ? '● ' : '  ') + one.name.padEnd(nameRoom)}
-        </Text>
-        <Text mono dimColor>
-          {' ' + one.hash.padEnd(9)}
-        </Text>
-        {one.track ? <Text color="warning">{one.track + ' '}</Text> : null}
-        {one.upstream ? <Text dimColor>{one.upstream}</Text> : null}
+      <Box key={'b-' + one.name} flexWrap="nowrap" overflow="hidden">
+        <Box flexShrink={0}>
+          <Text mono bold={one.isHead} color={one.isHead ? 'success' : undefined} wrap="truncate-end">
+            {(one.isHead ? '● ' : '  ') + one.name.padEnd(nameRoom)}
+          </Text>
+        </Box>
+        <Box flexShrink={0}>
+          <Text mono dimColor wrap="truncate-end">
+            {' ' + one.hash.padEnd(9)}
+          </Text>
+        </Box>
+        {one.track ? (
+          <Box flexShrink={0}>
+            <Text color="warning" wrap="truncate-end">{one.track + ' '}</Text>
+          </Box>
+        ) : null}
+        {one.upstream ? (
+          <Text dimColor wrap="truncate-end">
+            {one.upstream}
+          </Text>
+        ) : null}
       </Box>
     )
 
+    // One row, one line. A crushed column cuts the line off at the edge rather
+    // than wrapping it: a row grown to two lines pushes the rails apart, and
+    // the drawn tree stops lining up with the commits beside it. The rails and
+    // the hash hold their width, so the subject is what gives way first.
     const commitRow = (one: Row, at: number) => {
       if (!one.hash) {
         return (
-          <Text key={'r-' + at} mono color="suggestion">
-            {one.rails}
-          </Text>
+          <Box key={'r-' + at} flexWrap="nowrap" overflow="hidden">
+            <Text mono color="suggestion" wrap="truncate-end">
+              {one.rails}
+            </Text>
+          </Box>
         )
       }
 
       return (
-        <Box key={'c-' + at + '-' + one.hash}>
-          <Text mono color="suggestion">
-            {one.rails.padEnd(railsRoom)}
-          </Text>
-          <Text mono dimColor>
-            {one.hash.padEnd(8) + one.date + ' '}
-          </Text>
-          {one.pills.map(pill => (
-            <Text key={'p-' + pill.name} bold={pill.kind === 'head'} color={PILL_COLOR[pill.kind]}>
-              {(pill.kind === 'head' ? '● ' : '') + pill.name + ' '}
+        <Box key={'c-' + at + '-' + one.hash} flexWrap="nowrap" overflow="hidden">
+          <Box flexShrink={0}>
+            <Text mono color="suggestion" wrap="truncate-end">
+              {one.rails.padEnd(railsRoom)}
             </Text>
+          </Box>
+          <Box flexShrink={0}>
+            <Text mono dimColor wrap="truncate-end">
+              {one.hash.padEnd(8) + one.date + ' '}
+            </Text>
+          </Box>
+          {one.pills.map(pill => (
+            <Box key={'p-' + pill.name} flexShrink={0}>
+              <Text bold={pill.kind === 'head'} color={PILL_COLOR[pill.kind]} wrap="truncate-end">
+                {(pill.kind === 'head' ? '● ' : '') + pill.name + ' '}
+              </Text>
+            </Box>
           ))}
           <Text wrap="truncate-end">{one.subject}</Text>
         </Box>

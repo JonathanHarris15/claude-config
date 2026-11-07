@@ -199,3 +199,44 @@ test('the band steps aside for a survey', async ($, on) => {
   expect(await ui.find({ key: 'tree' })).toBeUndefined()
   await ui.unmount()
 })
+
+/** Every element of a drawing, the outermost first. */
+function every(node: any): any[] {
+  if (!node || typeof node !== 'object') return []
+  const kids = ([] as any[]).concat(node.children ?? [])
+
+  return [node, ...kids.flatMap(every)]
+}
+
+test('a crushed column cuts each row off instead of wrapping it', async ($, on) => {
+  repo(on)
+  const band = await $.ui.mount({ ...BAND, surface: 'desktop' })
+  await band.press({ key: 'tree' })
+  await band.unmount()
+
+  const ui = await $.ui.mount({
+    ...PANE,
+    surface: 'desktop',
+    props: { ...PANE.props, bodyColumns: 24 },
+  })
+  // Four branches, five commits and the two rails lines between them.
+  const rows = every(await ui.drawn()).filter(
+    one => one.type === 'Box' && one.props?.flexWrap === 'nowrap',
+  )
+
+  expect(rows.length).toBe(11)
+  for (const row of rows) {
+    expect(row.props.overflow).toBe('hidden')
+    // Nothing in a row wraps, so a row is always one line tall.
+    for (const one of every(row)) {
+      if (one.type === 'Text') expect(one.props.wrap).toBe('truncate-end')
+    }
+    // The rails and the hash hold their width; the subject gives way first.
+    // A rails-only row has nothing beside it to hold.
+    if (([] as any[]).concat(row.children ?? []).length > 1) {
+      const held = every(row).filter(one => one.type === 'Box' && one.props?.flexShrink === 0)
+      expect(held.length >= 2).toBe(true)
+    }
+  }
+  await ui.unmount()
+})
