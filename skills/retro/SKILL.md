@@ -10,12 +10,14 @@ The user has asked for a **retrospective**. You are suggesting improvements to t
 
 1. Call the Skill tool with `writing-for-agents` for the writing style guide.
 
-2. Read the primary sources for the session the user specifies. This may mean searching through session logs on this machine. If the user doesn't specify a session, default to the current one.
+2. Read the primary sources for the session the user specifies. This may mean searching through session logs on this machine. If the user doesn't specify a session, default to the current one. Note every skill invoked and every test run as you go; the **Skill use** and **Test runs** lenses below need the full list.
 
 3. Look for candidates for improvement in these categories.
 
 - **Navigation**: how easy was it for the agent to find the right files? Are there hidden dependencies between files? Would a **navigation pointer** make it easier? _Use when_ the session took a long time to find a piece of information.
 - **Automated checks**: are there automated checks that could catch errors the agent made? Linting, typing, tests, filesystem linters? _Use when_ the agent made a mistake that could have been caught by an automated check.
+- **Test runs**: were the tests that ran worth their cost? Slow, flaky, rerun with nothing changed, green while the bug was still there, or testing a mock instead of a real seam? _Use when_ tests ran in the session.
+- **Skill use**: did the right skill fire at the right moment? Did one fire on the wrong task, or fail to fire when its task came up? Once running, were its steps followed, skipped, or fighting the work? Most fixes land in the skill's description (when it fires) or a step's completion criterion (when it's done). _Use when_ a skill ran, or the agent did by hand what a skill covers.
 - **Coding standards**: should the **Standards axis** of the `/review` skill be given a new rule to enforce? Should an existing rule be removed or clarified? A repo-level `CODING_STANDARDS.md` is where a project's own rules live; `/review` reads it and overrides its smell baseline with it. _Use when_ the review failed to catch a mistake.
 - **Domain drift**: did the session coin a name the domain model doesn't have, or quietly rename one it does? That belongs in the glossary, or in an ADR if a decision was made and not written down. _Use when_ the review's Domain axis found something, or should have.
 - **Global AGENTS.md**: are there any steering instructions that should be moved to coding standards (or automated checks) instead? _Use when_ the AGENTS.md file is particularly large - in the repo OR the user's global scope.
