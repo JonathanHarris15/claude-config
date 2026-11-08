@@ -22,6 +22,11 @@
 !hooks/
 !hooks/**
 
+# How often each skill gets used, one append-only file per machine so the
+# logs never clash. Written by hooks/skill-usage.mjs.
+!usage/
+!usage/**
+
 # Mods: panes and hooks that change Claude's own interface. Each is a plugin
 # folder, loaded by CLAUDE_CODE_PLUGIN_DIRS in settings.json.
 !mods/

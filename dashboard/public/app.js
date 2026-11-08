@@ -187,9 +187,12 @@ function renderNav() {
 
 // ---------- lists
 
+// How often a skill gets used, from the logs the skill-usage hook writes.
+const usedLabel = item => item.uses ? `used ${item.uses}× · last ${item.lastUsed}` : 'never used'
+
 const row = (item, opts = {}) => `
   <button class="item" data-act="open" data-id="${esc(item.id)}" aria-current="${S.sel === item.id}" ${opts.drag ? 'draggable="true"' : ''} title="${esc(ROUTES[item.route]?.label)}">
-    ${dot(item.route)}<span class="name">${esc(item.name)}${item.isOn === false ? ' <span class="dim small">off</span>' : ''}</span>
+    ${dot(item.route)}<span class="name">${esc(item.name)}${item.isOn === false ? ' <span class="dim small">off</span>' : ''}${item.kind === 'skill' ? ` <span class="dim small">${esc(usedLabel(item))}</span>` : ''}</span>
     ${item.description ? `<span class="desc">${esc(item.owner ? item.owner + ' · ' : '')}${esc(item.description)}</span>` : item.owner ? `<span class="desc">${esc(item.owner)}</span>` : ''}
   </button>`
 
@@ -386,6 +389,7 @@ function itemHead(item) {
     <div class="row"><h2>${esc(item.name)}</h2>${badge(item.route)}</div>
     <p class="note">${esc(item.note)}</p>
     ${item.description ? `<p>${esc(item.description)}</p>` : ''}
+    ${item.kind === 'skill' ? `<p class="small dim">${esc(usedLabel(item))}${S.data.usageSince ? ', counting since ' + esc(S.data.usageSince) + ' on every machine' : ''}</p>` : ''}
     <p class="mono dim">${esc(item.path)}</p>
     <div class="row">${actions.join('')}</div>
   </div>`

@@ -7,6 +7,8 @@ import fs from 'node:fs/promises'
 import os from 'node:os'
 import path from 'node:path'
 
+import { localDay, readUsage } from '../hooks/skill-usage.mjs'
+
 /** Top-level things and what they are, in plain words. */
 const NOTES = {
   'CLAUDE.md': 'your global instructions, read every session',
@@ -19,6 +21,7 @@ const NOTES = {
   commands: 'slash commands',
   workflows: 'workflow scripts',
   hooks: 'hook scripts',
+  usage: 'how often each skill gets used, one log per machine',
   board: 'per-space working notes',
   mods: 'mods: changes to Claude\'s own interface',
   plugins: 'installed plugins, fetched per machine',
@@ -349,6 +352,15 @@ export async function scan(root) {
     if (declared) pluginHooks.push(...readHookEntries(declared, { source: plugin.name, route: plugin.route, isEditable: false }))
   }
 
+  // --- How often each skill gets used. A plugin's skill is logged as plugin:skill.
+  const usage = readUsage(root)
+  for (const one of items.skills) {
+    const seen = [one.name, one.owner + ':' + one.name].map(key => usage.skills.get(key)).filter(Boolean)
+    const last = seen.map(each => each.last).sort().pop() ?? ''
+    one.uses = seen.reduce((n, each) => n + each.uses, 0)
+    one.lastUsed = last ? localDay(last) : ''
+  }
+
   // --- Mods, and which of them settings.json turns on
   const settings = (await readJson(path.join(root, 'settings.json'))) ?? {}
   const named = String(settings.env?.CLAUDE_CODE_PLUGIN_DIRS ?? '')
@@ -426,6 +438,7 @@ export async function scan(root) {
     settingsFiles,
     config,
     folders: folders.folders ?? [],
+    usageSince: usage.since ? localDay(usage.since) : '',
   }
 }
 

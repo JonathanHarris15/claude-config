@@ -11,7 +11,9 @@ My personal Claude Code configuration, synced across machines.
 | `workflows/` | Multi-agent orchestration scripts. Plain JS that fans out subagents with real control flow — loops, pipelines, adversarial verification. |
 | `commands/` | Custom slash commands. |
 | `mods/` | Mods — code that changes Claude's own interface. `config-map` opens the dashboard; `commit-tree` draws the repo's commit tree. |
-| `dashboard/` | A local page for managing all of this, and for seeing how each thing syncs. |
+| `dashboard/` | A local page for managing all of this, and for seeing how each thing syncs. It also shows how often each skill gets used. |
+| `hooks/` | Hook scripts. `skill-usage.mjs` logs every skill use, whether you type `/name` or Claude loads it. Run `node ~/.claude/hooks/skill-usage.mjs report` to see every skill with its use count and last date, least used first. |
+| `usage/` | The skill-use logs: one append-only file per machine, so the logs never clash when they sync. Skill files are never touched. On a new machine, run `skill-usage.mjs backfill` once to count past uses from its session transcripts. |
 | `settings.json` | Global settings: effort level, theme, permission allowlist, hooks, and the `CLAUDE_CODE_PLUGIN_DIRS` that loads the mods. |
 | `CLAUDE.md` | Instructions prepended to every session, in every project, on every machine. |
 
