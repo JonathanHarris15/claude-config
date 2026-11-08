@@ -169,6 +169,7 @@ function setDirty(on) {
   }
   const save = q('#save')
   if (save) save.disabled = !on
+  q('.files button[aria-current=true]')?.classList.toggle('dirty', on)
 }
 
 // ---------- reading
@@ -183,11 +184,19 @@ const findItem = id => allItems().find(one => one.id === id)
 const dot = route => `<i class="dot r-${route}${ROUTES[route]?.hollow ? ' hollow' : ''}" aria-hidden="true"></i>`
 const badge = route => `<span class="badge r-${route}">${dot(route)}${esc(ROUTES[route]?.label ?? route)}</span>`
 
+/** Read the disk. Says whether anything changed, so a quiet refresh can leave the page alone. */
 async function load() {
-  S.data = await api('GET', '/api/state')
+  const next = await api('GET', '/api/state')
+  const text = JSON.stringify(next)
+  const changed = text !== S.dataText
+  S.data = next
+  S.dataText = text
   q('#banner').hidden = true
-  renderTop()
-  renderNav()
+  if (changed) {
+    renderTop()
+    renderNav()
+  }
+  return changed
 }
 
 // ---------- top and nav
@@ -386,64 +395,85 @@ function renderSync() {
         : ''
   const state = gitState()
 
+  // Waiting files count too: a card that says 0 over a list of changes reads as a bug.
+  const shownOf = route => total(route) || (route === 'pending' ? git.changes.length : 0)
   const counted = ROUTE_ORDER.filter(route => total(route))
   const bar = counted.map(route => `<i class="r-${route}${ROUTES[route].hollow ? ' hollow' : ''}" style="flex:${total(route)}"></i>`).join('')
-  const legend = counted.map(route => `<span class="r-${route}">${dot(route)}${esc(ROUTES[route].label)} <b>${total(route)}</b></span>`).join('')
+  const stats = ROUTE_ORDER.map(route => `<button class="stat r-${route}" data-act="jump" data-to="card-${route}" ${shownOf(route) ? '' : 'data-none'}>
+      <span class="stat-n">${shownOf(route)}</span><span class="stat-label">${dot(route)}${esc(ROUTES[route].label)}</span></button>`).join('')
 
-  // An owner is worth printing only when it adds something the card title lacks.
-  const ownerOf = (one, route) => one.owner && route !== 'git' && one.owner.toLowerCase() !== ROUTES[route].label.toLowerCase()
-    ? `<span class="owner">${esc(one.owner)}:</span>`
-    : ''
+  // An owner is worth naming only when it adds something the card title lacks.
+  const ownerOf = (one, route) => one.owner && route !== 'git' && one.owner.toLowerCase() !== ROUTES[route].label.toLowerCase() ? one.owner : ''
+  const tagOf = (tab, one) => `<button class="link" data-act="goto" data-tab="${tab}" data-id="${esc(one.id)}">${esc(one.name)}</button>`
 
   const card = route => {
-    const n = total(route)
+    const shown = shownOf(route)
     const lists = groups.map(([tab, label, list]) => {
       const rows = list.filter(one => one.route === route)
       if (!rows.length) return ''
-      return `<div class="kind">${label}</div><div class="tags">${rows.map(one => `<button class="link" data-act="goto" data-tab="${tab}" data-id="${esc(one.id)}">${ownerOf(one, route)}${esc(one.name)}</button>`).join('')}</div>`
+      // One run of tags per owner, so a plugin's name is said once rather than on every tag.
+      const owners = [...new Set(rows.map(one => ownerOf(one, route)))]
+      return owners.map(owner => `<div class="kind">${label}${owner ? `<span class="owner"> · ${esc(owner)}</span>` : ''}</div>
+        <div class="tags">${rows.filter(one => ownerOf(one, route) === owner).map(one => tagOf(tab, one)).join('')}</div>`).join('')
     }).join('')
     const files = settingsFiles.filter(one => one.route === route && one.exists)
     const fileList = files.length ? `<div class="kind">Settings</div><div class="tags">${files.map(one => `<button class="link" data-act="goto" data-tab="settings" data-id="${esc(one.path)}">${esc(one.path)}</button>`).join('')}</div>` : ''
     const held = route === 'pending' && git.changes.length
       ? `<div class="kind">Files changed · ${git.changes.length}</div><div class="changes">${git.changes.slice(0, 40).map(one => `<div><span class="code">${esc(one.code === '??' ? 'new' : one.code.trim())}</span><span>${esc(one.path)}</span></div>`).join('')}${git.changes.length > 40 ? `<div class="dim">and ${git.changes.length - 40} more</div>` : ''}</div>`
       : ''
-    // Waiting files count too: a card that says 0 over a list of changes reads as a bug.
-    const shown = n || (route === 'pending' ? git.changes.length : 0)
-    return `<div class="card r-${route}">
+    if (!shown) return `<div class="card quiet r-${route}" id="card-${route}">
+      <h3>${dot(route)}${esc(ROUTES[route].label)}<span class="n">0</span></h3>
+      <p class="note">${esc(ROUTES[route].gist)}</p></div>`
+    return `<div class="card r-${route}" id="card-${route}">
       <h3>${dot(route)}${esc(ROUTES[route].label)}<span class="n">${shown}</span></h3>
       <p class="note">${esc(ROUTES[route].gist)}</p>
       ${lists}${fileList}${held}
-      ${shown === 0 ? '<p class="dim small">Nothing here.</p>' : ''}
     </div>`
   }
+  // Empty routes go last: they explain a route without pushing real ones down.
+  const order = [...ROUTE_ORDER.filter(shownOf), ...ROUTE_ORDER.filter(route => !shownOf(route))]
 
+  const synced = config.filter(one => one.trackedCount)
+  const kept = config.filter(one => !one.trackedCount)
+  const tableOf = rows => `<table>
+      <thead><tr><th scope="col">Name</th><th scope="col">What it is</th><th scope="col">Sync</th></tr></thead>
+      <tbody>${rows.map(one => `<tr>
+        <td>${esc(one.name)}${one.isDir ? '/' : ''}</td>
+        <td class="dim">${esc(one.note) || '<span class="faint">—</span>'}</td>
+        <td>${one.trackedCount ? `<span class="badge r-git">${dot('git')}${one.trackedCount} in git</span>` : '<span class="faint small">this machine</span>'}</td>
+      </tr>`).join('')}</tbody>
+    </table>`
+
+  const repo = repoLink(git.remote)
   q('#detail').innerHTML = `<div class="page">
     <div class="hero">
       <div class="hero-top r-${state.tone}">
         <span class="hero-icon">${icon(state.icon)}</span>
         <div class="grow">
           <p class="lede">${esc(lede)}${next ? ` <span class="dim">${next}</span>` : ''}</p>
-          ${git.lastCommit ? `<p class="lede-sub">Last commit: ${esc(git.lastCommit)}${git.remote ? ` · ${esc(git.remote)}` : ''}</p>` : ''}
+          ${git.lastCommit ? `<p class="lede-sub">Last commit: ${esc(git.lastCommit)}${repo ? ` · ${repo}` : ''}</p>` : ''}
         </div>
         <button class="outline" data-act="fetch">${icon('sync')}Check GitHub</button>
       </div>
       <div class="bar" role="img" aria-label="${everything} items by how they sync: ${counted.map(route => ROUTES[route].label + ' ' + total(route)).join(', ')}">${bar}</div>
-      <div class="legend" aria-hidden="true">${legend}</div>
+      <div class="stats" aria-label="Jump to a route">${stats}</div>
     </div>
-    <div class="routes">${ROUTE_ORDER.map(card).join('')}</div>
+    <div class="routes">${order.map(card).join('')}</div>
     <div class="card table-card">
       <div class="card-head"><h3>Everything else in this folder</h3>
       <p class="note">Git holds only what the allow list names. The rest stays on this machine, on purpose.</p></div>
-      <table>
-        <thead><tr><th scope="col">Name</th><th scope="col">What it is</th><th scope="col">Sync</th></tr></thead>
-        <tbody>${config.map(one => `<tr>
-          <td>${esc(one.name)}${one.isDir ? '/' : ''}</td>
-          <td class="dim">${esc(one.note)}</td>
-          <td>${one.trackedCount ? `<span class="badge r-git">${dot('git')}${one.trackedCount} in git</span>` : '<span class="dim small">not synced</span>'}</td>
-        </tr>`).join('')}</tbody>
-      </table>
+      ${synced.length ? tableOf(synced) : ''}
+      ${kept.length ? `<details class="more"><summary>${icon('caret')}${plural(kept.length, 'thing')} stay on this machine</summary>${tableOf(kept)}</details>` : ''}
     </div>
   </div>`
+}
+
+/** The GitHub address as a short link, or the raw remote when it is not GitHub. */
+function repoLink(remote) {
+  if (!remote) return ''
+  const hit = /github\.com[:/](.+?)(?:\.git)?\/?$/.exec(remote)
+  if (!hit) return esc(remote)
+  return `<a href="https://github.com/${esc(hit[1])}" target="_blank" rel="noopener noreferrer">${esc(hit[1])}</a>`
 }
 
 // ---------- item detail
@@ -490,12 +520,12 @@ function filesBar(item) {
 
 function editorHtml() {
   const file = S.file
-  if (!file) return '<div class="editor"><p class="dim">Pick a file.</p></div>'
+  if (!file) return '<div class="editor" aria-busy="true"><div class="editor-bar"></div><div class="skeleton"><i></i><i></i><i></i><i></i><i></i></div></div>'
   if (file.trouble) return `<div class="callout r-bad" role="alert">${icon('alert')}<span>${esc(file.trouble)}</span></div>`
   if (file.isBinary) return `<div class="callout">${icon('file')}<span>This is not a text file, so it cannot be opened here.</span></div>`
   return `<div class="editor">
     <div class="editor-bar">
-      <span class="mono grow">${esc(file.path)}</span>
+      <span class="lines-count grow">${plural(file.text.split('\n').length, 'line')}</span>
       <span class="status" id="save-status" aria-live="polite">${file.isEditable ? '' : icon('lock') + 'Read only'}</span>
       ${file.isEditable ? '<button class="primary" id="save" data-act="save" disabled title="Ctrl or Cmd + S">Save</button>' : ''}
     </div>
@@ -503,12 +533,24 @@ function editorHtml() {
   </div>`
 }
 
-async function loadFile(path) {
+async function fetchFile(path) {
   try {
-    S.file = await api('GET', '/api/file?path=' + encodeURIComponent(path))
+    return await api('GET', '/api/file?path=' + encodeURIComponent(path))
   } catch (err) {
-    S.file = { path, trouble: err.message }
+    return { path, trouble: err.message }
   }
+}
+async function loadFile(path) {
+  S.file = await fetchFile(path)
+}
+
+/** On a phone the list hides when something opens, so focus must follow to the detail. */
+function focusDetail() {
+  if (!matchMedia('(max-width: 820px)').matches) return
+  const title = q('#detail h2')
+  if (!title) return
+  title.tabIndex = -1
+  title.focus({ preventScroll: true })
 }
 
 function renderItem() {
@@ -611,7 +653,11 @@ const emptyLeft = (value, key) => {
 async function renderSettings() {
   const meta = S.data.settingsFiles.find(one => one.path === S.sel)
   if (!meta) return (q('#detail').innerHTML = blank())
-  await loadFile(S.sel).catch(() => {})
+  const want = S.sel
+  const file = await fetchFile(want)
+  // Another file was picked while this one loaded.
+  if (S.sel !== want) return
+  S.file = file
   if (S.file?.trouble) S.file = { path: S.sel, text: S.sel.endsWith('.json') ? '{\n}\n' : '', isEditable: true, isBinary: false }
   const isJson = S.sel.endsWith('.json')
   const head = `<div class="head"><button class="ghost back" data-act="back">Back</button>
@@ -743,6 +789,7 @@ async function showTab(tab, id) {
   S.sel = id ?? null
   S.file = null
   location.hash = tab
+  document.title = (TABS.find(one => one[0] === tab)?.[1] ?? 'Sync') + ' · Claude Config'
   layout()
   renderNav()
   if (tab === 'sync') return renderSync()
@@ -774,10 +821,22 @@ const ACT = {
   },
   back: async () => {
     if (!(await canLeave())) return
+    const was = S.sel
     S.sel = null
     S.file = null
     layout()
     renderList()
+    q('#detail').innerHTML = blank()
+    // Land back on the row you came from.
+    ;[...document.querySelectorAll('#list [data-id]')].find(one => one.dataset.id === was)?.focus()
+  },
+  jump: ({ to }) => {
+    const el = document.getElementById(to)
+    if (!el) return
+    el.scrollIntoView({ behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth', block: 'start' })
+    el.classList.remove('flash')
+    void el.offsetWidth
+    el.classList.add('flash')
   },
   route: ({ route }) => {
     S.route = S.route === route ? null : route
@@ -791,12 +850,18 @@ const ACT = {
   },
   open: async ({ id }) => {
     if (S.sel === id || !(await canLeave())) return
+    // Show the pick at once; the file follows when it arrives.
     S.sel = id
-    const item = findItem(id)
-    await loadFile(item.main || item.files[0])
+    S.file = null
     layout()
     renderList()
     renderItem()
+    const item = findItem(id)
+    const file = await fetchFile(item.main || item.files[0])
+    if (S.sel !== id) return
+    S.file = file
+    renderItem()
+    focusDetail()
   },
   file: async ({ path }) => {
     if (S.file?.path === path || !(await canLeave())) return
@@ -899,9 +964,12 @@ const ACT = {
   'settings-open': async ({ path }) => {
     if (!(await canLeave())) return
     S.sel = path
+    S.file = null
     layout()
     renderList()
+    q('#detail').innerHTML = editorHtml()
     await renderSettings()
+    focusDetail()
   },
   'settings-mode': async ({ mode }) => {
     if (!(await canLeave())) return
@@ -943,7 +1011,14 @@ document.addEventListener('click', event => {
   if (target.tagName === 'BUTTON') event.preventDefault()
   // A button inside a folder header should not also fold it.
   event.stopPropagation()
-  attempt(ACT[target.dataset.act])?.(target.dataset)
+  const run = attempt(ACT[target.dataset.act])(target.dataset)
+  // Anything slower than a blink shows it is working, so a second press is not needed.
+  if (target.tagName !== 'BUTTON') return
+  const slow = setTimeout(() => target.setAttribute('aria-busy', 'true'), 160)
+  run.finally(() => {
+    clearTimeout(slow)
+    target.removeAttribute('aria-busy')
+  })
 })
 
 document.addEventListener('keydown', event => {
@@ -1074,7 +1149,8 @@ window.addEventListener('beforeunload', event => {
 // Pick up changes made elsewhere when you come back, without touching open work.
 window.addEventListener('focus', attempt(async () => {
   if (q('#dialog').open) return
-  await load()
+  // Redrawing an unchanged list would swallow the click that brought you back.
+  if (!(await load())) return
   if (S.tab === 'sync') renderSync()
   else renderList()
 }))
