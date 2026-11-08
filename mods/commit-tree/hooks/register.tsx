@@ -106,7 +106,8 @@ export function readBranches(out: string): Branch[] {
     const [full = '', name = '', hash = '', upstream = '', track = '', mark = '', time = '', ...rest] =
       line.split(SEP)
     // `origin/HEAD` points at a remote's default branch; it is not a branch.
-    if (!name || name.endsWith('/HEAD')) continue
+    // Check the full name: git shortens this one to just `origin`.
+    if (!name || full.endsWith('/HEAD')) continue
     list.push({
       name,
       hash,

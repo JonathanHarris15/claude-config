@@ -51,7 +51,8 @@ const REFS = [
   // A remote branch nobody here tracks.
   'refs/remotes/origin/old|~|origin/old|~|e5e5e5e|~||~||~| |~|1762000000|~|First commit',
   // Git's pointer at the remote's default branch, which is not a branch.
-  'refs/remotes/origin/HEAD|~|origin/HEAD|~|a1b1c1d|~||~||~| |~|1762400000|~|Newest thing',
+  // Git shortens it to just the remote's name.
+  'refs/remotes/origin/HEAD|~|origin|~|a1b1c1d|~||~||~| |~|1762400000|~|Newest thing',
 ].join('\n')
 
 /** Git's colour codes around the rails, as `--color=always` writes them. */
@@ -146,6 +147,8 @@ test('the pane draws the head and one list of branches', async ($, on) => {
     expect(await ui.find({ type: 'Text', text: /origin\/spike/ })).toBeUndefined()
     // A remote branch nobody here tracks is listed, and says so.
     expect(await ui.find({ type: 'Text', text: /only on origin/ })).toBeDefined()
+    // Git's origin/HEAD pointer, shortened to "origin", is not a branch.
+    expect(await ui.find({ type: 'Text', text: /^\s*origin\s*$/ })).toBeUndefined()
     await ui.unmount()
   }
 })
