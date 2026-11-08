@@ -1,24 +1,27 @@
 import { atom, read, update } from 'claude-code'
 import type { Color, EngineInterface, Register } from 'claude-code'
 
-import type { Branch, Pill, Row, Tree } from '../types'
+import type { Branch, Pending, Pill, Row, Tree } from '../types'
+import { ago, drawGraph, foldPills, hasPending, pendingWords } from './graph'
 
 const PANE = 'commit-tree'
 /** How many commits to draw before the pane says it stopped. */
-const CAP = 250
+const CAP = 200
 /** Between the fields of `for-each-ref`. Git refuses `~` in a ref name. */
 const SEP = '|~|'
 /** Between the fields of `log`, written by its own `%x1f`. */
 const UNIT = '\u001f'
 /** Widest rails the columns line up behind; a wider one pushes its row out. */
 const RAILS_ROOM = 14
+/** Git's own colour codes, red to cyan, as the terminal theme draws them. */
+const RAIL_THEME: Color[] = ['claude', 'success', 'warning', 'suggestion', 'permission', 'planMode']
 /** How stale a reading may be before a redraw reads again. */
 const STALE_MS = 15000
 
 // Change a tag when a value's fields change: it declines what an earlier
 // version stored, which outlives a reload.
 const tree = atom({ plugin: 'commit-tree', key: 'tree' } as const, null as Tree | null, {
-  shape: 'tree-1',
+  shape: 'tree-3',
 })
 const isReading = atom({ plugin: 'commit-tree', key: 'isReading' } as const, false, {
   shape: 'reading-1',
@@ -50,11 +53,21 @@ export function readStatus(out: string) {
   let ahead = 0
   let behind = 0
   let dirty = 0
+  const pending: Pending = { staged: 0, changed: 0, added: 0, conflicts: 0 }
 
   for (const line of out.split(/\r?\n/)) {
     if (!line) continue
     if (!line.startsWith('#')) {
       dirty += 1
+      // `1 XY` and `2 XY` name a tracked file: X staged, Y not; `.` is neither.
+      const kind = line[0]
+      const xy = line.slice(2, 4)
+      if (kind === '?') pending.added += 1
+      else if (kind === 'u') pending.conflicts += 1
+      else if (kind === '1' || kind === '2') {
+        if (xy[0] && xy[0] !== '.') pending.staged += 1
+        if (xy[1] && xy[1] !== '.') pending.changed += 1
+      }
       continue
     }
     const parts = line.split(' ')
@@ -70,7 +83,7 @@ export function readStatus(out: string) {
   // Git's own word for a head sitting on no branch.
   if (head === '(detached)') head = ''
 
-  return { head, oid, upstream, ahead, behind, dirty }
+  return { head, oid, upstream, ahead, behind, dirty, pending }
 }
 
 const REF_FIELDS = [
@@ -80,6 +93,8 @@ const REF_FIELDS = [
   '%(upstream:short)',
   '%(upstream:track,nobracket)',
   '%(HEAD)',
+  '%(committerdate:unix)',
+  '%(contents:subject)',
 ].join(SEP)
 
 /** Every branch here and on a remote, newest tip first. */
@@ -88,7 +103,8 @@ export function readBranches(out: string): Branch[] {
 
   for (const line of out.split(/\r?\n/)) {
     if (!line.trim()) continue
-    const [full = '', name = '', hash = '', upstream = '', track = '', mark = ''] = line.split(SEP)
+    const [full = '', name = '', hash = '', upstream = '', track = '', mark = '', time = '', ...rest] =
+      line.split(SEP)
     // `origin/HEAD` points at a remote's default branch; it is not a branch.
     if (!name || name.endsWith('/HEAD')) continue
     list.push({
@@ -98,6 +114,8 @@ export function readBranches(out: string): Branch[] {
       track: track.trim(),
       isRemote: full.startsWith('refs/remotes/'),
       isHead: mark.trim() === '*',
+      time: Number(time) || 0,
+      subject: rest.join(SEP),
     })
   }
 
@@ -122,18 +140,56 @@ export function readPills(decor: string, remotes: ReadonlySet<string>): Pill[] {
   return pills
 }
 
+/**
+ * Take git's colour codes out of a line, keeping which of its six lane
+ * colours each character had: 0 for red through 5 for cyan, -1 for none.
+ */
+export function readColors(line: string): { plain: string; colors: number[] } {
+  let plain = ''
+  const colors: number[] = []
+  let now = -1
+  const codes = /\u001b\[([0-9;]*)m/g
+  let from = 0
+  for (let found = codes.exec(line); found; found = codes.exec(line)) {
+    const text = line.slice(from, found.index)
+    plain += text
+    for (let i = 0; i < text.length; i += 1) colors.push(now)
+    const parts = (found[1] ?? '').split(';').map(Number)
+    const hue = parts.find(n => n >= 30 && n <= 37)
+    now = hue === undefined ? (parts.every(n => !n) ? -1 : now) : (hue - 31 + 6) % 6
+    from = codes.lastIndex
+  }
+  const rest = line.slice(from)
+  plain += rest
+  for (let i = 0; i < rest.length; i += 1) colors.push(now)
+
+  return { plain, colors }
+}
+
 /** Turn git's drawn log into rows, newest first, stopping at the cap. */
 export function readRows(out: string, remotes: ReadonlySet<string>) {
   const rows: Row[] = []
   let commits = 0
   let isTruncated = false
 
-  for (const line of out.split(/\r?\n/)) {
+  for (const raw of out.split(/\r?\n/)) {
+    const { plain: line, colors } = readColors(raw)
     const cut = line.indexOf(UNIT)
     if (cut < 0) {
       // Rails alone: a fork, a merge, or the gap between two lines of history.
       if (line.trim()) {
-        rows.push({ rails: line, hash: '', pills: [], date: '', who: '', subject: '' })
+        const rails = line.trimEnd()
+        rows.push({
+          rails,
+          railColors: colors.slice(0, rails.length),
+          hash: '',
+          parents: [],
+          pills: [],
+          time: 0,
+          who: '',
+          subject: '',
+          isLocal: false,
+        })
       }
       continue
     }
@@ -141,15 +197,20 @@ export function readRows(out: string, remotes: ReadonlySet<string>) {
       isTruncated = true
       break
     }
-    const [, hash = '', decor = '', date = '', who = '', subject = ''] = line.slice(cut).split(UNIT)
+    const [, hash = '', parents = '', decor = '', time = '', who = '', ...subject] = line
+      .slice(cut)
+      .split(UNIT)
     commits += 1
     rows.push({
       rails: line.slice(0, cut),
+      railColors: colors.slice(0, cut),
       hash,
+      parents: parents.split(' ').filter(Boolean),
       pills: readPills(decor, remotes),
-      date,
+      time: Number(time) || 0,
       who,
-      subject,
+      subject: subject.join(UNIT),
+      isLocal: false,
     })
   }
 
@@ -160,6 +221,7 @@ const BLANK: Tree = {
   head: '',
   headHash: '',
   dirty: 0,
+  pending: { staged: 0, changed: 0, added: 0, conflicts: 0 },
   ahead: 0,
   behind: 0,
   upstream: '',
@@ -199,16 +261,26 @@ async function readTree($: EngineInterface): Promise<Tree> {
         'HEAD',
         '--date-order',
         '--decorate=short',
-        '--date=short',
+        // Colour paints the rails alone (the format names no colour), and it is
+        // how git says which lane each line belongs to.
+        '--color=always',
         '--max-count=' + (CAP + 1),
-        '--pretty=format:%x1f%h%x1f%D%x1f%ad%x1f%an%x1f%s',
+        '--pretty=format:%x1f%h%x1f%p%x1f%D%x1f%ct%x1f%an%x1f%s',
       ])
-      const drawn = log.ok ? readRows(log.out, remotes) : { rows: [], isTruncated: false }
+      const drawn = log.ok ? readRows(log.out, remotes) : { rows: [] as Row[], isTruncated: false }
+      // Commits no remote branch has yet. With no remote at all every commit
+      // is local, which says nothing, so nothing is marked.
+      if (remotes.size && drawn.rows.length) {
+        const only = await git($, ['log', '--all', '--not', '--remotes', '--format=%h', '--max-count=5000'])
+        const mine = new Set(only.ok ? only.out.split(/\r?\n/).filter(Boolean) : [])
+        drawn.rows = drawn.rows.map(one => (mine.has(one.hash) ? { ...one, isLocal: true } : one))
+      }
       result = {
         ...result,
         head: head.head,
         headHash: head.oid.slice(0, 7),
         dirty: head.dirty,
+        pending: head.pending,
         ahead: head.ahead,
         behind: head.behind,
         upstream: head.upstream,
@@ -237,14 +309,41 @@ async function show($: EngineInterface): Promise<Tree> {
 /** When the tree was last read, so a long-open pane stays near-live. */
 let lastRead = 0
 
+/** Where a branch stands against what it tracks, in plain words. */
+export function driftWords(ahead: number, behind: number, upstream: string): string {
+  if (!upstream) return 'not pushed'
+  if (ahead && behind) return ahead + ' to push, ' + behind + ' to pull'
+  if (ahead) return ahead + ' to push'
+  if (behind) return behind + ' to pull'
+
+  return 'in sync'
+}
+
+/** Git's `ahead 1, behind 2` or `gone`, as `driftWords` says it. */
+export function trackWords(one: Branch): string {
+  if (!one.upstream) return 'not pushed'
+  if (one.track === 'gone') return 'its remote is gone'
+  const ahead = Number(/ahead (\d+)/.exec(one.track)?.[1] ?? 0)
+  const behind = Number(/behind (\d+)/.exec(one.track)?.[1] ?? 0)
+
+  return driftWords(ahead, behind, one.upstream)
+}
+
 /** One line saying where the head stands. */
 export function headLine(t: Tree): string {
   if (t.trouble) return t.trouble
   const where = t.head || 'detached at ' + t.headHash
-  const drift = t.upstream ? ' ↑' + t.ahead + ' ↓' + t.behind : ''
-  const work = t.dirty ? t.dirty + ' changed' : 'clean'
+  const drift = t.head ? driftWords(t.ahead, t.behind, t.upstream) : ''
 
-  return where + drift + ' · ' + work
+  return [where, drift, pendingWords(t.pending)].filter(Boolean).join(' · ')
+}
+
+/** The theme colour for a branch's drift: green in sync, yellow otherwise. */
+function driftColor(words: string): Color {
+  if (words === 'in sync') return 'success'
+  if (words === 'its remote is gone') return 'error'
+
+  return 'warning'
 }
 
 const PILL_COLOR: Record<Pill['kind'], Color> = {
@@ -253,6 +352,9 @@ const PILL_COLOR: Record<Pill['kind'], Color> = {
   remote: 'claude',
   tag: 'permission',
 }
+
+/** The terminal's own text glyphs for git's rails. */
+const GLYPH: Record<string, string> = { '*': '●', '|': '│', '/': '╱', '\\': '╲' }
 
 export const register: Register = on => {
   on('session.start', async ($, e, next) => {
@@ -325,110 +427,201 @@ export const register: Register = on => {
       )
     }
 
+    const now = Date.now()
+    // One list: each branch here says where it stands against its remote, and
+    // a remote branch shows only when no branch here tracks it.
     const locals = t.branches.filter(one => !one.isRemote)
-    const remotes = t.branches.filter(one => one.isRemote)
-    const nameRoom = Math.min(30, Math.max(8, ...t.branches.map(one => one.name.length)))
-    const railsRoom = Math.min(RAILS_ROOM, Math.max(2, ...t.rows.map(one => one.rails.length)))
+    const tracked = new Set(locals.map(one => one.upstream).filter(Boolean))
+    const remoteOnly = t.branches.filter(one => one.isRemote && !tracked.has(one.name))
+    const nameRoom = Math.min(28, Math.max(8, ...t.branches.map(one => one.name.length)))
+    const commits = t.rows.filter(one => one.hash).length
+    const drift = driftWords(t.ahead, t.behind, t.upstream)
 
-    const branchRow = (one: Branch) => (
-      <Box key={'b-' + one.name} flexWrap="nowrap" overflow="hidden">
-        <Box flexShrink={0}>
-          <Text mono bold={one.isHead} color={one.isHead ? 'success' : undefined} wrap="truncate-end">
-            {(one.isHead ? '● ' : '  ') + one.name.padEnd(nameRoom)}
-          </Text>
-        </Box>
-        <Box flexShrink={0}>
-          <Text mono dimColor wrap="truncate-end">
-            {' ' + one.hash.padEnd(9)}
-          </Text>
-        </Box>
-        {one.track ? (
+    const branchRow = (one: Branch) => {
+      const words = one.isRemote ? 'only on ' + one.name.split('/')[0] : trackWords(one)
+
+      return (
+        <Box key={'b-' + one.name} flexWrap="nowrap" overflow="hidden">
           <Box flexShrink={0}>
-            <Text color="warning" wrap="truncate-end">{one.track + ' '}</Text>
+            <Text
+              mono
+              bold={one.isHead}
+              color={one.isHead ? 'success' : undefined}
+              dimColor={one.isRemote}
+              wrap="truncate-end"
+            >
+              {(one.isHead ? '● ' : '  ') + one.name.padEnd(nameRoom) + '  '}
+            </Text>
           </Box>
-        ) : null}
-        {one.upstream ? (
+          <Box flexShrink={0}>
+            <Text
+              color={one.isRemote ? undefined : driftColor(words)}
+              dimColor={one.isRemote}
+              wrap="truncate-end"
+            >
+              {words.padEnd(18)}
+            </Text>
+          </Box>
+          <Box flexShrink={0}>
+            <Text mono dimColor wrap="truncate-end">
+              {ago(one.time, now).padStart(3) + '  '}
+            </Text>
+          </Box>
           <Text dimColor wrap="truncate-end">
-            {one.upstream}
+            {one.subject}
           </Text>
-        ) : null}
+        </Box>
+      )
+    }
+
+    const header = (
+      <Box flexDirection="column">
+        {/* A narrow pane moves a whole piece to the next line rather than
+            squeezing each one into a column of single words. */}
+        <Box gap={1} alignItems="center" flexWrap="wrap">
+          <Box flexShrink={0}>
+            <Text bold>{t.head || 'Detached at ' + t.headHash}</Text>
+          </Box>
+          {t.head ? (
+            <Box flexShrink={0}>
+              <Text color={driftColor(drift)}>
+                {drift + (t.upstream ? ' with ' + t.upstream : '')}
+              </Text>
+            </Box>
+          ) : null}
+          <Box flexShrink={0}>
+            <Text dimColor>{'· ' + pendingWords(t.pending)}</Text>
+          </Box>
+          <Button key="again" onPress={() => void readTree($)}>
+            {reading ? 'Reading…' : 'Refresh'}
+          </Button>
+        </Box>
+        <Box marginTop={1} flexDirection="column">
+          <Text bold>{'Branches'}</Text>
+          {locals.length + remoteOnly.length === 0 ? <Text dimColor>None.</Text> : null}
+          {locals.map(branchRow)}
+          {remoteOnly.map(branchRow)}
+        </Box>
       </Box>
     )
 
-    // One row, one line. A crushed column cuts the line off at the edge rather
-    // than wrapping it: a row grown to two lines pushes the rails apart, and
-    // the drawn tree stops lining up with the commits beside it. The rails and
-    // the hash hold their width, so the subject is what gives way first.
+    // A key, only for the marks this history shows: an all-solid tree needs none.
+    const hasLocal = t.rows.some(one => one.isLocal)
+    const isDirty = hasPending(t.pending)
+    const key =
+      hasLocal || isDirty ? (
+        <Box gap={2} flexWrap="wrap">
+          <Text dimColor>{'● pushed'}</Text>
+          {hasLocal ? <Text dimColor>{'○ only on this computer'}</Text> : null}
+          {isDirty ? <Text dimColor>{'◌ not committed'}</Text> : null}
+        </Box>
+      ) : null
+
+    const footer = (shown: number) =>
+      shown < commits || t.isTruncated ? (
+        <Text dimColor>{'Showing the newest ' + shown + ' commits.'}</Text>
+      ) : null
+
+    // A surface that draws pictures gets the tree as one: a coloured line per
+    // branch, a dot per commit. Hovering a row shows its whole story.
+    if (e.surface !== 'terminal') {
+      const { Svg } = $.ui.resolve(e)
+      // A desktop column is about 8px. Give the picture its size outright: the
+      // frame that draws it is 150px tall when told nothing, and shrinks the
+      // whole history into that. Guess a shade under the pane's width, never
+      // over it: a picture wider than its slot is shrunk to fit and leaves a
+      // gap where its height was.
+      const width = Math.max(180, Math.min(1400, Math.floor(e.props.bodyColumns * 7.6)))
+      const drawn = drawGraph(t.rows, width, now, t.pending)
+
+      return (
+        <Box flexDirection="column">
+          {header}
+          <Box marginTop={1} flexDirection="column">
+            <Text bold>{'History'}</Text>
+            {key}
+            <Svg
+              source={drawn.source}
+              alt={'Commit tree of ' + drawn.shown + ' commits, newest at the top.'}
+              width={drawn.width}
+              height={drawn.height}
+              isInteractive
+            />
+            {footer(drawn.shown)}
+          </Box>
+        </Box>
+      )
+    }
+
+    // The terminal draws text alone: git's rails in its lane colours, then
+    // hash, age, names and subject. One row, one line: a crushed column cuts
+    // the line off at the edge rather than wrapping it, since a row grown to
+    // two lines pushes the rails apart. The rails, hash and age hold their
+    // width, so the subject is what gives way first.
+    const railsRoom = Math.min(RAILS_ROOM, Math.max(2, ...t.rows.map(one => one.rails.length)))
+    const rails = (one: Row, pad: number) => (
+      <Text mono wrap="truncate-end">
+        {[...one.rails.padEnd(pad)].map((ch, at) => {
+          const hue = one.railColors[at] ?? -1
+
+          return (
+            <Text key={'g' + at} color={hue < 0 ? undefined : RAIL_THEME[hue]} wrap="truncate-end">
+              {ch === '*' && one.isLocal ? '○' : (GLYPH[ch] ?? ch)}
+            </Text>
+          )
+        })}
+      </Text>
+    )
+
     const commitRow = (one: Row, at: number) => {
       if (!one.hash) {
         return (
           <Box key={'r-' + at} flexWrap="nowrap" overflow="hidden">
-            <Text mono color="suggestion" wrap="truncate-end">
-              {one.rails}
-            </Text>
+            {rails(one, 0)}
           </Box>
         )
       }
 
       return (
         <Box key={'c-' + at + '-' + one.hash} flexWrap="nowrap" overflow="hidden">
-          <Box flexShrink={0}>
-            <Text mono color="suggestion" wrap="truncate-end">
-              {one.rails.padEnd(railsRoom)}
-            </Text>
-          </Box>
+          <Box flexShrink={0}>{rails(one, railsRoom)}</Box>
           <Box flexShrink={0}>
             <Text mono dimColor wrap="truncate-end">
-              {one.hash.padEnd(8) + one.date + ' '}
+              {' ' + one.hash.slice(0, 7) + ' ' + ago(one.time, now).padStart(3) + ' '}
             </Text>
           </Box>
-          {one.pills.map(pill => (
-            <Box key={'p-' + pill.name} flexShrink={0}>
-              <Text bold={pill.kind === 'head'} color={PILL_COLOR[pill.kind]} wrap="truncate-end">
-                {(pill.kind === 'head' ? '● ' : '') + pill.name + ' '}
+          {foldPills(one.pills).map(label => (
+            <Box key={'p-' + label.name} flexShrink={0}>
+              <Text bold={label.kind === 'head'} color={PILL_COLOR[label.kind]} wrap="truncate-end">
+                {(label.kind === 'head' ? '● ' : label.kind === 'tag' ? '◆ ' : '') +
+                  label.name +
+                  (label.also.length ? ' · ' + label.also.join(' ') : '') +
+                  ' '}
               </Text>
             </Box>
           ))}
-          <Text wrap="truncate-end">{one.subject}</Text>
+          <Text dimColor={one.parents.length > 1} wrap="truncate-end">
+            {one.subject}
+          </Text>
         </Box>
       )
     }
 
     return (
       <Box flexDirection="column">
-        <Box gap={1} alignItems="center">
-          <Text bold>{t.head ? 'On ' + t.head : 'Detached at ' + t.headHash}</Text>
-          <Text dimColor>{headLine(t)}</Text>
-          <Button key="again" onPress={() => void readTree($)}>
-            {reading ? 'Reading…' : 'Read again'}
-          </Button>
-        </Box>
-        <Box gap={1}>
-          <Text bold color="success">
-            {'● checked out'}
-          </Text>
-          <Text color="warning">local</Text>
-          <Text color="claude">remote</Text>
-          <Text color="permission">tag</Text>
-        </Box>
-
+        {header}
         <Box marginTop={1} flexDirection="column">
-          <Text bold>{'Branches here (' + locals.length + ')'}</Text>
-          {locals.length === 0 ? <Text dimColor>None.</Text> : locals.map(branchRow)}
-        </Box>
-
-        <Box marginTop={1} flexDirection="column">
-          <Text bold>{'Branches on remotes (' + remotes.length + ')'}</Text>
-          {remotes.length === 0 ? <Text dimColor>None.</Text> : remotes.map(branchRow)}
-        </Box>
-
-        <Box marginTop={1} flexDirection="column">
-          <Box gap={1}>
-            <Text bold>Commit tree</Text>
-            <Text dimColor>{'newest at the top — scroll down for older'}</Text>
-          </Box>
+          <Text bold>{'History'}</Text>
+          {key}
+          {isDirty ? (
+            <Box key="wip" flexWrap="nowrap" overflow="hidden">
+              <Text color="warning" italic wrap="truncate-end">
+                {'◌ Uncommitted: ' + pendingWords(t.pending)}
+              </Text>
+            </Box>
+          ) : null}
           {t.rows.map(commitRow)}
-          {t.isTruncated ? <Text dimColor>{'… stopped at ' + CAP + ' commits.'}</Text> : null}
+          {footer(commits)}
         </Box>
       </Box>
     )

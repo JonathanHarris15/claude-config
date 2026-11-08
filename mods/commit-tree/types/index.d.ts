@@ -12,6 +12,10 @@ export type Branch = {
   isRemote: boolean
   /** True for the branch now checked out. */
   isHead: boolean
+  /** When its tip was committed, in seconds since 1970. */
+  time: number
+  /** The first line of its tip commit. */
+  subject: string
 }
 
 /** A name hanging off a commit, and what kind of name it is. */
@@ -22,18 +26,36 @@ export type Pill = {
 
 /** One drawn row: a commit, or a piece of the rails on its own. */
 export type Row = {
-  /** The railroad art git drew at the row's left end. */
+  /** The railroad art git drew at the row's left end, colour codes taken out. */
   rails: string
+  /** Git's lane colour for each character of the rails, 0-5, or -1 for none. */
+  railColors: number[]
   /** The commit's short hash; empty on a rails-only row. */
   hash: string
+  /** Its parents' short hashes, first parent first. */
+  parents: string[]
   /** The names hanging off this commit. */
   pills: Pill[]
-  /** The day it was written. */
-  date: string
+  /** When it was committed, in seconds since 1970. */
+  time: number
   /** Who wrote it. */
   who: string
   /** Its first line. */
   subject: string
+  /** True when no remote branch has it yet: it is only on this computer. */
+  isLocal: boolean
+}
+
+/** What is changed in the folder but not yet committed, by kind. */
+export type Pending = {
+  /** Files staged for the next commit. */
+  staged: number
+  /** Tracked files changed but not staged. */
+  changed: number
+  /** Files git does not track yet. */
+  added: number
+  /** Files caught in a merge conflict. */
+  conflicts: number
 }
 
 /** Everything the pane draws, read in one pass. */
@@ -44,6 +66,8 @@ export type Tree = {
   headHash: string
   /** How many files differ from the head. */
   dirty: number
+  /** The same files, by kind. */
+  pending: Pending
   /** Commits the head has that its upstream has not. */
   ahead: number
   /** Commits the upstream has that the head has not. */
