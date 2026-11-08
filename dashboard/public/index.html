@@ -3,28 +3,34 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="dark light">
 <title>Claude Config</title>
 <link rel="stylesheet" href="style.css">
 </head>
 <body>
 <header class="top">
-  <h1>Claude Config</h1>
-  <button class="pill" id="git-pill" data-act="tab" data-tab="sync"></button>
+  <div class="brand">
+    <span class="mark" aria-hidden="true"><svg class="i" viewBox="0 0 24 24"><path d="M4 7h10M18 7h2M4 17h2M10 17h10"/><circle cx="16" cy="7" r="2"/><circle cx="8" cy="17" r="2"/></svg></span>
+    <h1>Claude Config</h1>
+  </div>
+  <button class="pill" id="git-pill" data-act="tab" data-tab="sync" hidden></button>
   <span class="grow"></span>
   <span class="machine" id="machine"></span>
-  <button class="ghost" data-act="refresh" title="Read the disk again">Refresh</button>
+  <button class="ghost" data-act="refresh" title="Read the disk again">
+    <svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 11a8 8 0 1 0-2.3 5.7M20 4v7h-7"/></svg>Refresh
+  </button>
 </header>
-<div id="banner" class="banner" hidden></div>
-<div class="shell" id="shell">
+<div id="banner" class="banner" role="alert" hidden></div>
+<div class="shell wide" id="shell">
   <nav class="nav" id="nav" aria-label="Sections"></nav>
   <section class="list" id="list" aria-label="Items"></section>
-  <main class="detail" id="detail"></main>
+  <main class="detail" id="detail"><div class="loading">Reading your config…</div></main>
 </div>
-<div id="toast" class="toast" role="status" hidden></div>
-<dialog id="dialog"><form id="dialog-form">
+<div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
+<dialog id="dialog" aria-labelledby="dialog-title"><form id="dialog-form">
   <h2 id="dialog-title"></h2>
   <p id="dialog-text"></p>
-  <input id="dialog-input" autocomplete="off" spellcheck="false">
+  <input id="dialog-input" autocomplete="off" spellcheck="false" aria-labelledby="dialog-title">
   <div class="row end">
     <button class="ghost" type="button" id="dialog-cancel">Cancel</button>
     <button class="primary" type="submit" id="dialog-ok">OK</button>
