@@ -18,7 +18,6 @@ const NOTES = {
   dashboard: 'this page',
   skills: 'your own skills',
   agents: 'subagent definitions',
-  commands: 'slash commands',
   workflows: 'workflow scripts',
   hooks: 'hook scripts',
   usage: 'how often each skill gets used, one log per machine',
@@ -287,9 +286,9 @@ export async function scan(root) {
     }
   }
 
-  // --- Flat files: commands, agents, workflows, hook scripts
+  // --- Flat files: agents, workflows, hook scripts. Commands come only from
+  // plugins (below); skills replaced the user's own commands/ folder.
   const flat = [
-    ['commands', 'command', 'commands'],
     ['agents', 'agent', 'agents'],
     ['workflows', 'workflow', 'workflows'],
     ['hooks', 'hook script', 'hookScripts'],

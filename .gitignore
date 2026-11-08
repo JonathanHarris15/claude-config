@@ -13,8 +13,6 @@
 
 !skills/
 !skills/**
-!commands/
-!commands/**
 !agents/
 !agents/**
 !workflows/
@@ -41,8 +39,6 @@
 # and worth having on every machine.
 !board/
 !board/**
-
-# Built output and deps rebuild from source on each machine.
 
 # Installed by the twg CLI's own setup, not authored here. Each machine gets
 # its own copy when it runs `twg setup`, so syncing them would fight the

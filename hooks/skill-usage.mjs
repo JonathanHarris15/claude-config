@@ -36,7 +36,6 @@ const dirsIn = abs => {
 function isSkill(name, root, cwd) {
   if (name.includes(':')) return true // plugin:skill
   if (isFile(path.join(root, 'skills', name, 'SKILL.md'))) return true
-  if (isFile(path.join(root, 'commands', name + '.md'))) return true
   if (cwd && isFile(path.join(cwd, '.claude', 'skills', name, 'SKILL.md'))) return true
   if (cwd && isFile(path.join(cwd, '.claude', 'commands', name + '.md'))) return true
   return dirsIn(path.join(root, 'skills', 'synced')).some(bucket => isFile(path.join(root, 'skills', 'synced', bucket, name, 'SKILL.md')))

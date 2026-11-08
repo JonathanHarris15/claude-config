@@ -11,8 +11,8 @@ matter what folder the user is in. **All git commands run in `~/.claude`** — p
 
 The repo's `.gitignore` is an **allowlist** (`*` then explicit un-ignores). That
 means `git add -A` is safe: it can only ever stage the handful of allowlisted
-paths (skills, settings.json, CLAUDE.md, agents, commands, workflows, hooks,
-README, .gitignore). Credentials, transcripts and machine-local state fail closed.
+paths (skills, agents, workflows, hooks, mods, dashboard, usage, board,
+settings.json, CLAUDE.md, README, .gitignore). Credentials, transcripts and machine-local state fail closed.
 Do **not** flip `.gitignore` to a denylist to "fix" anything.
 
 ## The loop
@@ -32,13 +32,6 @@ diff), not a generic message. If there's nothing staged, skip the commit.
 `settings.local.json` is untracked by design — leave it alone.
 
 ### 2. Fetch and compare
-Note where `main` is first — step 5 needs it to tell whether the sync moved the
-board extension:
-
-```sh
-git -C ~/.claude rev-parse main    # keep this as <before>
-```
-
 ```sh
 git -C ~/.claude fetch origin
 git -C ~/.claude rev-list --left-right --count main...origin/main   # -> "<ahead>	<behind>"
@@ -78,15 +71,8 @@ If the rebase gets into a state you can't safely untangle:
 `git -C ~/.claude rebase --abort` and hand it back to the user with what you found.
 Never force-push (`--force`) to escape a conflict — it destroys remote history.
 
-### 5. The board is not here any more
-
-The Board VS Code extension used to live in `board_extension/` and this step
-rebuilt it after a sync. It is now its own repo (`board-extension`, under the
-user's Profesional Projects folder) with its own `setup.js`; nothing in this
-repo needs building. Skip to 6.
-
-### 6. Confirm
+### 5. Confirm
 End by reporting the outcome in one or two lines: what moved, which direction,
 and the final `git -C ~/.claude status` (should be clean and "up to date with
 origin/main"). Remind the user that running Claude Code sessions must restart to
-pick up changed config — and VS Code too, if step 5 rebuilt the board.
+pick up changed config.

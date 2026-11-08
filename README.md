@@ -6,10 +6,9 @@ My personal Claude Code configuration, synced across machines.
 
 | Path | What it is |
 | --- | --- |
-| `skills/` | Custom skills — a ticket planning chain that works on Jira or Notion (`create-epic` → `plan-ticket` → `grill-with-docs` → `to-prd` → `to-issues` → `implement` → `review`), plus the two pieces `grill-with-docs` composes (`grilling`, `domain-modeling`), the design chain (`design-prototype`, `design-push`, `design-pull`, `design-sync`), and `tdd`, `diagnose`, `prototype`, `research`, `codebase-design`, `improve-codebase-architecture`, `wizard`, `writing-for-agents`, `retro`, `sync-config`, `wait-what`. |
+| `skills/` | Custom skills — a ticket planning chain that works on Jira or Notion (`create-epic` → `plan-ticket` → `grill-with-docs` → `to-prd` → `to-issues` → `implement` → `review`), plus the two pieces `grill-with-docs` composes (`grilling`, `domain-modeling`), and `tdd`, `diagnose`, `prototype`, `research`, `codebase-design`, `improve-codebase-architecture`, `wizard`, `writing-for-agents`, `retro`, `sync-config`, `wait-what`. |
 | `agents/` | Custom subagents. Markdown with frontmatter; the frontmatter sets the model, tools, and description. |
 | `workflows/` | Multi-agent orchestration scripts. Plain JS that fans out subagents with real control flow — loops, pipelines, adversarial verification. |
-| `commands/` | Custom slash commands. |
 | `mods/` | Mods — code that changes Claude's own interface. `config-map` opens the dashboard; `commit-tree` draws the repo's commit tree. |
 | `dashboard/` | A local page for managing all of this, and for seeing how each thing syncs. It also shows how often each skill gets used. |
 | `hooks/` | Hook scripts. `skill-usage.mjs` logs every skill use, whether you type `/name` or Claude loads it. Run `node ~/.claude/hooks/skill-usage.mjs report` to see every skill with its use count and last date, least used first. |

@@ -12,7 +12,7 @@ const ROUTE_ORDER = ['git', 'pending', 'local', 'claudeai', 'plugin']
 const TABS = [
   ['sync', 'Sync'],
   ['skills', 'Skills', 'skills', 'skill'],
-  ['commands', 'Commands', 'commands', 'command'],
+  ['commands', 'Commands', 'commands'],
   ['agents', 'Agents', 'agents', 'agent'],
   ['workflows', 'Workflows', 'workflows', 'workflow'],
   ['hooks', 'Hooks'],
@@ -232,7 +232,8 @@ function renderList() {
 function plainBody(tab) {
   const all = itemsOf(tab)
   const shown = all.filter(matches)
-  if (!all.length) return `<p class="empty">No ${TABS.find(one => one[0] === tab)[1].toLowerCase()} yet. Make one above.</p>`
+  const meta = TABS.find(one => one[0] === tab)
+  if (!all.length) return `<p class="empty">No ${meta[1].toLowerCase()} yet.${meta[3] ? ' Make one above.' : ''}</p>`
   if (!shown.length) return '<p class="empty">Nothing matches.</p>'
   return groupByRoute(shown)
 }

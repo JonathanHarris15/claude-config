@@ -20,8 +20,8 @@ const MARK = '# Added from the config dashboard, tracked on purpose.'
 const IDLE_MS = 60 * 60 * 1000
 
 /** Where the page may read, and the smaller set it may change. */
-const READABLE = ['skills/', 'commands/', 'agents/', 'workflows/', 'hooks/', 'mods/', 'plugins/synced/', 'plugins/cache/']
-const WRITABLE = ['skills/', 'commands/', 'agents/', 'workflows/', 'hooks/', 'mods/']
+const READABLE = ['skills/', 'agents/', 'workflows/', 'hooks/', 'mods/', 'plugins/synced/', 'plugins/cache/']
+const WRITABLE = ['skills/', 'agents/', 'workflows/', 'hooks/', 'mods/']
 const NEVER_WRITE = ['skills/synced/', 'skills/.trash/']
 const TOP_FILES = ['settings.json', 'settings.local.json', 'CLAUDE.md']
 
@@ -82,9 +82,6 @@ const NAME = /^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$/
 const TEMPLATES = {
   skill: name => ({
     [`skills/${name}/SKILL.md`]: `---\nname: ${name}\ndescription: What this does, and when Claude should reach for it.\n---\n\n# ${name}\n\n`,
-  }),
-  command: name => ({
-    [`commands/${name}.md`]: `---\ndescription: What /${name} does.\n---\n\nWhat Claude should do. The words typed after the command arrive as $ARGUMENTS.\n`,
   }),
   agent: name => ({
     [`agents/${name}.md`]: `---\nname: ${name}\ndescription: What this agent is for, and when to use it.\ntools: Read, Grep, Glob\nmodel: sonnet\n---\n\nYou are...\n`,

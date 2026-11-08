@@ -2,11 +2,18 @@
   "folders": [
     {
       "name": "Ticket workflow",
-      "skills": ["own/notion-project", "own/create-epic", "own/plan-ticket", "own/grill-with-docs", "own/grilling", "own/domain-modeling", "own/to-prd", "own/to-issues", "own/implement", "own/review"]
-    },
-    {
-      "name": "Design",
-      "skills": ["own/design-prototype", "own/design-push", "own/design-pull", "own/design-sync"]
+      "skills": [
+        "own/notion-project",
+        "own/create-epic",
+        "own/plan-ticket",
+        "own/grill-with-docs",
+        "own/grilling",
+        "own/domain-modeling",
+        "own/to-prd",
+        "own/to-issues",
+        "own/implement",
+        "own/review"
+      ]
     }
   ]
 }
