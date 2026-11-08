@@ -212,7 +212,10 @@ async function readPlugins(root) {
   const syncedRoot = path.join(root, 'plugins', 'synced')
   for (const bucket of await dirsIn(syncedRoot)) {
     for (const name of await dirsIn(path.join(syncedRoot, bucket))) {
-      plugins.push({ name, abs: path.join(syncedRoot, bucket, name), route: 'claudeai' })
+      const abs = path.join(syncedRoot, bucket, name)
+      // The folder can carry a suffix like ~g2; Claude calls it by its manifest name.
+      const manifest = await readJson(path.join(abs, '.claude-plugin', 'plugin.json'))
+      plugins.push({ name, calledBy: manifest?.name || name.replace(/~.*$/, ''), abs, route: 'claudeai' })
     }
   }
   const installed = await readJson(path.join(root, 'plugins', 'installed_plugins.json'))
@@ -222,7 +225,8 @@ async function readPlugins(root) {
     const rel = path.relative(root, where)
     // Only ones inside the config folder: the page reads nothing outside it.
     if (rel.startsWith('..') || path.isAbsolute(rel)) continue
-    plugins.push({ name: key.split('@')[0], abs: where, route: 'plugin' })
+    const name = key.split('@')[0]
+    plugins.push({ name, calledBy: name, abs: where, route: 'plugin' })
   }
   return plugins
 }
@@ -254,6 +258,7 @@ export async function scan(root) {
       main: rel + '/SKILL.md',
       isEditable: true,
       owner: '',
+      loggedAs: [name],
       ...routeOf(files, git),
     })
   }
@@ -274,6 +279,8 @@ export async function scan(root) {
         main: rel + '/SKILL.md',
         isEditable: false,
         owner: 'claude.ai',
+        // Typed as /xlsx, loaded by Claude as anthropic-skills:xlsx.
+        loggedAs: [name, 'anthropic-skills:' + name],
         route: 'claudeai',
         note: ROUTE_NOTES.claudeai,
       })
@@ -328,6 +335,7 @@ export async function scan(root) {
         path: rel,
         files: await relAll(dir),
         main: rel + '/SKILL.md',
+        loggedAs: [plugin.calledBy + ':' + name],
         ...shared,
       })
     }
@@ -352,10 +360,10 @@ export async function scan(root) {
     if (declared) pluginHooks.push(...readHookEntries(declared, { source: plugin.name, route: plugin.route, isEditable: false }))
   }
 
-  // --- How often each skill gets used. A plugin's skill is logged as plugin:skill.
+  // --- How often each skill gets used, under each name the log may hold it by.
   const usage = readUsage(root)
   for (const one of items.skills) {
-    const seen = [one.name, one.owner + ':' + one.name].map(key => usage.skills.get(key)).filter(Boolean)
+    const seen = one.loggedAs.map(key => usage.skills.get(key)).filter(Boolean)
     const last = seen.map(each => each.last).sort().pop() ?? ''
     one.uses = seen.reduce((n, each) => n + each.uses, 0)
     one.lastUsed = last ? localDay(last) : ''

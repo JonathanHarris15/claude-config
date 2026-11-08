@@ -105,6 +105,24 @@ test('the dashboard shows each skill with its uses', async () => {
   assert.equal(found.usageSince, '2026-10-05')
 })
 
+test('claude.ai and plugin skills match the name Claude logs them under', async () => {
+  write('skills/synced/bucket/xlsx/SKILL.md', '---\nname: xlsx\n---\n')
+  write('plugins/synced/bucket/kit~g2/.claude-plugin/plugin.json', '{"name":"kit"}')
+  write('plugins/synced/bucket/kit~g2/skills/ux-copy/SKILL.md', '---\nname: ux-copy\n---\n')
+  write('usage/skills/pc.jsonl', [
+    '{"skill":"anthropic-skills:xlsx","at":"2026-10-05T10:00:00Z"}',
+    '{"skill":"xlsx","at":"2026-10-06T10:00:00Z"}',
+    '{"skill":"kit:ux-copy","at":"2026-10-07T10:00:00Z"}',
+    '{"skill":"ux-copy","at":"2026-10-08T10:00:00Z"}',
+  ].join('\n') + '\n')
+  const { scan } = await import('../scan.mjs')
+  const found = await scan(root)
+  const byName = name => found.items.skills.find(one => one.name === name)
+  assert.deepEqual([byName('xlsx').uses, byName('xlsx').lastUsed], [2, '2026-10-06'])
+  // A bare "ux-copy" is some other skill: a plugin's is always logged with its plugin's name.
+  assert.deepEqual([byName('ux-copy').uses, byName('ux-copy').lastUsed], [1, '2026-10-07'])
+})
+
 test('the report lists unused skills first', () => {
   write('usage/skills/pc.jsonl', '{"skill":"grilling","at":"2026-10-05T10:00:00Z"}\n{"skill":"xlsx","at":"2026-10-06T10:00:00Z"}\n')
   const out = run('report')
