@@ -73,7 +73,10 @@ const LOG = [
  * Stands for the machine: a git that answers, a pane that exists, and the
  * engine beneath the mods, which is what the band wraps.
  */
-function repo(on: any, { fails = false, beneath = null as null | ((...a: any[]) => any) } = {}) {
+function repo(
+  on: any,
+  { fails = false, beneath = null as null | ((...a: any[]) => any), log = LOG } = {},
+) {
   const runs: string[][] = []
   on('ui.render', ($: any, e: any) => {
     if (beneath) return beneath($, e)
@@ -97,7 +100,7 @@ function repo(on: any, { fails = false, beneath = null as null | ((...a: any[]) 
           ? REFS
           : e.argv.includes('--not')
             ? LOCAL_ONLY
-            : LOG
+            : log
 
     return { value: { exitCode: 0, stdout, stderr: '' } }
   })
@@ -198,6 +201,26 @@ test('a narrow pane gets a picture no wider than itself, without the extras', as
   // The pushed label drops its remote to leave room for the subject.
   expect(source.includes('main · origin')).toBe(false)
   expect(source.includes('Newest')).toBe(true)
+  await ui.unmount()
+})
+
+test('a long history draws a picture short enough for the surface, and says it stopped', async ($, on) => {
+  // The surface refuses a picture taller than 4096px, and then draws nothing.
+  const hashes = Array.from({ length: 180 }, (_, i) => 'c' + String(i).padStart(6, '0'))
+  const log = hashes
+    .map((hash, i) => `*${US}${hash}${US}${hashes[i + 1] ?? ''}${US}${i ? '' : 'HEAD -> main'}${US}${1762400000 - i}${US}Jo${US}Commit ${i}`)
+    .join('\n')
+  repo(on, { log })
+  const band = await $.ui.mount({ ...BAND, surface: 'desktop' })
+  await band.press({ key: 'tree' })
+  await band.unmount()
+
+  const ui = await $.ui.mount({ ...PANE, surface: 'desktop' })
+  const svg = every(await ui.drawn()).find(one => one.type === 'Svg')
+
+  expect(svg).toBeDefined()
+  expect(svg.props.height <= 4096).toBe(true)
+  expect(await ui.find({ type: 'Text', text: /Showing the newest \d+ commits/ })).toBeDefined()
   await ui.unmount()
 })
 

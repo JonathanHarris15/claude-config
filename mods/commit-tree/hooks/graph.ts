@@ -128,6 +128,8 @@ const PAD = 14
 const NARROW = 420
 /** The picture's most characters; the surface refuses one past 131072. */
 const BUDGET = 120000
+/** The picture's most rows; the surface refuses one taller than 4096px. */
+const MAX_ROWS = Math.floor((4096 - 8) / ROW)
 
 const esc = (s: string) =>
   s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;')
@@ -206,6 +208,7 @@ export function drawGraph(
   const rowParts: string[] = []
   let size = 0
   for (const [at, one] of commits.entries()) {
+    if (rowParts.length >= MAX_ROWS) break
     const seat = seats[at]!
     const color = LANE_COLORS[seat.color % LANE_COLORS.length]!
     const labels = foldPills(one.pills)
