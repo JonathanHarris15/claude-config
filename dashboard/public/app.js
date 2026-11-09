@@ -6,6 +6,7 @@ const ROUTES = {
   claudeai: { label: 'claude.ai', gist: 'Your claude.ai account sends these to the app. Git has no part in it.', hollow: false },
   plugin: { label: 'Plugin install', gist: 'Installed from a marketplace here. Other machines install their own.', hollow: false },
   local: { label: 'This machine only', gist: 'Git ignores these and nothing else syncs them. A new machine will not have them.', hollow: false },
+  project: { label: 'Project repo', gist: 'In the project\'s own repo, so anyone who clones it gets these.', hollow: false },
 }
 const ROUTE_ORDER = ['git', 'pending', 'local', 'claudeai', 'plugin']
 
@@ -33,6 +34,7 @@ const ICONS = {
   machine: '<rect x="3" y="4.5" width="18" height="12" rx="2"/><path d="M8.5 20h7M12 16.5V20"/>',
   upload: '<path d="M12 19V8M7 12l5-5 5 5M5 4h14"/>',
   download: '<path d="M12 4v11M7 10.5l5 5 5-5M5 20h14"/>',
+  workspace: '<path d="M4 7.5A2.5 2.5 0 0 1 6.5 5H10l2 2h5.5A2.5 2.5 0 0 1 20 9.5v7a2.5 2.5 0 0 1-2.5 2.5h-11A2.5 2.5 0 0 1 4 16.5z"/><path d="M8 13h8"/>',
   lock: '<rect x="5.5" y="10.5" width="13" height="9" rx="2"/><path d="M8.5 10.5V8a3.5 3.5 0 0 1 7 0v2.5"/>',
 }
 const icon = (name, label) =>
@@ -47,6 +49,21 @@ const TABS = [
   ['hooks', 'Hooks'],
   ['mods', 'Mods', 'mods', 'mod'],
   ['settings', 'Settings'],
+  ['workspace', 'Workspace'],
+]
+
+/** The project this session runs in, named by the launcher. Absent, the tab hides. */
+const WS = new URLSearchParams(location.search).get('ws') ?? ''
+const tabsShown = () => TABS.filter(one => one[0] !== 'workspace' || WS)
+
+/** How the Workspace tab groups what it found, in reading order. */
+const WS_KINDS = [
+  ['instructions', 'Instructions'],
+  ['settings', 'Settings'],
+  ['skill', 'Skills'],
+  ['agent', 'Agents'],
+  ['command', 'Commands'],
+  ['file', 'Other files'],
 ]
 
 const SCALARS = {
@@ -174,7 +191,9 @@ function setDirty(on) {
 
 // ---------- reading
 
-const allItems = () => Object.values(S.data.items).flat()
+const wsItems = () => S.data.workspace?.items ?? []
+const allItems = () => [...Object.values(S.data.items).flat(), ...wsItems()]
+const isWs = item => !!item?.id?.startsWith('ws:')
 const itemsOf = tab => {
   if (tab === 'hooks') return S.data.items.hookScripts
   return S.data.items[tab] ?? []
@@ -187,6 +206,13 @@ const badge = route => `<span class="badge r-${route}">${dot(route)}${esc(ROUTES
 /** Read the disk. Says whether anything changed, so a quiet refresh can leave the page alone. */
 async function load() {
   const next = await api('GET', '/api/state')
+  if (WS) {
+    try {
+      next.workspace = await api('GET', '/api/workspace?ws=' + encodeURIComponent(WS))
+    } catch (err) {
+      next.workspace = { trouble: err.message, items: [] }
+    }
+  }
   const text = JSON.stringify(next)
   const changed = text !== S.dataText
   S.data = next
@@ -226,9 +252,9 @@ function renderTop() {
 }
 
 function renderNav() {
-  q('#nav').innerHTML = TABS.map(([tab, label, slot]) => {
-    const count = slot ? S.data.items[slot].length : tab === 'hooks' ? S.data.hooks.length + S.data.items.hookScripts.length : ''
-    const sep = tab === 'skills' || tab === 'settings' ? '<div class="sep" role="presentation"></div>' : ''
+  q('#nav').innerHTML = tabsShown().map(([tab, label, slot]) => {
+    const count = slot ? S.data.items[slot].length : tab === 'hooks' ? S.data.hooks.length + S.data.items.hookScripts.length : tab === 'workspace' ? wsItems().length : ''
+    const sep = tab === 'skills' || tab === 'settings' || tab === 'workspace' ? '<div class="sep" role="presentation"></div>' : ''
     return `${sep}<button data-act="tab" data-tab="${tab}" aria-current="${S.tab === tab ? 'page' : 'false'}">${icon(tab)}${label}<span class="count">${count}</span></button>`
   }).join('')
   q('#nav [aria-current=page]')?.scrollIntoView({ block: 'nearest', inline: 'nearest' })
@@ -281,6 +307,7 @@ function renderList() {
   if (S.tab === 'skills') el.innerHTML = listHead('skills') + skillsBody()
   else if (S.tab === 'hooks') el.innerHTML = hooksList()
   else if (S.tab === 'settings') el.innerHTML = settingsList()
+  else if (S.tab === 'workspace') el.innerHTML = workspaceList()
   else if (S.tab !== 'sync') el.innerHTML = listHead(S.tab) + plainBody(S.tab)
   el.scrollTop = keepScroll
 }
@@ -358,6 +385,32 @@ function settingsList() {
       ${dot(file.route)}<span class="name">${esc(file.path)}</span>
       <span class="desc">${esc(ROUTES[file.route].label)}${file.exists ? '' : ', not made yet'}</span>
     </button>`).join('')
+}
+
+function workspaceList() {
+  const ws = S.data.workspace ?? { items: [] }
+  const head = `<div class="list-head">
+    ${ws.path ? `<div class="where" title="${esc(ws.path)}">${icon('folder')}<span class="grow"><b>${esc(ws.name)}</b><span class="mono dim">${esc(ws.path)}</span></span></div>` : ''}
+    ${ws.items.length ? `<div class="search">${icon('search')}<input id="filter" type="text" placeholder="Filter this project" aria-label="Filter this project" value="${esc(S.filter)}"><kbd>/</kbd></div>` : ''}
+  </div>`
+  if (ws.trouble) return head + `<p class="empty">${esc(ws.trouble)}</p>`
+  if (ws.isConfigRoot) return head + '<p class="empty">This session runs in your config folder itself, so its files are the ones in the other tabs.</p>'
+  if (!ws.items.length) return head + '<p class="empty">Claude finds no files of its own in this project. A CLAUDE.md at the top is the place to start.</p>'
+  const shown = ws.items.filter(matches)
+  if (!shown.length) return head + noMatch()
+  const groups = WS_KINDS.map(([kind, label]) => {
+    const rows = shown.filter(one => one.kind === kind)
+    if (!rows.length) return ''
+    if (kind !== 'file') return `<div class="group">${esc(label)}<span class="n">${rows.length}</span></div>${rows.map(one => row(one)).join('')}`
+    // Loose files, one run per folder inside .claude/: hooks, output-styles and the like.
+    const subs = [...new Set(rows.map(one => one.group))]
+    return subs.map(sub => {
+      const mine = rows.filter(one => one.group === sub)
+      return `<div class="group">${esc(sub ? label + ' · ' + sub : label)}<span class="n">${mine.length}</span></div>${mine.map(one => row(one)).join('')}`
+    }).join('')
+  }).join('')
+  const cut = ws.isCut ? '<p class="empty">This project is big, so the dashboard stopped looking a few folders down.</p>' : ''
+  return head + groups + cut
 }
 
 // ---------- the sync view
@@ -480,7 +533,7 @@ function repoLink(remote) {
 
 function itemHead(item) {
   const actions = []
-  if (item.kind === 'skill') {
+  if (item.kind === 'skill' && !isWs(item)) {
     const current = S.data.folders.find(one => one.skills.includes(item.id))?.name ?? ''
     actions.push(`<label>${icon('folder')}<span class="sr">Folder</span>
       <select id="folder-pick" data-id="${esc(item.id)}" aria-label="Folder">
@@ -494,10 +547,11 @@ function itemHead(item) {
   if (item.kind === 'mod') {
     actions.push(`<label class="switch"><input type="checkbox" id="mod-on" data-name="${esc(item.name)}" ${item.isOn ? 'checked' : ''}>On for new sessions</label>`)
   }
-  const del = item.isEditable
+  const del = item.isEditable && !isWs(item)
     ? `<span class="grow"></span><button class="danger" data-act="delete" data-path="${esc(item.path)}" data-name="${esc(item.name)}">${icon('trash')}Delete</button>`
     : ''
   const facts = [`<span>${icon('file')}<span class="mono">${esc(item.path)}</span></span>`]
+  if (item.isLink) facts.push(`<span>${icon('lock')}A link to another file, so read only here</span>`)
   if (item.kind === 'skill') facts.push(`<span>${icon('clock')}${esc(usedLabel(item))}${S.data.usageSince ? ', counting since ' + esc(S.data.usageSince) : ''}</span>`)
   return `<div class="head">
     <button class="ghost back" data-act="back">Back</button>
@@ -510,11 +564,12 @@ function itemHead(item) {
 }
 
 function filesBar(item) {
-  if (item.files.length < 2 && !(item.isEditable && item.files[0] !== item.path)) return ''
+  const canAdd = item.isEditable && !isWs(item)
+  if (item.files.length < 2 && !(canAdd && item.files[0] !== item.path)) return ''
   const label = file => (file.startsWith(item.path + '/') ? file.slice(item.path.length + 1) : file)
   return `<div class="files" role="group" aria-label="Files">
     ${item.files.map(file => `<button data-act="file" data-path="${esc(file)}" aria-current="${S.file?.path === file}">${esc(label(file))}</button>`).join('')}
-    ${item.isEditable ? `<button class="ghost" data-act="file-new" data-dir="${esc(item.path)}">${icon('plus')}New file</button>` : ''}
+    ${canAdd ? `<button class="ghost" data-act="file-new" data-dir="${esc(item.path)}">${icon('plus')}New file</button>` : ''}
   </div>`
 }
 
@@ -535,7 +590,8 @@ function editorHtml() {
 
 async function fetchFile(path) {
   try {
-    return await api('GET', '/api/file?path=' + encodeURIComponent(path))
+    const ws = S.tab === 'workspace' ? '&ws=' + encodeURIComponent(WS) : ''
+    return await api('GET', '/api/file?path=' + encodeURIComponent(path) + ws)
   } catch (err) {
     return { path, trouble: err.message }
   }
@@ -562,6 +618,15 @@ function renderItem() {
 /** The detail pane before anything is picked: what this tab holds, and how to get around. */
 function blank() {
   const meta = TABS.find(one => one[0] === S.tab) ?? TABS[0]
+  if (S.tab === 'workspace') {
+    const ws = S.data.workspace ?? {}
+    const n = wsItems().length
+    return `<div class="blank">
+      <span class="glyph">${icon('workspace')}</span>
+      <h3>${esc(ws.name || 'This project')}</h3>
+      <p>${n ? `${plural(n, 'thing')} Claude reads when a session runs here, on top of your global ones. Open one to read or edit it.` : 'What Claude reads when a session runs in this project shows here.'}</p>
+    </div>`
+  }
   const word = { hooks: 'hook', settings: 'settings file', commands: 'command' }[S.tab] ?? meta[3] ?? meta[1].toLowerCase()
   const count = meta[2] ? S.data.items[meta[2]].length : S.tab === 'hooks' ? S.data.hooks.length : S.data.settingsFiles.length
   const inGit = meta[2] ? S.data.items[meta[2]].filter(one => one.route === 'git').length : null
@@ -870,7 +935,8 @@ const ACT = {
   },
   save: async () => {
     const text = q('#text').value
-    const saved = await api('PUT', '/api/file', { path: S.file.path, text, mtimeMs: S.file.mtimeMs })
+    const ws = S.tab === 'workspace' ? WS : undefined
+    const saved = await api('PUT', '/api/file', { path: S.file.path, text, mtimeMs: S.file.mtimeMs, ws })
     S.file = { ...S.file, text, mtimeMs: saved.mtimeMs }
     setDirty(false)
     const status = q('#save-status')
@@ -1169,7 +1235,7 @@ setInterval(() => {
 // Back and forward move between tabs, since each tab has its own address.
 window.addEventListener('hashchange', attempt(async () => {
   const tab = location.hash.slice(1)
-  if (!S.data || tab === S.tab || !TABS.some(one => one[0] === tab)) return
+  if (!S.data || tab === S.tab || !tabsShown().some(one => one[0] === tab)) return
   await showTab(tab)
   // Unsaved work kept us here, so put the address back to match.
   if (S.tab !== tab) history.replaceState(null, '', '#' + S.tab)
@@ -1178,7 +1244,7 @@ window.addEventListener('hashchange', attempt(async () => {
 attempt(async () => {
   await load()
   const start = location.hash.slice(1)
-  await showTab(TABS.some(one => one[0] === start) ? start : 'sync')
+  await showTab(tabsShown().some(one => one[0] === start) ? start : 'sync')
   // Quietly learn whether GitHub has moved on.
   api('POST', '/api/fetch', {}).then(load).then(() => S.tab === 'sync' && !S.sel && renderSync()).catch(() => {})
 })()

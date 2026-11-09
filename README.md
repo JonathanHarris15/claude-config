@@ -140,6 +140,9 @@ folder. The path uses `~`, so the same setting works on Windows and Mac.
 
 **`config-map`** is one button above the chat bar: it starts the config dashboard and opens it,
 in the app's browser pane where there is one and your own browser otherwise.
+It also passes along the session's project folder, so the dashboard gets a Workspace tab
+listing what Claude reads there: CLAUDE.md files (above, in and below the project),
+`.claude/` settings, skills, agents, commands and other files, and `.mcp.json`.
 `/config-map` does the same. Its folder holds the whole mod: `plugin.json` names
 it, `hooks/register.tsx` is the code, `types/index.d.ts` declares the values it
 keeps between draws, and `tests/` is run with `claude plugin test mods/config-map`.

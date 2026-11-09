@@ -3,6 +3,7 @@
 // web page could have forged, because it can write files Claude will execute.
 
 import { cp, mkdir, readFile, realpath, rename, rm, stat, writeFile } from 'node:fs/promises'
+import { createHash } from 'node:crypto'
 import { execFile } from 'node:child_process'
 import { statSync } from 'node:fs'
 import http from 'node:http'
@@ -10,7 +11,9 @@ import os from 'node:os'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 
+import { readUsage } from '../hooks/skill-usage.mjs'
 import { scan } from './scan.mjs'
+import { findWorkspaceFile, sweepWorkspace } from './workspace.mjs'
 
 const HERE = path.dirname(fileURLToPath(import.meta.url))
 const PUBLIC = path.join(HERE, 'public')
@@ -40,7 +43,7 @@ const canWrite = rel =>
 
 /** Which build of the server is running, so the launcher can swap an old one out. */
 export const buildId = () =>
-  ['server.mjs', 'scan.mjs'].map(one => statSync(path.join(HERE, one)).mtimeMs).join('-')
+  ['server.mjs', 'scan.mjs', 'workspace.mjs'].map(one => statSync(path.join(HERE, one)).mtimeMs).join('-')
 
 /** Fixed when this copy starts, so a newer copy on disk shows up as different. */
 const RUNNING_BUILD = buildId()
@@ -140,7 +143,27 @@ async function trackSkill(root, id) {
   return { path: target, text: `Copied to ${target} and staged. The original stays with ${skill.owner}, so you now have two with this name.` }
 }
 
-async function handleApi(root, req, url, body) {
+/** A project folder the launcher named, by the id the page carries in its address. */
+function workspaceDir(workspaces, id) {
+  const dir = workspaces.get(String(id ?? ''))
+  if (!dir) throw new Refused(404, 'The dashboard has forgotten that project. Press the button in Claude again.')
+  return dir
+}
+
+/** A file the page asked for: in the config folder, or one a project sweep found. */
+async function locate(root, workspaces, ws, rel, mode) {
+  if (!ws) {
+    const found = await resolveInside(root, rel, mode === 'write' ? canWrite : canRead)
+    return { ...found, isEditable: canWrite(found.rel) }
+  }
+  const dir = workspaceDir(workspaces, ws)
+  const found = typeof rel === 'string' ? await findWorkspaceFile(dir, rel, { configRoot: root }) : null
+  if (!found) throw new Refused(403, 'The dashboard does not touch ' + rel + '.')
+  if (mode === 'write' && !found.isEditable) throw new Refused(403, rel + ' is a link, so it is read only here.')
+  return found
+}
+
+async function handleApi(root, req, url, body, workspaces) {
   const route = req.method + ' ' + url.pathname
 
   switch (route) {
@@ -150,8 +173,23 @@ async function handleApi(root, req, url, body) {
     case 'GET /api/state':
       return scan(root)
 
+    case 'POST /api/workspace': {
+      // Only the launcher calls this: a page cannot, since it sends no JSON
+      // across sites, and the page itself only ever carries the id back.
+      const dir = typeof body.path === 'string' ? path.resolve(body.path) : ''
+      if (!dir || !path.isAbsolute(String(body.path))) throw new Refused(400, 'Give the folder as a full path.')
+      const info = await stat(dir).catch(() => null)
+      if (!info?.isDirectory()) throw new Refused(404, 'No folder at ' + dir + '.')
+      const id = createHash('sha256').update(dir).digest('hex').slice(0, 12)
+      workspaces.set(id, dir)
+      return { id }
+    }
+
+    case 'GET /api/workspace':
+      return sweepWorkspace(workspaceDir(workspaces, url.searchParams.get('ws')), { configRoot: root, usage: readUsage(root) })
+
     case 'GET /api/file': {
-      const { abs, rel } = await resolveInside(root, url.searchParams.get('path'), canRead)
+      const { abs, rel, isEditable } = await locate(root, workspaces, url.searchParams.get('ws'), url.searchParams.get('path'), 'read')
       let info
       try {
         info = await stat(abs)
@@ -159,7 +197,7 @@ async function handleApi(root, req, url, body) {
         throw new Refused(404, rel + ' does not exist.')
       }
       if (!info.isFile()) throw new Refused(400, rel + ' is not a file.')
-      const base = { path: rel, mtimeMs: info.mtimeMs, isEditable: canWrite(rel) }
+      const base = { path: rel, mtimeMs: info.mtimeMs, isEditable }
       if (info.size > 2 * 1024 * 1024) return { ...base, isBinary: true, text: '', isEditable: false }
       const bytes = await readFile(abs)
       if (bytes.includes(0)) return { ...base, isBinary: true, text: '', isEditable: false }
@@ -167,7 +205,7 @@ async function handleApi(root, req, url, body) {
     }
 
     case 'PUT /api/file': {
-      const { abs, rel } = await resolveInside(root, body.path, canWrite)
+      const { abs, rel } = await locate(root, workspaces, body.ws, body.path, 'write')
       if (typeof body.text !== 'string') throw new Refused(400, 'No text given.')
       if (rel.endsWith('.json')) {
         try {
@@ -282,6 +320,8 @@ function refuseForged(req, port) {
 }
 
 export function createDashboard({ root, onActivity = () => {} }) {
+  /** Project folders the launcher has named, kept only while this copy runs. */
+  const workspaces = new Map()
   const server = http.createServer(async (req, res) => {
     onActivity()
     const send = (status, type, data) => {
@@ -306,7 +346,7 @@ export function createDashboard({ root, onActivity = () => {} }) {
           }
           body = raw ? JSON.parse(raw) : {}
         }
-        return json(200, await handleApi(root, req, url, body))
+        return json(200, await handleApi(root, req, url, body, workspaces))
       }
       if (req.method !== 'GET') return json(405, { error: 'No.' })
       const name = url.pathname === '/' ? 'index.html' : url.pathname.slice(1)

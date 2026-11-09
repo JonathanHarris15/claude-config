@@ -3,6 +3,7 @@
 //   node ~/.claude/dashboard/start.mjs           start it, print its address
 //   node ~/.claude/dashboard/start.mjs --open    and open your browser
 //   node ~/.claude/dashboard/start.mjs --stop    stop it
+//   ... --workspace <folder>                      and show that project's files too
 
 import { spawn } from 'node:child_process'
 import path from 'node:path'
@@ -14,6 +15,7 @@ const HERE = path.dirname(fileURLToPath(import.meta.url))
 const PORT = Number(process.env.CONFIG_DASHBOARD_PORT || 4915)
 const URL_HOME = 'http://127.0.0.1:' + PORT + '/'
 const args = process.argv.slice(2)
+const workspace = args.includes('--workspace') ? args[args.indexOf('--workspace') + 1] : ''
 
 const say = value => console.log(JSON.stringify(value))
 const nap = ms => new Promise(done => setTimeout(done, ms))
@@ -83,5 +85,22 @@ if (found.state === 'none') {
   }
 }
 
-if (args.includes('--open')) openBrowser(URL_HOME)
-say({ url: URL_HOME, started })
+// The server learns the folder from here, never from the page, so a page
+// cannot point it at a folder of its choosing.
+let url = URL_HOME
+if (workspace) {
+  try {
+    const res = await fetch(URL_HOME + 'api/workspace', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ path: path.resolve(workspace) }),
+    })
+    const body = await res.json()
+    if (body.id) url = URL_HOME + '?ws=' + body.id
+  } catch {
+    // The dashboard still opens, just without the workspace tab.
+  }
+}
+
+if (args.includes('--open')) openBrowser(url)
+say({ url, started })

@@ -37,6 +37,7 @@ function machine(
   on('env.get', (_: unknown, e: { name?: string; key?: string }) => ({
     value: (e.name ?? e.key) === 'HOME' ? '/home/me' : undefined,
   }))
+  on('session.root', () => ({ value: '/work/app' }))
   on('process.run', (_: unknown, e: { argv: string[] }) => {
     calls.runs.push(e.argv)
     return { value: { exitCode: 0, stdout: JSON.stringify(answer) + '\n', stderr: '' } }
@@ -79,6 +80,16 @@ test('with no browser pane it falls back to the machine browser', async ($, on) 
 
   expect(calls.runs.some(argv => argv.includes('--open'))).toBe(true)
   expect(await ui.find({ type: 'Text', text: /your browser/ })).toBeDefined()
+  await ui.unmount()
+})
+
+test('the button names the session folder, so the dashboard can show it', async ($, on) => {
+  const calls = machine(on, { hasPane: false })
+  const ui = await $.ui.mount({ ...BAND, surface: 'desktop' })
+  await ui.press({ key: 'open' })
+
+  for (const argv of calls.runs) expect(argv.slice(-2)).toEqual(['--workspace', '/work/app'])
+  expect(calls.runs.length).toBe(2)
   await ui.unmount()
 })
 

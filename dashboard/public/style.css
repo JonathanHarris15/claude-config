@@ -5,7 +5,7 @@
   --line: #2c2f35; --field-line: #6b707a;
   --text: #e8e9ec; --dim: #9a9ea8; --faint: #6f737c;
   --accent: #d97757; --accent-fg: #1b0d06; --accent-soft: color-mix(in srgb, var(--accent) 16%, transparent);
-  --git: #3fb950; --local: #d29922; --claudeai: #a371f7; --plugin: #539bf5; --bad: #f85149;
+  --git: #3fb950; --local: #d29922; --claudeai: #a371f7; --plugin: #539bf5; --project: #39c5cf; --bad: #f85149;
   --shadow: 0 8px 28px #0008, 0 1px 3px #0006;
   --backdrop: #000a;
 
@@ -24,7 +24,7 @@
     --line: #e0e0da; --field-line: #85888f;
     --text: #1b1c1f; --dim: #585c64; --faint: #8a8d94;
     --accent: #b4532f; --accent-fg: #ffffff;
-    --git: #116329; --local: #7d5400; --claudeai: #6f42c1; --plugin: #0550ae; --bad: #a40e26;
+    --git: #116329; --local: #7d5400; --claudeai: #6f42c1; --plugin: #0550ae; --project: #1b7c83; --bad: #a40e26;
     --shadow: 0 8px 28px #0002, 0 1px 3px #0001;
     --backdrop: #0005;
   }
@@ -169,7 +169,7 @@ input[type=checkbox] { accent-color: var(--accent); width: 16px; height: 16px; m
 .dot.hollow { background: transparent; }
 .badge { display: inline-flex; align-items: center; gap: 6px; font-size: var(--fs-sm); font-weight: 600; color: var(--c); white-space: nowrap; padding: 1px 9px 1px 7px; border-radius: var(--r-pill); background: color-mix(in srgb, var(--c) 13%, transparent); }
 .badge .dot { margin: 0; width: 7px; height: 7px; }
-.r-git, .r-pending { --c: var(--git); } .r-local { --c: var(--local); } .r-claudeai { --c: var(--claudeai); } .r-plugin { --c: var(--plugin); } .r-bad { --c: var(--bad); }
+.r-git, .r-pending { --c: var(--git); } .r-local { --c: var(--local); } .r-claudeai { --c: var(--claudeai); } .r-plugin { --c: var(--plugin); } .r-project { --c: var(--project); } .r-bad { --c: var(--bad); }
 
 /* ---------- the detail pane */
 .detail { overflow: auto; min-width: 0; display: flex; flex-direction: column; min-height: 0; }
@@ -404,3 +404,8 @@ select option { background: var(--panel); color: var(--text); }
   .stat { flex: none; min-width: 112px; }
   .stat-label { white-space: nowrap; }
 }
+
+/* The Workspace tab: which project folder it shows. */
+.where { display: flex; align-items: flex-start; gap: var(--s2); font-size: var(--fs-md); }
+.where .grow { display: flex; flex-direction: column; min-width: 0; }
+.where .mono { font-size: var(--fs-xs); }

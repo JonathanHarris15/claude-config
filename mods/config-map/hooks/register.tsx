@@ -44,12 +44,23 @@ async function launch($: EngineInterface, extra: string[]): Promise<{ url?: stri
   return { error: 'Could not find Node on this machine. The dashboard needs it.' }
 }
 
+/** The session's project folder, so the dashboard can show what it holds. */
+async function workspaceOf($: EngineInterface): Promise<string[]> {
+  try {
+    const root = await $.session.root()
+    return root ? ['--workspace', root] : []
+  } catch {
+    return [] // No folder to name: the dashboard still opens, without that tab.
+  }
+}
+
 /** Start the dashboard if it is not running, then show it. */
 async function openDashboard($: EngineInterface, inPane: boolean): Promise<Opened> {
   await update($, isBusy, () => true)
   let result: Opened = { url: '', where: '', trouble: '' }
   try {
-    const started = await launch($, [])
+    const workspace = await workspaceOf($)
+    const started = await launch($, workspace)
     if (!started.url) {
       result = { ...result, trouble: started.error ?? 'The dashboard did not start.' }
     } else {
@@ -67,7 +78,7 @@ async function openDashboard($: EngineInterface, inPane: boolean): Promise<Opene
       }
       if (isShown) result = { ...result, where: 'pane' }
       else {
-        const asked = await launch($, ['--open'])
+        const asked = await launch($, ['--open', ...workspace])
         result = asked.url
           ? { ...result, where: 'browser' }
           : { ...result, trouble: asked.error ?? 'Could not open a browser.' }
