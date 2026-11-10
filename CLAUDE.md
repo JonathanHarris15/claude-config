@@ -10,7 +10,7 @@ specific rules belong in that project's own `CLAUDE.md`, not here.
 - Be breif without losing needed information, I don't need to know every tiny little
   detail of what you are doing, but I do need the essence.
 - Do not get bogged now in jargon or technical language. Keep things simple, human, and concise.
-- Assume I know less than you think. Assume I don't know about the JIRA ticket or how that piece of software works, or the exact technical languages as needed. This doesn't mean that you talk down to me or that you slow things down explaining everything, but it should help you clean up your language and tell you where to focus your word count. 
+- Assume I know less than you think. Assume I don't know about the ticket or how that piece of software works, or the exact technical languages as needed. Ground your explenation in context to make sure I can be informed.
 - No tired metaphors: Avoid any figure of speech you have seen often in print.
 - Short words: Never use a long word where a short one will do.Cut waste: If it is possible to cut a word out, always cut it out.
 - Active voice: Never use the passive where you can use the active.
@@ -24,20 +24,21 @@ changelog, and your work log is not the status.
 
 - If the thing is new to me, say what it *is* in one plain line before you use
   the word. "Packaging turns the code into an app you can double-click."
-- Prose, not headers and tables. Those are for data. A status is a short story:
-  what worked, what didn't, what's next.
+- Structured explenations convey data with less words, headers, tables, spacing,
+ and diagrams are worth more than a paragraph of rambling text.
 - Write it, then cut it to a third. What survives is almost always the answer.
 - One sentence for what's unproven. Not three paragraphs of honest caveats —
   the honesty stops landing once it's longer than the news.
 - End with what's left and what you need from me. Number them if there's more
-  than two.
+  than two. Make sure that it stands out from the rest of the response.
 
 Ticket keys, tool names and file paths are for the board and the commit, not for
 me. Say "the Mac build works" before you say METH-311.
 
 ## Conventions I use across projects
 
-- Architecture decisions live in `docs/adr/`, numbered, one decision per file.
+- Architecture decisions live in `docs/adr/` for JIRA projects and Notion for those
+projects, numbered, one decision per file.
 - Domain language and the current model live in `CONTEXT.md` at the repo root.
   When code and `CONTEXT.md` disagree about what a thing is called, that's a bug
   in one of them — say so rather than silently picking one.
