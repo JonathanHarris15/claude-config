@@ -1,6 +1,6 @@
 ---
 name: implement
-description: Build a planned ticket end-to-end, on Jira or Notion, while driving it across the board — claim it and move it In Progress, work its sub-tasks test-first at agreed seams, guard against regressions, review, grow the docs, then commit/PR with the ticket key and transition to In Review / Done. Use with a ticket key, 'next' for the oldest ready one, or a count / ALL to run a whole batch of decision-free tickets unattended. Refuses tickets with no PRD.
+description: Build a planned ticket end-to-end, on whatever tracker the project uses, while driving it across the board — claim it and move it In Progress, work its sub-tasks test-first at agreed seams, guard against regressions, review, grow the docs, then commit/PR with the ticket key and transition to In Review / Done. Use with a ticket key, 'next' for the oldest ready one, or a count / ALL to run a whole batch of decision-free tickets unattended. Refuses tickets with no PRD.
 argument-hint: "A ticket key (PROJ-124), 'next' for the oldest ready one, or a count / ALL to batch-run every decision-free ticket"
 ---
 
@@ -8,7 +8,7 @@ argument-hint: "A ticket key (PROJ-124), 'next' for the oldest ready one, or a c
 
 You are the **executor**. `create-epic` maps the project, `plan-ticket` takes a ticket from `To Plan` and specs it (`to-prd`) and slices it (`to-issues`) — and `implement` **builds one ticket and moves it along the board as it goes**.
 
-Read [BOARD.md](../plan-ticket/BOARD.md) first. What binds you: you build **level-0 tickets** — the cards. Their **sub-tasks** are your checklist inside the card, not separate cards. You take work from **`To Do`** and you drive it `In Progress → In Review → Done`. Read [TRACKER.md](../plan-ticket/TRACKER.md) to find this project's tracker, then the backend file it points you to.
+Read [BOARD.md](../tracker/BOARD.md) first. What binds you: you build **level-0 tickets** — the cards. Their **sub-tasks** are your checklist inside the card, not separate cards. You take work from **`To Do`** and you drive it `In Progress → In Review → Done`. Load the **tracker** skill to find this project's tracker, then the backend file it points you to. Read the project's working notes too, if it has them: their **Working a ticket** and **Review and merge** sections override any default below — what to run, what not to run, and what has to happen before review and after merge.
 
 Two responsibilities, always both:
 1. **Build the thing** — test-first at pre-agreed seams, small changesets, no regressions, docs grown. (This is the old `feature` discipline; `implement` absorbs it.)
@@ -22,19 +22,19 @@ Do not skip the moves and do not fake the build discipline. A merged PR with the
 
 ## Phase 0: Claim
 
-0. **Check there is code to work in.** A project may have no repo yet (see [TRACKER.md](../plan-ticket/TRACKER.md)). If so, stop and say there is nothing to build in.
+0. **Check there is code to work in.** A project may have no repo yet (see [the tracker skill](../tracker/SKILL.md)). If so, stop and say there is nothing to build in.
 1. **Resolve the target.** A ticket key means that ticket. `next` (or nothing) means list the `To Do` column and take the oldest unblocked ticket with a reachable sub-task — confirm with me before claiming. **A count or `ALL` means batch mode — go to `<batch>` instead of working these phases directly.**
 2. **Read the ticket fully**: its PRD, acceptance criteria, comments, blockers, labels, sub-tasks, and its epic for context.
 3. **Check it's actually takeable.** If it's blocked by an open issue, stop and say so. If it has **no PRD** (no `## Problem Statement` + `## Acceptance Criteria`) it should never have left `To Plan` — **stop**, say the board was lying to you, and recommend `/plan-ticket <KEY>`. Don't build on fog, and don't quietly spec it yourself; that's how an un-reviewed guess becomes a merged PR.
-4. **The ticket vs its sub-tasks.** The **ticket** is the unit that rides the board. Work its **sub-tasks** one at a time (Phase 1→6 per sub-task), ticking each one as it lands, so the card stays true. The ticket itself moves `In Progress` once, at the start, and `In Review` once, at the end. If it has no sub-tasks, implement it directly — but say so, because `to-issues` should have made some.
+4. **The ticket vs its sub-tasks.** The **ticket** is the unit that rides the board. Work its **sub-tasks** one at a time (Phases 1–4 and 6, then commit, per sub-task; Phase 5's review runs once, over the whole ticket, before you ship), ticking each one as it lands, so the card stays true. The ticket itself moves `In Progress` once, at the start, and `In Review` once, at the end. If it has no sub-tasks, implement it directly — but say so, because `to-issues` should have made some.
 
    **If you were given a sub-task allowlist** (*"work only sub-tasks 1, 3 and 4"*), that list is a hard boundary. Work exactly those, in the order given, and **stop**. The ones left out need me, and doing "just the obvious part" of one is the failure this split exists to prevent. A ticket that still has unfinished sub-tasks when you stop is **not** finished: tick what you did, **do not open a PR**, push the branch, and say plainly which sub-task you stopped on and what it needs from me.
 5. **Move it to In Progress**, matching the project's real workflow. Assign it to me if the project expects an assignee.
-6. **Branch** named with the ticket key, e.g. `PROJ-124-recommendation-ranking-fn`, so the tracker links the work.
+6. **Branch** named with the ticket key the way the backend file shows (`PROJ-124-ranking-fn`, or `124-ranking-fn` on GitHub), so the tracker links the work.
 
 ## Phase 1: Understand where it lives
 
-- Read the glossary and the ADRs for the area, wherever this project keeps them (see [TRACKER.md](../plan-ticket/TRACKER.md)). Use domain vocabulary throughout.
+- Read the glossary and the ADRs for the area, wherever this project keeps them (see [the tracker skill](../tracker/SKILL.md)). Use domain vocabulary throughout.
 - Identify the **existing module** this issue extends. Prefer growing an existing module over adding a new one; only propose a new module if there's a genuine seam that doesn't exist yet.
 - Define the **interface** the module exposes once this is done — inputs, outputs, behaviour — in precise domain language. This is what the tests will pin.
 
@@ -63,11 +63,11 @@ Implement until the Phase 2 tests pass.
 
 After each meaningful change, run the tests related to it.
 
-If a test that was passing before this work began is now failing: **stop** and fix the regression before continuing. Do not reach Phase 6 with a regression open. Run a typecheck regularly too, and the full suite once, just before you open the PR. If it fails and you can't tell whether this work caused it, run that test on the merge-base.
+If a test that was passing before this work began is now failing: **stop** and fix the regression before continuing. Do not reach Phase 6 with a regression open. Run a typecheck regularly too, and the full suite once, just before you open the PR — unless the working notes say the suite is too costly, in which case run what they allow and say so in the PR. If it fails and you can't tell whether this work caused it, run that test on the merge-base.
 
 ## Phase 5: Review
 
-Run the **`/review`** skill on the change. It reviews three things at once and keeps them apart: whether the code follows the repo's standards, whether it does what this ticket's PRD asked for, and whether it speaks the language in the glossary.
+Once per ticket, when nothing reachable is left and before you open a PR, run the **`/review`** skill on the change. It reviews three things at once and keeps them apart: whether the code follows the repo's standards, whether it does what this ticket's PRD asked for, and whether it speaks the language in the glossary.
 
 The fixed point is the merge-base with main — the whole of this ticket's work, not the last commit. Pass it the ticket key so the Spec axis measures against the real acceptance criteria.
 
@@ -81,13 +81,20 @@ Once tests pass and no regressions remain:
 2. Create an ADR **only** if all three hold: hard to reverse, surprising without context, a genuine trade-off with real alternatives.
 3. Clear `ERROR_LOG.md` contents.
 
-## Phase 7: Ship & transition
+## Phase 7: Commit, then ship
 
-1. **Commit** with the project's commit style, referencing the ticket key so the tracker links it, e.g. `PROJ-124 add recommendation ranking fn`.
-2. **Open a PR** with the ticket key in the title (e.g. `PROJ-124: recommendation ranking function`). Link it per the backend file. List at the top of the PR every call you made that the PRD didn't settle, and what you chose.
-3. **Move to In Review** (or the project's review status). If the project has no review step, move it per its workflow.
-4. **On merge → Done.** If the tracker moves it on merge, let it and verify. Otherwise move the ticket to Done yourself once merged. Never leave a merged ticket behind.
-5. **Loop.** If the ticket has more unfinished sub-tasks, pick the next unblocked one and go again from Phase 1 (you don't re-claim — the ticket is already `In Progress`). When every sub-task is done, move the **ticket** to `In Review`, and to `Done` on merge. When every ticket under an epic is Done, the epic is done — tell me.
+**After each sub-task:**
+
+1. **Commit** with the project's commit style, led by the ticket key so the tracker links it, e.g. `PROJ-124 add recommendation ranking fn`.
+2. **Tick the sub-task** on the ticket.
+3. **Loop.** If another sub-task is reachable, go again from Phase 1. You don't re-claim — the ticket is already `In Progress`.
+
+**When nothing reachable is left**, the ticket is either finished or stopped:
+
+- **Finished** — every sub-task is done. **Open a PR** with the key in the title, linked the way the backend file says, with every call you made that the PRD didn't settle listed at the top. **Move the ticket to In Review** (or skip it if the project has no review column). Then do whatever the working notes' **Review and merge** section asks before review, such as deploying a test build.
+- **Stopped** — a HITL sub-task, or the end of an allowlist. Push the branch, **don't open a PR**, move the ticket back to `To Do`, and comment which sub-task it stopped on and what it needs from me.
+
+**On merge → Done.** If the tracker moves it on merge, let it and check. Otherwise move it yourself. Never leave a merged ticket behind. Then do whatever the working notes ask after merge. When every ticket under an epic is Done, the epic is done — tell me.
 
 Report at the end: the ticket key(s) moved, their new statuses, the branch/PR, the calls you made, and what's next in the tree.
 
@@ -104,7 +111,7 @@ what the trivial lane exists to feed. A number caps the run; `ALL` takes everyth
 
 A ticket qualifies only if **every** one of its sub-tasks is AFK-reachable — or it is a
 `trivial` ticket, which has no sub-tasks and is AFK by definition (see
-[BOARD.md](../plan-ticket/BOARD.md)). A ticket with one HITL sub-task in it is **not** eligible,
+[BOARD.md](../tracker/BOARD.md)). A ticket with one HITL sub-task in it is **not** eligible,
 even if you could reach three AFK ones first: a batch run is not the place to stop half way.
 That ticket waits for an interactive `/implement <KEY>`.
 
@@ -127,7 +134,7 @@ For each ticket in turn:
 4. **Commit once**, message led by the ticket key, so the ticket is one revertible unit.
 5. Move it to In Review and post a one-line comment saying it is in the batch branch.
 6. Run the tests related to that ticket before the next one starts, and the full suite once
-   before you open the PR. If the full suite fails, find the ticket that caused it and park it.
+   before you open the PR (the working notes can override this, as in Phase 4). If the full suite fails, find the ticket that caused it and park it.
 
 At the end, open **one PR** listing every ticket key it contains. Say which commit is which, and list the calls you made under each ticket.
 
@@ -179,7 +186,7 @@ The whole point is that the board reflects reality without me nudging it. But **
 
 <tracker-mechanics>
 
-The backend file named in [TRACKER.md](../plan-ticket/TRACKER.md) covers the tools, moving a ticket,
+The backend file named in [the tracker skill](../tracker/SKILL.md) covers the tools, moving a ticket,
 listing a column, editing a body without destroying what's on it, and linking code.
 
 **Finding the ready queue** (`implement next`) — list `To Do`, oldest first, and drop anything with

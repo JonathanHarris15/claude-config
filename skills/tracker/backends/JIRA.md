@@ -1,17 +1,19 @@
 # Working with JIRA
 
-How to do the actions in [TRACKER.md](./TRACKER.md) on a project whose tickets live in Jira.
-[BOARD.md](./BOARD.md) says what the columns and levels *mean*. This says how to touch them.
-Docs are a separate switch: see TRACKER.md.
+How to do the actions in [the tracker skill](../SKILL.md) on a project whose tickets live in Jira.
+[BOARD.md](../BOARD.md) says what the columns and levels *mean*. This says how to touch them.
+Docs are a separate switch: see [the tracker skill](../SKILL.md).
 
 | Action | Tools |
 | --- | --- |
+| Load the tools | See [Loading the tools](#loading-the-tools) |
 | Read a ticket | `getJiraIssue` with `summary, description, issuetype, status, labels, parent, issuelinks, comment, subtasks, assignee` |
 | List a column | `searchJiraIssuesUsingJql`: see [Finding work](#finding-work) |
 | Create a ticket or epic | `createJiraIssue`: see [Creating an issue](#creating-an-issue) |
 | Read an epic | `getJiraIssue`, then JQL for `parent = KEY` |
 | Write the body | `editJiraIssue` on `description`: see [Editing](#editing-without-destroying) |
 | Add a label | `editJiraIssue`, re-setting the whole list |
+| Mark as investigation | The `investigation` label |
 | Add a blocker | `createIssueLink`: see [Dependency links](#dependency-links) |
 | Move a ticket | `getTransitionsForJiraIssue`, then `transitionJiraIssue`: see [Transitions](#transitions) |
 | Comment | `addCommentToJiraIssue` with `contentFormat: "markdown"` |
@@ -45,10 +47,19 @@ and `searchJiraIssuesUsingJql`. Load the rest from the table above as you need t
 3. **Real type and status names** — `getJiraProjectIssueTypesMetadata`. Every project names
    things differently. Don't assume names verbatim; use what the metadata says.
 
-A project that has been set up already carries a `<!-- jira-config -->` or
-`<!-- tracker-config -->` block in its `CLAUDE.md` with the cloudId, project key, and real type
-names. Read that first and skip the discovery. If there isn't one, discover once and offer to
-write it.
+A project that has been set up already carries a `<!-- tracker-config -->` (or older
+`<!-- jira-config -->`) block in its `CLAUDE.md`. On Jira it holds these lines in place of the
+Notion data sources:
+
+```md
+- **Tickets:** jira
+- **Jira site:** yoursite.atlassian.net
+- **Cloud ID:** …
+- **Project key:** PROJ
+- **Types:** Epic, Feature, Bug, Subtask (as this project names them)
+```
+
+Read that first and skip the discovery. If there isn't one, discover once and write it.
 
 ## The three levels
 

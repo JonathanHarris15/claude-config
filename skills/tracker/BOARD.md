@@ -3,7 +3,7 @@
 The canonical description of the workflow every ticket skill in this config assumes.
 `plan-ticket`, `create-epic`, `to-prd`, `to-issues` and `implement` all obey it.
 
-This file says what the columns and levels **mean**, on any tracker. [TRACKER.md](./TRACKER.md)
+This file says what the columns and levels **mean**, on any tracker. [the tracker skill](./SKILL.md)
 says how to find out which tracker a project uses, and how to touch it.
 
 If you are reading this because a skill pointed you here: this file is the source
@@ -17,14 +17,14 @@ This workflow uses three levels, each for a different job:
 | --- | --- | --- |
 | **Epic** | **Grouping.** Answers "what project is this part of." Holds the vision, goals, non-goals. Created by `create-epic`. | **No.** Epics never appear as cards. |
 | **Ticket** (`Feature`, `Bug` and so on) | **The unit of work.** This is what a card *is*. Holds the PRD once planned. | **Yes.** This is the only thing on the board. |
-| **Sub-task** | **The steps inside a ticket.** Created by `to-issues`. On Notion it is a checklist in the ticket's body. On Jira it is a Jira sub-task. | **No.** They live inside the parent card. |
+| **Sub-task** | **The steps inside a ticket.** Created by `to-issues`. The backend file says what it is there: a native sub-task, or a checklist in the ticket's body. | **No.** They live inside the parent card. |
 
 **A "ticket" in these skills always means a level-0 item** — the thing that rides
 the columns. Never an Epic, never a sub-task.
 
 Type *names* differ per project (some have `Feature`, some only `Story`).
 **Never hardcode them.** Read the real names from the project's config block if it
-has them, and otherwise from the tracker. See [TRACKER.md](./TRACKER.md).
+has them, and otherwise from the tracker. See [the tracker skill](./SKILL.md).
 
 ## The five columns
 
@@ -34,7 +34,7 @@ To Plan  →  To Do  →  In Progress  →  In Review  →  Done
 
 | Column | Meaning | Who puts things here |
 | --- | --- | --- |
-| **To Plan** | **The inbox.** Anything, at any stage of formulation — a title you scratched down mid-feature, a Feature `create-epic` emitted, a long ticket you wrote by hand, an untriaged bug. Nothing here is specced. | You, `create-epic`, `improve-codebase-architecture` |
+| **To Plan** | **The inbox.** Anything, at any stage of formulation — a title you scratched down mid-feature, a Feature `create-epic` emitted, a long ticket you wrote by hand, an untriaged bug. Nothing here is specced. | You, `create-ticket`, `create-epic`, `improve-codebase-architecture` |
 | **To Do** | Specced and ready. Has a PRD and sub-tasks. Not yet claimed by anyone or anything. The sub-tasks say who can start it: see [who can start a ticket](#who-can-start-a-ticket). | `plan-ticket` |
 | **In Progress** | Being built right now. | `implement` |
 | **In Review** | PR open. | `implement` |
@@ -43,7 +43,7 @@ To Plan  →  To Do  →  In Progress  →  In Review  →  Done
 The board order you see in the tracker is cosmetic. What matters is the contract below.
 
 **A board may still have a column this contract doesn't name**, such as `On Deck` on an older
-Jira board. Never move a ticket into one. If a ticket is sitting in one, treat it as `To Do`.
+board. Never move a ticket into one. If a ticket is sitting in one, treat it as `To Do`.
 
 ## The integrity rule
 
@@ -64,7 +64,7 @@ heading. A wall of prose, however long and however lovingly written, is **not** 
 
 ### Trivial tickets keep the rule, cheaply
 
-A **trivial** ticket (see [ROUTING.md](./ROUTING.md)) is smaller than a ticket: an
+A **trivial** ticket (see [ROUTING.md](../plan-ticket/ROUTING.md)) is smaller than a ticket: an
 obvious fix with nothing left to decide, landing in one commit. It still gets a PRD,
 because the rule holds — but a **two-line** one. One sentence of problem, one testable
 acceptance criterion. Both headings present, so the rule is satisfied by inspection
@@ -114,7 +114,7 @@ one, `implement` makes its best call, keeps going, and lists the call at the top
 ## The lifecycle
 
 ```
-   scratch idea / create-epic Feature / hand-written ticket / bug
+   /create-ticket · /create-epic · improve-codebase-architecture · by hand
                               │
                               ▼
                           [To Plan]

@@ -1,12 +1,12 @@
 ---
 name: to-prd
-description: Turn the current conversation context into a PRD written directly onto its ticket — the ticket's own body — then hand off to to-issues to break it into sub-tasks. Normally invoked by plan-ticket once a ticket's fog has cleared (via research / prototype / grill-with-docs). The spec step that makes a ticket eligible to leave To Plan, on Jira or Notion.
+description: Turn the current conversation context into a PRD written directly onto its ticket — the ticket's own body — then hand off to to-issues to break it into sub-tasks. Normally invoked by plan-ticket once a ticket's fog has cleared (via research / prototype / grill-with-docs). The spec step that makes a ticket eligible to leave To Plan, on whatever tracker the project uses.
 argument-hint: "Optional: the ticket key this PRD specifies (e.g. PROJ-123)"
 ---
 
-Take the current conversation context and codebase understanding and produce a **PRD** (Product Requirements Document), written **onto the Feature it specifies** — the Feature's own body. A PRD is a *narrative* — the "what and why," not the "how."
+Take the current conversation context and codebase understanding and produce a **PRD** (Product Requirements Document), written **onto the ticket it specifies** — the ticket's own body. A PRD is a *narrative* — the "what and why," not the "how."
 
-Do NOT interview the user — synthesise what you already know. (If you need to interrogate an unclear Feature first, that's `grill-with-docs`; to shape a whole project, that's `create-epic`.)
+Do NOT interview the user — synthesise what you already know. (If you need to interrogate an unclear ticket first, that's `grill-with-docs`; to shape a whole project, that's `create-epic`.)
 
 ## Where this sits in the workflow
 
@@ -18,7 +18,7 @@ To Plan ticket → /plan-ticket → [research | prototype | grill | diagnose] �
 
 So `to-prd` is the **sharpening** step: it takes the loose description the ticket had, plus everything the lane surfaced, and rewrites the **ticket's own body** into a full PRD. The PRD lives **on the ticket** — the ticket *is* the PRD, there is no separate page. The implementation steps that `to-issues` creates next are that ticket's **sub-tasks**.
 
-Throughout this skill, **"Feature" means the level-0 ticket you're speccing** — the card on the board. It may be typed `Feature`, `Story`, `Task` or `Bug` depending on the project; the project's config block records the real names. See [BOARD.md](../plan-ticket/BOARD.md).
+**"Ticket" means the level-0 card you're speccing** — typed `ticket`, `Story`, `Task` or `Bug` depending on the project. See [BOARD.md](../tracker/BOARD.md).
 
 You are normally invoked **by `/plan-ticket`**, not directly. Called directly, you still work — but you're skipping the routing that decides whether this ticket was ever ready to spec.
 
@@ -52,7 +52,7 @@ send it back to the full process.
 
 ### 1. Explore
 
-Explore the repo to understand the current state, if you haven't already. Read the glossary and the ADRs, wherever this project keeps them (see [TRACKER.md](../plan-ticket/TRACKER.md)), and use that vocabulary throughout the PRD. Respect any ADRs in the area you're touching.
+Explore the repo to understand the current state, if you haven't already. Read the glossary and the ADRs, wherever this project keeps them (see [the tracker skill](../tracker/SKILL.md)), and use that vocabulary throughout the PRD. Respect any ADRs in the area you're touching.
 
 ### 2. Sketch the modules
 
@@ -60,11 +60,11 @@ Sketch the major modules you'll build or modify. Actively look for **deep module
 
 Check with the user that these modules match their expectations, and which they want tests written for. This is the one confirmation step; everything else is synthesis.
 
-### 3. Write the PRD onto the Feature
+### 3. Write the PRD onto the ticket
 
-Fill the template below, then write it as the **Feature's body** (see `<tracker-mechanics>`). This replaces the loose high-level description `create-epic` left — but **preserve anything on the Feature that should survive** (e.g. an acceptance-criteria checklist or a problem statement worth keeping). Read the current body first, then re-set it.
+Fill the template below, then write it as the **ticket's body** (see `<tracker-mechanics>`). This replaces the loose high-level description `create-epic` left — but **preserve anything on the ticket that should survive** (e.g. an acceptance-criteria checklist or a problem statement worth keeping). Read the current body first, then re-set it.
 
-**Register:** write in **plain language** for a reader who isn't steeped in the project — define any domain term the first time it appears, and lead each section with the *why*, not just the *what*. Keep every acceptance criterion **specific and measurable** (pass/fail, externally observable). This is the same accessible register `create-epic` uses for Features, carried forward into the fuller PRD.
+**Register:** write in **plain language** for a reader who isn't steeped in the project — define any domain term the first time it appears, and lead each section with the *why*, not just the *what*. Keep every acceptance criterion **specific and measurable** (pass/fail, externally observable). This is the same accessible register `create-epic` uses for the tickets it writes, carried forward into the fuller PRD.
 
 <prd-template>
 
@@ -81,7 +81,7 @@ A LONG, numbered list, each in the form: *As an `<actor>`, I want `<feature>`, s
 Modules built/modified and their interfaces; technical clarifications; architectural decisions; schema changes; API contracts; specific interactions. Do NOT include file paths or code snippets — they go stale. Exception: if a prototype produced a snippet that encodes a decision more precisely than prose can (state machine, reducer, schema, type shape), inline just the decision-rich part and note it came from a prototype.
 
 ## Acceptance Criteria
-- [ ] The checkable "done" conditions for the whole Feature (external behaviour, not implementation detail).
+- [ ] The checkable "done" conditions for the whole ticket (external behaviour, not implementation detail).
 
 ## Testing Decisions
 What makes a good test (external behaviour, not implementation details); which modules will be tested; prior art (similar tests in the codebase).
@@ -96,19 +96,19 @@ Anything else.
 
 ### 4. Hand off
 
-Tell the user the Feature key and confirm its description now holds the PRD. Offer to run `to-issues` next to slice the Feature into **sub-tasks**, then `implement` to build them.
+Tell the user the ticket key and confirm its body now holds the PRD. If `plan-ticket` called you, hand back to it. Called directly, run `to-issues` next, then tell the user `/plan-ticket <KEY>` lands it in `To Do` — `implement` won't take it until then.
 
 <tracker-mechanics>
 
-See [TRACKER.md](../plan-ticket/TRACKER.md) to find the tracker and its backend file, which says
+See [the tracker skill](../tracker/SKILL.md) to find the tracker and its backend file, which says
 how to write a body without destroying what's already there.
 
-**Find the Feature.** If the user passed a key, use it. Otherwise ask which **Feature** this PRD
-specifies, or offer to create the epic and its Features first with `create-epic`. Read it to
+**Find the ticket.** If the user passed a key, use it. Otherwise ask which **ticket** this PRD
+specifies, or offer to file it first with `create-ticket` (or `create-epic` for a whole project). Read it to
 confirm it exists, reuse its title and vocabulary, and capture the current body so the rewrite
 preserves what should survive.
 
-**Write the PRD onto the Feature** — its body, set to the filled template. This *is* the PRD.
+**Write the PRD onto the ticket** — its body, set to the filled template. This *is* the PRD.
 There is no separate page and no separate condensed spec.
 
 **Readiness — don't move the ticket.** The PRD makes the ticket *specified*, not *ready*.
@@ -116,7 +116,7 @@ Speccing is only half of it: the ticket still needs its sub-tasks (`to-issues`),
 still has to judge whether an agent can be trusted with it unattended. **That call belongs to
 `plan-ticket`, not here.** Leave the ticket in `To Plan` and hand back.
 
-The board's integrity rule (see [BOARD.md](../plan-ticket/BOARD.md)) is that nothing sits right
+The board's integrity rule (see [BOARD.md](../tracker/BOARD.md)) is that nothing sits right
 of `To Plan` without a PRD — this skill is what makes a ticket *eligible* to move, not what
 moves it. A PRD'd ticket with no sub-tasks that you pushed to `To Do` is exactly the half-truth
 the rule exists to prevent, and nothing sweeps the board behind you, so don't create one.

@@ -1,8 +1,8 @@
 # Glossary Format
 
 This is the format for the glossary wherever it lives: `CONTEXT.md` in the repo, or a `Glossary` page
-in Notion (see [TRACKER.md](../plan-ticket/TRACKER.md)). The file names below are for the repo; on
-Notion, each context gets its own `Glossary — <Context>` page.
+in whatever tool holds the docs (see [the tracker skill](../tracker/SKILL.md)). The file names below are for the repo;
+outside it, each context gets its own `Glossary — <Context>` page.
 
 ## Structure
 

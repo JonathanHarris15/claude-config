@@ -37,17 +37,17 @@ me. Say "the Mac build works" before you say METH-311.
 
 ## Conventions I use across projects
 
-- Architecture decisions live in `docs/adr/` for JIRA projects and Notion for those
-projects, numbered, one decision per file.
-- Domain language and the current model live in `CONTEXT.md` at the repo root.
-  When code and `CONTEXT.md` disagree about what a thing is called, that's a bug
-  in one of them — say so rather than silently picking one.
-- New projects live in Notion, in a teamspace named `SHORT - Project`, with ADRs
-  under Decisions and the glossary under Specs. Those replace `docs/adr/` and
-  `CONTEXT.md` there. Jira is being phased out, and older projects still on it say
-  so in a config block. See `skills/plan-ticket/TRACKER.md`.
-- A project may have no code yet. `/notion-project` sets up a teamspace and keeps
-  each one matching the standard.
+- Each project keeps tickets and docs in one tool or another — Notion, Jira,
+  GitHub Issues, or something else. The `tracker` skill finds out which and how
+  to use it; no other skill names a tool. Don't assume one.
+- ADRs are numbered, one decision per file or page. The glossary holds the
+  domain language. Both live in the repo (`docs/adr/`, `CONTEXT.md`) or in the
+  docs tool, as the project's config block says. When code and the glossary
+  disagree about what a thing is called, that's a bug in one of them — say so
+  rather than silently picking one.
+- New projects default to Notion, in a teamspace named `SHORT - Project`;
+  `/notion-project` sets one up. Jira is being phased out. A project may have no
+  code yet.
 - Prefer test-first at real seams. Don't test-drive through mocks of code I own.
 
 ## How I want you to work

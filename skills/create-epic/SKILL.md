@@ -1,6 +1,6 @@
 ---
 name: create-epic
-description: Shape a whole project into an epic, on Jira or Notion, and split it into the sibling tickets it's actually made of, ordered by what blocks what and dated. Use when work arrives project-sized — several demoable checkpoints, or you keep saying "and then also…" — whether it arrives cold as a rough idea or as a To Plan ticket that turned out to be five tickets.
+description: Shape a whole project into an epic, on whatever tracker the project uses, and split it into the sibling tickets it's actually made of, ordered by what blocks what and dated. Use when work arrives project-sized — several demoable checkpoints, or you keep saying "and then also…" — whether it arrives cold as a rough idea or as a To Plan ticket that turned out to be five tickets.
 argument-hint: "The project idea (a rough sentence is fine), or an existing epic's key or name to re-chart"
 ---
 
@@ -10,12 +10,12 @@ argument-hint: "The project idea (a rough sentence is fine), or an existing epic
 `to-issues` splits a ticket *downward* into sub-tasks, `grill-with-docs` sharpens one thing.
 This splits *sideways* — into sibling level-0 tickets, wired with what blocks what, and dated.
 
-Read [BOARD.md](../plan-ticket/BOARD.md) first. What binds you: the **Epic is a grouping and
+Read [BOARD.md](../tracker/BOARD.md) first. What binds you: the **Epic is a grouping and
 never appears on the board**. Every ticket you create is level-0 and lands in **`To Plan`**,
 unspecced by definition, where `/plan-ticket` picks it up one at a time. You do **not** create
 sub-tasks — that's `to-issues`, later, per ticket, after `to-prd`.
 
-## Two ways in
+## Three ways in
 
 - **Cold** — `/create-epic <idea>`. A project has arrived with no ticket behind it. Start at
   Discover.
@@ -117,8 +117,8 @@ If there's no epic deadline, that's a valid answer — skip dates and say so. Bu
 
 ## Phase 5: Publish
 
-See [TRACKER.md](../plan-ticket/TRACKER.md) to find this project's tracker, and its backend file
-for how to create and link things. In order:
+Load the **tracker** skill to find this project's tracker, and its backend file for how to create
+and link things. In order:
 
 1. Confirm the project and its types with me.
 2. Create the **Epic**. Its body is the vision from Phases 1–2 plus the two sections
@@ -141,8 +141,7 @@ for how to create and link things. In order:
 3. Create each ticket under the Epic. A **Feature** uses the project's level-0 Feature type,
    with its body written per [FEATURE-STYLE.md](FEATURE-STYLE.md). An **investigation ticket** is
    also level-0, carrying the `[research]` / `[prototype]` / `[grill]` / `[task]` prefix in its
-   title and **no due date**. Mark it as decision work the way the backend file says: the
-   `investigation` label on Jira, `Research` type on Notion.
+   title and **no due date**. **Mark it as investigation** (the backend file says how).
 4. Wire the **blockers** from Phase 4.
 5. Set due dates — the epic's, and each Feature's.
 6. Record **epic-level ADRs** for the hard-to-reverse calls made along the way: the big bets,

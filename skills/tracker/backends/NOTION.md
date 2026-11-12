@@ -1,7 +1,7 @@
 # Working with Notion
 
-How to do the actions in [TRACKER.md](./TRACKER.md) on a Notion project.
-[BOARD.md](./BOARD.md) says what the columns and levels mean.
+How to do the actions in [the tracker skill](../SKILL.md) on a Notion project.
+[BOARD.md](../BOARD.md) says what the columns and levels mean.
 
 ## Loading the tools
 
@@ -34,7 +34,7 @@ Fetch each data source once per session and trust what it says over this file:
 
 **A project with no Epics database, or no `Epic` and `Blocked by` on its tickets, hasn't been brought
 up to the standard.** Stop and offer `/notion-project check <SHORT>`. The layout itself is defined in
-[STANDARD.md](../notion-project/STANDARD.md).
+[STANDARD.md](../../notion-project/STANDARD.md).
 
 ## Reading rows: use views, not SQL
 
@@ -121,20 +121,15 @@ Fetch first. For a small change, use `notion-update-page` with `update_content`.
 PRD, use `replace_content`, folding in anything worth keeping. Never pass
 `allow_deleting_content` without asking.
 
-### Labels
+### Labels and investigations
 
-The database has no labels, so they are a line at the very top of the body:
+The database has no labels, so they are the `Labels:` line at the top of the body, in the shared
+text form (see [the tracker skill](../SKILL.md#the-shared-text-form)). Read it from the fetched
+body, because SQL can't see inside a page.
 
-```md
-Labels: trivial, hold
-
-## Problem Statement
-```
-
-Write the line only when there is a label, and read it from the fetched body, because SQL can't
-see inside a page. `Research` type replaces the `investigation` label: any `Research` ticket is an
-investigation ticket, and its `Name` still carries the `[research]`, `[prototype]`, `[grill]` or
-`[task]` prefix.
+**Mark as investigation** by setting `Type` to `Research`. That replaces the `investigation` label:
+any `Research` ticket is an investigation ticket, and its `Name` still carries the `[research]`,
+`[prototype]`, `[grill]` or `[task]` prefix.
 
 ### Moving a ticket
 
@@ -160,25 +155,11 @@ by name: epics have no key.
 
 ### Sub-tasks
 
-Steps are a checklist in the ticket's body, not rows, so they never get a card:
+Steps are a checklist in the ticket's body, not rows, so they never get a card. Write them in the
+shared text form (see [the tracker skill](../SKILL.md#the-shared-text-form)).
 
-```md
-## Sub-tasks
-
-- [ ] **1. Add the token store** · afk
-	- What it builds, in a sentence or two.
-	- Done when: a stored token survives a restart.
-- [ ] **2. Pick how the error reads** · hitl · blocked by 1
-	- What it builds.
-	- Done when: …
-```
-
-- Number them, and never renumber: `blocked by` points at those numbers, and only within the ticket.
-- Each one holds what `to-issues` would put on a sub-task, as nested bullets.
-- To tick one, use `update_content` to change its `- [ ]` to `- [x]`. Copy the line from the fetched
-  page, because bold comes back as `<b>…</b>`: the match is `- [ ] <b>1. Add the token store</b>`.
-- Write one to the user as `GRD-12(2)`, so they can tell it from a card. Commits, branches and PR
-  titles keep the plain `GRD-12`.
+To tick one, use `update_content` to change its `- [ ]` to `- [x]`. Copy the line from the fetched
+page, because bold comes back as `<b>…</b>`: the match is `- [ ] <b>1. Add the token store</b>`.
 
 ### Linking code
 

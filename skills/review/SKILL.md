@@ -38,7 +38,7 @@ Confirm `git rev-parse <fixed-point>` resolves and the diff is non-empty **befor
 
 The spec is the originating ticket, in this order:
 
-1. A ticket key in the branch name or the commit messages (`PROJ-48`). Read the ticket and take its **body** — that is the PRD, and its `## Problem Statement` and `## Acceptance Criteria` are what the Spec axis measures against. [TRACKER.md](../plan-ticket/TRACKER.md) says where the project's tickets live.
+1. A ticket key in the branch name or the commit messages (`PROJ-48`). Read the ticket and take its **body** — that is the PRD, and its `## Problem Statement` and `## Acceptance Criteria` are what the Spec axis measures against. [The tracker skill](../tracker/SKILL.md) says where the project's tickets live. Keys look like `PROJ-48` on most tools and `#48` on GitHub.
 2. A path the user passed in.
 3. A spec file under `docs/` matching the branch or feature.
 4. Nothing found: ask. If the user says there is no spec, skip the Spec sub-agent and say so in the report.
@@ -47,7 +47,7 @@ A ticket with no PRD is a board problem, not a review problem. Say so, and point
 
 ## 3. Find the standards
 
-Whatever the repo documents about how code should be written: `CODING_STANDARDS.md`, `CONTRIBUTING.md`, the coding rules in `CLAUDE.md`.
+Whatever the repo documents about how code should be written: `CODING_STANDARDS.md`, `CONTRIBUTING.md`, the coding rules in `CLAUDE.md`, and the project's working notes (see [the tracker skill](../tracker/SKILL.md#working-notes)).
 
 On top of that, the Standards axis always carries the **smell baseline** below, which applies even when the repo documents nothing. Two rules bind it:
 
@@ -83,7 +83,7 @@ One message, three tool calls, so they run at once.
 
 **Domain** (`subagent_type=domain-language`). Give it the diff and let it do its own job: names that drift from the glossary, concepts the code invented that the model doesn't have, model terms the code quietly renamed. Add: check the change against the ADRs covering this area and flag anything that contradicts one.
 
-**This agent can only read files.** On a project whose Docs are in Notion, fetch the glossary and the ADRs for this area yourself and paste them into its prompt.
+**This agent can only read files.** On a project whose Docs live outside the repo, fetch the glossary and the ADRs for this area yourself and paste them into its prompt.
 
 If the spec is missing, skip that sub-agent. If the project has no glossary, skip Domain and say so — don't have it invent a model.
 

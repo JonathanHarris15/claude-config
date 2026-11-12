@@ -3,7 +3,9 @@
     {
       "name": "Ticket workflow",
       "skills": [
+        "own/tracker",
         "own/notion-project",
+        "own/create-ticket",
         "own/create-epic",
         "own/plan-ticket",
         "own/grill-with-docs",
