@@ -6,7 +6,7 @@ My personal Claude Code configuration, synced across machines.
 
 | Path | What it is |
 | --- | --- |
-| `skills/` | Custom skills — a ticket workflow that works on any tracker (`create-ticket` / `create-epic` → `plan-ticket` → `grill-with-docs` → `to-prd` → `to-issues` → `implement` → `review`, all resting on `tracker`), plus the two pieces `grill-with-docs` composes (`grilling`, `domain-modeling`), and `tdd`, `diagnose`, `prototype`, `research`, `codebase-design`, `improve-codebase-architecture`, `wizard`, `writing-for-agents`, `retro`, `sync-config`, `wait-what`. |
+| `skills/` | Custom skills — a ticket workflow that works on any tracker (`create-ticket` / `create-epic` → `plan-ticket` → `grill-with-docs` → `to-prd` → `to-subtasks` → `implement` → `review`, all resting on `tracker`), plus the two pieces `grill-with-docs` composes (`grilling`, `domain-modeling`), and `tdd`, `diagnose`, `prototype`, `research`, `codebase-design`, `improve-codebase-architecture`, `wizard`, `writing-for-agents`, `retro`, `sync-config`, `wait-what`. |
 | `agents/` | Custom subagents. Markdown with frontmatter; the frontmatter sets the model, tools, and description. |
 | `workflows/` | Multi-agent orchestration scripts. Plain JS that fans out subagents with real control flow — loops, pipelines, adversarial verification. |
 | `mods/` | Mods — code that changes Claude's own interface. `config-map` opens the dashboard; `commit-tree` draws the repo's commit tree. |
@@ -110,7 +110,7 @@ mode. Edit it as text when the flow changes.
 `/plan-ticket` is the front door, and its real job is **reading what you handed it** before
 it starts working. A `To Plan` ticket might be one line or five paragraphs; it might be one
 feature or a whole quarter. So it reads two dials — *how big* and *how formed* — and routes
-it down one of the lanes in step ② above. Every lane ends at `/to-prd` → `/to-issues` → `To Do`.
+it down one of the lanes in step ② above. Every lane ends at `/to-prd` → `/to-subtasks` → `To Do`.
 
 The lanes flow into each other — a grilling that hits a factual unknown hands to research,
 research hands back to grill. Passing through two or three is normal.

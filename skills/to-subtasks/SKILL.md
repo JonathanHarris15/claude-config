@@ -1,14 +1,14 @@
 ---
-name: to-issues
+name: to-subtasks
 description: Slice a specced ticket (one whose body to-prd has turned into a PRD) into sub-tasks inside it, each classified AFK or HITL. Sub-tasks don't get board columns — they live inside the card. Normally invoked by plan-ticket straight after to-prd. The breakdown step below a ticket, on whatever tracker the project uses.
 argument-hint: "Optional: the ticket key to slice into sub-tasks"
 ---
 
-# To Issues
+# To Subtasks
 
-Break **one specced ticket** into independently-grabbable **sub-tasks** inside it. This is the step *below* a ticket: `create-epic` or `create-ticket` files it; `to-prd` writes a PRD onto its body; **`to-issues` slices it into sub-tasks**; `implement` builds each one.
+Break **one specced ticket** into independently-grabbable **sub-tasks** inside it. This is the step *below* a ticket: `create-epic` or `create-ticket` files it; `to-prd` writes a PRD onto its body; **`to-subtasks` slices it into sub-tasks**; `implement` builds each one.
 
-Hierarchy: **Epic → ticket → sub-task**. `to-issues` operates at the bottom edge — it takes a level-0 ticket and adds its breakdown steps as **sub-tasks**. The backend file says what a sub-task is on this project's tool. It does **not** create level-0 tickets (that's `create-ticket` or `create-epic`).
+Hierarchy: **Epic → ticket → sub-task**. `to-subtasks` operates at the bottom edge — it takes a level-0 ticket and adds its breakdown steps as **sub-tasks**. The backend file says what a sub-task is on this project's tool. It does **not** create level-0 tickets (that's `create-ticket` or `create-epic`).
 
 **Sub-tasks don't get board columns** — they live *inside* the parent card. That is the point: it's what lets you open a ticket and see 4 of 7 are done and which one it stopped on. See [BOARD.md](../tracker/BOARD.md).
 

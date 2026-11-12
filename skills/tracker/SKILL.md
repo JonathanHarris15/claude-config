@@ -200,7 +200,7 @@ it exists, and do what it says — it overrides the defaults in any skill:
 
 | Section | Who reads it |
 | --- | --- |
-| **Before a ticket leaves To Plan** | `plan-ticket`, `to-prd`, `to-issues` |
+| **Before a ticket leaves To Plan** | `plan-ticket`, `to-prd`, `to-subtasks` |
 | **Working a ticket** | `implement` — what to run, what not to run, where the code lives |
 | **Review and merge** | `implement` and `review` — how a PR gets reviewed and what happens after merge |
 | **Things that have bitten us** | Everyone |

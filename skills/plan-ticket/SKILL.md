@@ -112,7 +112,7 @@ the sub-task.
 
 1. **`/to-prd`** — writes the PRD onto **this ticket's own body**. The ticket *is* the
    PRD; there's no separate doc.
-2. **`/to-issues`** — adds the **sub-tasks** to it. These don't get board columns; they live
+2. **`/to-subtasks`** — adds the **sub-tasks** to it. These don't get board columns; they live
    inside the card, which is what lets you open a To Do ticket in the morning and see it got 4 of
    7 done before it stalled.
 

@@ -64,7 +64,7 @@ minutes of ceremony around a sixty-second change teaches you to stop using the b
 deletion, or a data migration. A bug nobody has reproduced. Anything where the ticket
 tells you the *symptom* and you'd be guessing at the cause.
 
-**What the lane does:** skip Dial 2, skip grilling, skip `to-issues`. Write a
+**What the lane does:** skip Dial 2, skip grilling, skip `to-subtasks`. Write a
 **two-line PRD** straight onto the ticket — one sentence of problem, one testable
 acceptance criterion — and land it in `To Do`. No sub-tasks: the ticket *is* the
 sub-task. The board's integrity rule still holds, because the thinking really is
@@ -158,7 +158,7 @@ Whatever lane a ticket took, it ends the same way:
 
 ```
    → /to-prd      (PRD written onto the ticket's own body)
-   → /to-issues   (sub-tasks added to it)
+   → /to-subtasks   (sub-tasks added to it)
    → land it      (To Do — see BOARD.md)
 ```
 

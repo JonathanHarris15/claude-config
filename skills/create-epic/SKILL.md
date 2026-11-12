@@ -7,13 +7,13 @@ argument-hint: "The project idea (a rough sentence is fine), or an existing epic
 # Create Epic
 
 **One idea in, several tickets out.** That is the job nothing else in this workflow does:
-`to-issues` splits a ticket *downward* into sub-tasks, `grill-with-docs` sharpens one thing.
+`to-subtasks` splits a ticket *downward* into sub-tasks, `grill-with-docs` sharpens one thing.
 This splits *sideways* — into sibling level-0 tickets, wired with what blocks what, and dated.
 
 Read [BOARD.md](../tracker/BOARD.md) first. What binds you: the **Epic is a grouping and
 never appears on the board**. Every ticket you create is level-0 and lands in **`To Plan`**,
 unspecced by definition, where `/plan-ticket` picks it up one at a time. You do **not** create
-sub-tasks — that's `to-issues`, later, per ticket, after `to-prd`.
+sub-tasks — that's `to-subtasks`, later, per ticket, after `to-prd`.
 
 ## Three ways in
 
@@ -96,7 +96,7 @@ do what you need, an open build-vs-buy or which-architecture call, an external c
 Write each Feature in the register in [FEATURE-STYLE.md](FEATURE-STYLE.md) — plain-language
 *what and why* that defines its own jargon, plus specific, measurable acceptance criteria. Keep
 it high-level, which means *not yet decomposed*, not *vague*. Resist writing the implementation
-breakdown; that's `to-issues`, later.
+breakdown; that's `to-subtasks`, later.
 
 **Bugs are not part of this tree.** If bugs surface while grilling, file them straight into
 `To Plan` and carry on. A bug may be parented to this epic later if it has to be fixed before

@@ -1,7 +1,7 @@
 # The board contract
 
 The canonical description of the workflow every ticket skill in this config assumes.
-`plan-ticket`, `create-epic`, `to-prd`, `to-issues` and `implement` all obey it.
+`plan-ticket`, `create-epic`, `to-prd`, `to-subtasks` and `implement` all obey it.
 
 This file says what the columns and levels **mean**, on any tracker. [the tracker skill](./SKILL.md)
 says how to find out which tracker a project uses, and how to touch it.
@@ -17,7 +17,7 @@ This workflow uses three levels, each for a different job:
 | --- | --- | --- |
 | **Epic** | **Grouping.** Answers "what project is this part of." Holds the vision, goals, non-goals. Created by `create-epic`. | **No.** Epics never appear as cards. |
 | **Ticket** (`Feature`, `Bug` and so on) | **The unit of work.** This is what a card *is*. Holds the PRD once planned. | **Yes.** This is the only thing on the board. |
-| **Sub-task** | **The steps inside a ticket.** Created by `to-issues`. The backend file says what it is there: a native sub-task, or a checklist in the ticket's body. | **No.** They live inside the parent card. |
+| **Sub-task** | **The steps inside a ticket.** Created by `to-subtasks`. The backend file says what it is there: a native sub-task, or a checklist in the ticket's body. | **No.** They live inside the parent card. |
 
 **A "ticket" in these skills always means a level-0 item** — the thing that rides
 the columns. Never an Epic, never a sub-task.
@@ -84,7 +84,7 @@ really is finished. What gets skipped is the paperwork, never the thought.
 > **No column decides this. The ticket's sub-tasks do.** Every specced ticket goes to
 > `To Do`, and its sub-tasks say whether an agent can start or you have to go first.
 
-`to-issues` classifies every sub-task **AFK** (decision-free — an agent can just build
+`to-subtasks` classifies every sub-task **AFK** (decision-free — an agent can just build
 it) or **HITL** (needs your judgment: a design call, a taste call, a product call).
 
 **Walk them in dependency order.** A sub-task is *reachable* if it is AFK **and**

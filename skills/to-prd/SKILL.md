@@ -1,6 +1,6 @@
 ---
 name: to-prd
-description: Turn the current conversation context into a PRD written directly onto its ticket — the ticket's own body — then hand off to to-issues to break it into sub-tasks. Normally invoked by plan-ticket once a ticket's fog has cleared (via research / prototype / grill-with-docs). The spec step that makes a ticket eligible to leave To Plan, on whatever tracker the project uses.
+description: Turn the current conversation context into a PRD written directly onto its ticket — the ticket's own body — then hand off to to-subtasks to break it into sub-tasks. Normally invoked by plan-ticket once a ticket's fog has cleared (via research / prototype / grill-with-docs). The spec step that makes a ticket eligible to leave To Plan, on whatever tracker the project uses.
 argument-hint: "Optional: the ticket key this PRD specifies (e.g. PROJ-123)"
 ---
 
@@ -13,10 +13,10 @@ Do NOT interview the user — synthesise what you already know. (If you need to 
 Tickets wait in the **`To Plan`** column carrying, at best, a loose brief. `/plan-ticket` routes each one down whichever lane clears its fog (`research` / `prototype` / `grill-with-docs` / `diagnose`) and then **always converges here**:
 
 ```
-To Plan ticket → /plan-ticket → [research | prototype | grill | diagnose] → to-prd → to-issues → lands on the board
+To Plan ticket → /plan-ticket → [research | prototype | grill | diagnose] → to-prd → to-subtasks → lands on the board
 ```
 
-So `to-prd` is the **sharpening** step: it takes the loose description the ticket had, plus everything the lane surfaced, and rewrites the **ticket's own body** into a full PRD. The PRD lives **on the ticket** — the ticket *is* the PRD, there is no separate page. The implementation steps that `to-issues` creates next are that ticket's **sub-tasks**.
+So `to-prd` is the **sharpening** step: it takes the loose description the ticket had, plus everything the lane surfaced, and rewrites the **ticket's own body** into a full PRD. The PRD lives **on the ticket** — the ticket *is* the PRD, there is no separate page. The implementation steps that `to-subtasks` creates next are that ticket's **sub-tasks**.
 
 **"Ticket" means the level-0 card you're speccing** — typed `ticket`, `Story`, `Task` or `Bug` depending on the project. See [BOARD.md](../tracker/BOARD.md).
 
@@ -39,7 +39,7 @@ instead, straight onto the ticket, and stop:
 ```
 
 Both headings are present, so the board's integrity rule is satisfied. Add the
-`trivial` label. **Do not call `to-issues`** — a trivial ticket has no sub-tasks,
+`trivial` label. **Do not call `to-subtasks`** — a trivial ticket has no sub-tasks,
 because the ticket is the sub-task. Skip the module sketch and the confirmation
 step too; there is nothing to confirm.
 
@@ -96,7 +96,7 @@ Anything else.
 
 ### 4. Hand off
 
-Tell the user the ticket key and confirm its body now holds the PRD. If `plan-ticket` called you, hand back to it. Called directly, run `to-issues` next, then tell the user `/plan-ticket <KEY>` lands it in `To Do` — `implement` won't take it until then.
+Tell the user the ticket key and confirm its body now holds the PRD. If `plan-ticket` called you, hand back to it. Called directly, run `to-subtasks` next, then tell the user `/plan-ticket <KEY>` lands it in `To Do` — `implement` won't take it until then.
 
 <tracker-mechanics>
 
@@ -112,7 +112,7 @@ preserves what should survive.
 There is no separate page and no separate condensed spec.
 
 **Readiness — don't move the ticket.** The PRD makes the ticket *specified*, not *ready*.
-Speccing is only half of it: the ticket still needs its sub-tasks (`to-issues`), and something
+Speccing is only half of it: the ticket still needs its sub-tasks (`to-subtasks`), and something
 still has to judge whether an agent can be trusted with it unattended. **That call belongs to
 `plan-ticket`, not here.** Leave the ticket in `To Plan` and hand back.
 
