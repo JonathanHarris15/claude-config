@@ -20,16 +20,20 @@ sub-tasks — that's `to-issues`, later, per ticket, after `to-prd`.
 - **Cold** — `/create-epic <idea>`. A project has arrived with no ticket behind it. Start at
   Discover.
 - **Escalated** — `/plan-ticket` found a `To Plan` ticket that is really a project (see
-  [ROUTING.md](../plan-ticket/ROUTING.md)). The ticket is the seed. Skim Discover, since some
-  of it is already written down, and close that ticket with a comment linking the new epic.
+  [ROUTING.md](../plan-ticket/ROUTING.md)). The ticket is the seed. Still run Discover's grilling,
+  but start from what the ticket already settles and spend the questions on what it doesn't. Close
+  that ticket with a comment linking the new epic.
 - **Re-chart** — `/create-epic <EPIC>` on an epic that already exists. Skip to Re-chart.
 
-## Phase 1: Discover — find the shape
+## Phase 1: Discover — the epic's own grilling session
 
-Turn a rough idea into a crisp problem statement and a reason this project exists. Call the
-Skill tool twice, for **"grilling"** and **"domain-modeling"** — grilling runs the interview in
-rounds, domain-modeling keeps the glossary and the ADRs honest as terms settle. This phase is
-that interview, aimed at the four bullets below.
+Turn a rough idea into a crisp problem statement and a reason this project exists. **Every new
+epic gets a grilling session here; never skip it.** An epic is the costliest place to build on a
+guess, because every ticket under it inherits the guess.
+
+Call the Skill tool twice, for **"grilling"** and **"domain-modeling"** — the same pair
+`/grill-with-docs` runs. Grilling runs the interview in rounds, domain-modeling keeps the glossary
+and the ADRs honest as terms settle. This phase is that interview, aimed at the four bullets below.
 
 Read the room first: *is the vision clear, or are we still working out what this even is?*
 

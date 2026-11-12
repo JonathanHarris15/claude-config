@@ -27,6 +27,8 @@
     .ln { fill:none; stroke:var(--line); stroke-width:1.5; }
     .dash { stroke-dasharray:5 4; }
     .head { fill:var(--line); }
+    .badge { fill:var(--in-s); }
+    .badgetx { fill:var(--bg); font-size:10.5px; font-weight:700; }
   </style>
   <defs>
     <marker id="a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
@@ -45,6 +47,7 @@
   <rect class="in" x="296" y="66" width="200" height="60" rx="8"/>
   <text class="code" x="312" y="91">/create-epic</text>
   <text class="muted" x="312" y="111">a project → epic + its tickets</text>
+  <rect class="badge" x="418" y="75" width="70" height="20" rx="10"/><text class="badgetx" x="453" y="89" text-anchor="middle">grills first</text>
   <rect class="in" x="512" y="66" width="256" height="60" rx="8"/>
   <text class="code" x="528" y="91">/improve-codebase-architecture</text>
   <text class="muted" x="528" y="111">refactors it found</text>
@@ -81,7 +84,8 @@
   <!-- lane middles -->
   <path class="ln" d="M490,285 H513 M490,325 H513 M490,365 H513 M490,415 H513 M490,455 H513 M490,495 H513"/>
   <rect class="pill" x="515" y="271" width="170" height="28" rx="6"/><text x="600" y="290" text-anchor="middle">two-line PRD</text>
-  <rect class="pill" x="515" y="311" width="170" height="28" rx="6"/><text class="code" x="600" y="330" text-anchor="middle">/create-epic</text>
+  <rect class="pill" x="515" y="311" width="170" height="28" rx="6"/><text class="code" x="522" y="330">/create-epic</text>
+  <rect class="badge" x="620" y="316" width="60" height="18" rx="9"/><text class="badgetx" x="650" y="329" text-anchor="middle">+ grilling</text>
   <rect class="pill" x="515" y="351" width="170" height="28" rx="6"/><text x="600" y="370" text-anchor="middle" font-size="12">research · prototype · grill</text>
   <text class="muted" x="700" y="370">→ decision, ticket closed</text>
   <rect class="pill" x="515" y="401" width="170" height="28" rx="6"/><text class="code" x="600" y="420" text-anchor="middle">/diagnose</text>
