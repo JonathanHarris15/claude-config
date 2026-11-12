@@ -6,7 +6,7 @@ My personal Claude Code configuration, synced across machines.
 
 | Path | What it is |
 | --- | --- |
-| `skills/` | Custom skills — a ticket planning chain that works on Jira or Notion (`create-epic` → `plan-ticket` → `grill-with-docs` → `to-prd` → `to-issues` → `implement` → `review`), plus the two pieces `grill-with-docs` composes (`grilling`, `domain-modeling`), and `tdd`, `diagnose`, `prototype`, `research`, `codebase-design`, `improve-codebase-architecture`, `wizard`, `writing-for-agents`, `retro`, `sync-config`, `wait-what`. |
+| `skills/` | Custom skills — a ticket workflow that works on any tracker (`create-ticket` / `create-epic` → `plan-ticket` → `grill-with-docs` → `to-prd` → `to-subtasks` → `implement` → `review`, all resting on `tracker`), plus the two pieces `grill-with-docs` composes (`grilling`, `domain-modeling`), and `tdd`, `diagnose`, `prototype`, `research`, `codebase-design`, `improve-codebase-architecture`, `wizard`, `writing-for-agents`, `retro`, `sync-config`, `wait-what`. |
 | `agents/` | Custom subagents. Markdown with frontmatter; the frontmatter sets the model, tools, and description. |
 | `workflows/` | Multi-agent orchestration scripts. Plain JS that fans out subagents with real control flow — loops, pipelines, adversarial verification. |
 | `mods/` | Mods — code that changes Claude's own interface. `config-map` opens the dashboard; `commit-tree` draws the repo's commit tree. |
@@ -15,11 +15,12 @@ My personal Claude Code configuration, synced across machines.
 | `usage/` | The skill-use logs: one append-only file per machine, so the logs never clash when they sync. Skill files are never touched. On a new machine, run `skill-usage.mjs backfill` once to count past uses from its session transcripts. |
 | `settings.json` | Global settings: effort level, theme, permission allowlist, hooks, and the `CLAUDE_CODE_PLUGIN_DIRS` that loads the mods. |
 | `CLAUDE.md` | Instructions prepended to every session, in every project, on every machine. |
+| `docs/` | Pictures for this README, such as the ticket workflow diagram. |
 
 ## The ticket workflow
 
 The skills in here are not a grab-bag — most of them are one workflow, and **the board
-is its spine**, in Jira or Notion. Every piece of work lives on the board, and the skills move it
+is its spine**, in whatever tool the project uses. Every piece of work lives on the board, and the skills move it
 across the board rather than working alongside it.
 
 ### The board
@@ -41,15 +42,19 @@ To Plan  →  To Do  →  In Progress  →  In Review  →  Done
 on it.** Those columns are a promise that the thinking is finished. The rule is upheld at
 the doors — `plan-ticket` won't land a ticket without one, `implement` won't build one.
 
-The full contract is [`skills/plan-ticket/BOARD.md`](skills/plan-ticket/BOARD.md) — what the
-columns and levels mean. [`skills/plan-ticket/TRACKER.md`](skills/plan-ticket/TRACKER.md) is the
-other half: how a skill finds out what a project uses. It points to
-[`JIRA.md`](skills/plan-ticket/JIRA.md) and [`NOTION.md`](skills/plan-ticket/NOTION.md), which say
-how to touch each one. All are shared reference, not skills.
+The full contract is [`skills/tracker/BOARD.md`](skills/tracker/BOARD.md) — what the columns and
+levels mean. The [`tracker`](skills/tracker/SKILL.md) skill is the other half: how a skill finds out
+which tool a project uses, and how to touch it. One backend file per tool sits under
+[`skills/tracker/backends/`](skills/tracker/backends/): Jira, Notion, GitHub Issues, and
+[`OTHER.md`](skills/tracker/backends/OTHER.md) for anything else (Linear, Asana, Todoist…), which
+maps the tool once and writes the map down.
 
 ### Using it in a project
 
 ```sh
+/tracker             # see (or set up) where this project keeps its work
+/create-ticket ...   # jot one thing into To Plan, without planning it
+/create-epic ...     # shape a whole project into an epic and its tickets
 /plan-ticket PROJ-48 # take one ticket from To Plan onto the board
 /plan-ticket 10      # plan the 10 smallest, cheapest first
 /plan-ticket ALL     # queue up and work the whole To Plan column
@@ -70,14 +75,20 @@ gets parked on the board with a note, and the run carries on.
 The bar for trivial is deliberately strict: if there is one thing worth asking you, it isn't
 trivial and it goes down the normal lane instead.
 
-No tracker, project key, type name or status is hardcoded in any skill. They're read from a
-`<!-- tracker-config -->` block in the project's own `CLAUDE.md` (an older
-`<!-- jira-config -->` block still counts), and if there isn't one, `plan-ticket` discovers them on
-its first run and offers to write the block for next time. Tickets and docs are separate switches,
-so a project can keep tickets in Jira and its glossary and ADRs in Notion.
+No tool, project key, type name or status is hardcoded in any skill. Skills ask for an
+*action* — "move a ticket", "add sub-tasks" — and the backend file says how it works there.
+The tool is read from a `<!-- tracker-config -->` block in the project's own `CLAUDE.md` (an older
+`<!-- jira-config -->` block still counts). With no block, `tracker` looks for clues in the repo —
+ticket keys in branches and commits, links in the README, issue templates — then asks the tools,
+then asks you, and writes the block for next time. Tickets and docs are separate switches, so a
+project can keep tickets in GitHub and its glossary and ADRs in the repo.
 
-On Notion, epics are a separate database, blockers are a relation between tickets, and sub-tasks
-are a checklist in the ticket's body. New projects go in Notion; Jira is being phased out.
+Where a tool has no home for something (labels, blockers, sub-tasks, due dates), it goes in the
+ticket body in one shared text form, so every skill reads a body the same way on every tool.
+
+Per-project working notes live in [`board/`](board/), one file per short name. `plan-ticket`,
+`implement` and `review` read them and follow them over their own defaults — "don't run the full
+suite", "deploy a test build before review".
 
 **Keeping Notion projects alike.** Copies in Notion don't follow their template, so the template is a
 file: [`skills/notion-project/STANDARD.md`](skills/notion-project/STANDARD.md). `/notion-project new
@@ -85,26 +96,21 @@ file: [`skills/notion-project/STANDARD.md`](skills/notion-project/STANDARD.md). 
 missing. To change how every project works, edit the file and run the check. Short names come from
 the teamspace names (`WARD - Wardrobe App`), so a project needs no repo to be planned.
 
+### The whole flow
+
+Four ways to touch the work — create, plan, write code, push — and each has its own door:
+
+![The ticket workflow: four ways in create tickets in To Plan; /plan-ticket routes each down a lane to To Do; /implement builds it; /review and a PR move it to In Review; you merge it to Done. The tracker skill sits under all of it.](docs/workflow.svg)
+
+The picture is [`docs/workflow.svg`](docs/workflow.svg), hand-written SVG that follows light and dark
+mode. Edit it as text when the flow changes.
+
 ### How planning actually happens
 
 `/plan-ticket` is the front door, and its real job is **reading what you handed it** before
 it starts working. A `To Plan` ticket might be one line or five paragraphs; it might be one
-feature or a whole quarter. So it reads two dials — *how big* and *how formed* — and routes:
-
-```
-                ┌─ a whole project?  → /create-epic  (its Features land back in To Plan)
-                │
-   To Plan  ────┼─ a bug?            → /diagnose     (reproduce before you spec)
-    ticket      │
-                ├─ vague, need facts    → /research  ─┐
-                ├─ unsure how it feels  → /prototype ─┼─→ /grill-with-docs
-                ├─ I know what I want   → /grill-with-docs
-                └─ already sharp  ───────────────────┘
-                                                     │
-                              /to-prd → /to-issues ──┘
-                                        │
-                                        └─→ To Do
-```
+feature or a whole quarter. So it reads two dials — *how big* and *how formed* — and routes
+it down one of the lanes in step ② above. Every lane ends at `/to-prd` → `/to-subtasks` → `To Do`.
 
 The lanes flow into each other — a grilling that hits a factual unknown hands to research,
 research hands back to grill. Passing through two or three is normal.

@@ -11,7 +11,7 @@ Surface architectural friction and propose **deepening opportunities** — refac
 
 This skill is also _informed_ by the project's domain model. The domain language gives names to good seams; ADRs record decisions the skill should not re-litigate.
 
-**Where the output goes.** This skill *generates work* — it doesn't do it. If the project has a tracker (see [TRACKER.md](../plan-ticket/TRACKER.md)), offer to file each agreed opportunity as a ticket in the **`To Plan`** column, one per refactor, with what you found and why it matters. They then come through `/plan-ticket` like anything else. Don't file them further right than `To Plan` — a refactor you've named is not a refactor you've specced. Don't file the ones the user didn't agree with.
+**Where the output goes.** This skill *generates work* — it doesn't do it. If the project has a tracker (see [the tracker skill](../tracker/SKILL.md)), offer to file each agreed opportunity as a ticket in the **`To Plan`** column the way `/create-ticket` does, one per refactor, with what you found and why it matters. They then come through `/plan-ticket` like anything else. Don't file them further right than `To Plan` — a refactor you've named is not a refactor you've specced. Don't file the ones the user didn't agree with.
 
 ## Process
 
@@ -22,7 +22,7 @@ This skill is also _informed_ by the project's domain model. The domain language
 - If the user named a direction — a module, a subsystem, a pain point — take it, and skip the inference below.
 - Otherwise, walk back a good stretch of the commit history (`git log --oneline`) to find the hot spots — the files and areas that keep coming up — and let those paths pull your attention first. If the changes are scattered with no clear hot spot, widen the net.
 
-Read the project's glossary and any ADRs in the area you're touching first, wherever they live (see [TRACKER.md](../plan-ticket/TRACKER.md)).
+Read the project's glossary and any ADRs in the area you're touching first, wherever they live (see [the tracker skill](../tracker/SKILL.md)).
 
 Then use the Agent tool with `subagent_type=Explore` to walk the codebase. Don't follow rigid heuristics — explore organically and note where you experience friction:
 

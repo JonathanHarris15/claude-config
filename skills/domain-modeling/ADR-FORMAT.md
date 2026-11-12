@@ -1,10 +1,10 @@
 # ADR Format
 
 ADRs use sequential numbering. Where they go depends on the project's **Docs** switch (see
-[TRACKER.md](../plan-ticket/TRACKER.md)):
+[the tracker skill](../tracker/SKILL.md)):
 
 - **`repo`:** `docs/adr/0001-slug.md`, `0002-slug.md`, etc. Create the directory only when the first ADR is needed.
-- **`notion`:** a `Decision` page named `0001 — Short title`. See [NOTION.md](../plan-ticket/NOTION.md).
+- **Anything else:** one page per ADR, titled `0001 — Short title`, where the backend file says. On Notion that is a `Decision` page.
 
 ## Template
 

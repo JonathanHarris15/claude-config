@@ -9,7 +9,7 @@ Actively build and sharpen the project's domain model as you design. This is the
 
 ## Where it lives
 
-Check the project's **Docs** switch in [TRACKER.md](../plan-ticket/TRACKER.md). On `notion`, the glossary and the ADRs are Notion pages, and [NOTION.md](../plan-ticket/NOTION.md) says how to find, create and edit them. Everything below about challenging terms and writing them down still applies: only the place changes. The rest of this section covers `repo`.
+Check the project's **Docs** switch in [the tracker skill](../tracker/SKILL.md). If it isn't `repo`, the glossary and the ADRs are pages in that tool, and its backend file says how to find, create and edit them. Everything below about challenging terms and writing them down still applies: only the place changes. The rest of this section covers `repo`.
 
 Most repos have a single context:
 

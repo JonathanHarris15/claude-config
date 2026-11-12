@@ -1,0 +1,186 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 980 1430" width="980" height="1430" role="img" aria-labelledby="t d">
+  <title id="t">The ticket workflow</title>
+  <desc id="d">Four ways in create tickets in To Plan. /plan-ticket routes each one down a lane and lands it in To Do. /implement builds it, /review checks it and a PR moves it to In Review, and merging moves it to Done. The tracker skill sits under all of it.</desc>
+  <style>
+    :root { --bg:#ffffff; --ink:#1f2328; --muted:#59636e; --line:#8c959f;
+      --col:#ddf4ff; --col-s:#0969da; --panel:#f6f8fa; --panel-s:#d0d7de;
+      --pill:#ffffff; --pill-s:#d0d7de; --in:#fbefff; --in-s:#8250df;
+      --base:#dafbe1; --base-s:#1a7f37; --step:#0969da; }
+    @media (prefers-color-scheme: dark) {
+      :root { --bg:#0d1117; --ink:#e6edf3; --muted:#9198a1; --line:#6e7681;
+        --col:#0c2d6b; --col-s:#4493f8; --panel:#161b22; --panel-s:#30363d;
+        --pill:#0d1117; --pill-s:#3d444d; --in:#271052; --in-s:#ab7df8;
+        --base:#04260f; --base-s:#3fb950; --step:#4493f8; }
+    }
+    .bg { fill:var(--bg); }
+    text { font-family:-apple-system,"Segoe UI",Helvetica,Arial,sans-serif; fill:var(--ink); font-size:13px; }
+    .code { font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace; font-size:12.5px; }
+    .muted { fill:var(--muted); font-size:12px; }
+    .h { font-size:20px; font-weight:600; }
+    .step { font-size:12px; font-weight:700; letter-spacing:.08em; fill:var(--step); }
+    .colname { font-size:14px; font-weight:700; letter-spacing:.1em; }
+    .col { fill:var(--col); stroke:var(--col-s); stroke-width:1.5; }
+    .panel { fill:var(--panel); stroke:var(--panel-s); }
+    .pill { fill:var(--pill); stroke:var(--pill-s); }
+    .in { fill:var(--in); stroke:var(--in-s); stroke-width:1.2; }
+    .base { fill:var(--base); stroke:var(--base-s); stroke-width:1.2; }
+    .ln { fill:none; stroke:var(--line); stroke-width:1.5; }
+    .dash { stroke-dasharray:5 4; }
+    .head { fill:var(--line); }
+    .up { stroke:var(--in-s); stroke-width:2; }
+    .uph { fill:var(--in-s); }
+    .upt { fill:var(--in-s); font-size:12px; font-weight:600; }
+    .halo { fill:none; stroke:var(--panel); stroke-width:7; }
+    .halo.out { stroke:var(--bg); }
+    .badge { fill:var(--in-s); }
+    .badgetx { fill:var(--bg); font-size:10.5px; font-weight:700; }
+  </style>
+  <defs>
+    <marker id="a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+      <path class="head" d="M0,0 L10,5 L0,10 z"/>
+    </marker>
+    <marker id="b" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path class="uph" d="M0,0 L10,5 L0,10 z"/>
+    </marker>
+  </defs>
+
+  <rect class="bg" x="0" y="0" width="980" height="1430"/>
+  <text class="h" x="40" y="34">How work moves</text>
+
+  <!-- ① Create tickets -->
+  <text class="step" x="40" y="56">① CREATE TICKETS</text>
+  <rect class="in" x="40" y="66" width="240" height="60" rx="8"/>
+  <text class="code" x="56" y="91">/create-ticket</text>
+  <text class="muted" x="56" y="111">one idea, bug or follow-up</text>
+  <rect class="in" x="296" y="66" width="200" height="60" rx="8"/>
+  <text class="code" x="312" y="91">/create-epic</text>
+  <text class="muted" x="312" y="111">a project → epic + its tickets</text>
+  <rect class="badge" x="418" y="75" width="70" height="20" rx="10"/><text class="badgetx" x="453" y="89" text-anchor="middle">grills first</text>
+  <rect class="in" x="512" y="66" width="256" height="60" rx="8"/>
+  <text class="code" x="528" y="91">/improve-codebase-architecture</text>
+  <text class="muted" x="528" y="111">refactors it found</text>
+  <rect class="in" x="784" y="66" width="156" height="60" rx="8"/>
+  <text x="800" y="91">By hand</text>
+  <text class="muted" x="800" y="111">client reports, notes</text>
+
+  <path class="ln" d="M160,126 V176 M396,126 V176 M640,126 V176 M862,126 V176 M160,176 H862"/>
+  <path class="ln" d="M180,176 V226" marker-end="url(#a)"/>
+
+  <g transform="translate(0,30)">
+
+  <!-- To Plan -->
+  <rect class="col" x="60" y="200" width="240" height="56" rx="8"/>
+  <text class="colname" x="180" y="226" text-anchor="middle">TO PLAN</text>
+  <text class="muted" x="180" y="244" text-anchor="middle">the inbox — nothing is specced</text>
+
+  <!-- ② Plan panel -->
+  <path class="ln" d="M300,228 H336" marker-end="url(#a)"/>
+  <rect class="panel" x="340" y="196" width="600" height="374" rx="10"/>
+  <text class="step" x="360" y="222">② PLAN</text>
+  <text class="code" x="432" y="222">/plan-ticket  KEY · 10 · ALL</text>
+  <text class="muted" x="360" y="242">Reads how big and how clear the ticket is, then picks</text>
+  <text class="muted" x="360" y="258">a lane. A number plans the smallest first.</text>
+
+  <!-- lane labels -->
+  <g>
+    <rect class="pill" x="360" y="271" width="130" height="28" rx="14"/><text x="425" y="290" text-anchor="middle">trivial</text>
+    <rect class="pill" x="360" y="311" width="130" height="28" rx="14"/><text x="425" y="330" text-anchor="middle">a whole project</text>
+    <rect class="pill" x="360" y="351" width="130" height="28" rx="14"/><text x="425" y="370" text-anchor="middle">investigation</text>
+    <rect class="pill" x="360" y="401" width="130" height="28" rx="14"/><text x="425" y="420" text-anchor="middle">bug</text>
+    <rect class="pill" x="360" y="441" width="130" height="28" rx="14"/><text x="425" y="460" text-anchor="middle">needs facts</text>
+    <rect class="pill" x="360" y="481" width="130" height="28" rx="14"/><text x="425" y="500" text-anchor="middle">needs a feel</text>
+    <rect class="pill" x="360" y="521" width="130" height="28" rx="14"/><text x="425" y="540" text-anchor="middle">fog or sharp</text>
+  </g>
+
+  <!-- lane middles -->
+  <path class="ln" d="M490,285 H513 M490,365 H513 M490,415 H513 M490,455 H513 M490,495 H513"/>
+  <rect class="pill" x="515" y="271" width="170" height="28" rx="6"/><text x="600" y="290" text-anchor="middle">two-line PRD</text>
+  <rect class="pill" x="515" y="351" width="170" height="28" rx="6"/><text x="600" y="370" text-anchor="middle" font-size="12">research · prototype · grill</text>
+  <text class="muted" x="700" y="370">→ decision, ticket closed</text>
+  <rect class="pill" x="515" y="401" width="170" height="28" rx="6"/><text class="code" x="600" y="420" text-anchor="middle">/diagnose</text>
+  <rect class="pill" x="515" y="441" width="170" height="28" rx="6"/><text class="code" x="600" y="460" text-anchor="middle">/research</text>
+  <rect class="pill" x="515" y="481" width="170" height="28" rx="6"/><text class="code" x="600" y="500" text-anchor="middle">/prototype</text>
+
+  <!-- converge to grill, then spec -->
+  <path class="ln" d="M685,415 H705 M685,455 H705 M685,495 H705 M490,535 H705 M705,415 V535"/>
+  <path class="ln" d="M705,435 H721" marker-end="url(#a)"/>
+  <rect class="pill" x="725" y="410" width="180" height="50" rx="8"/>
+  <text class="code" x="815" y="440" text-anchor="middle">/grill-with-docs</text>
+  <path class="ln" d="M815,460 V486" marker-end="url(#a)"/>
+  <rect class="pill" x="725" y="490" width="180" height="50" rx="8"/>
+  <text class="code" x="815" y="512" text-anchor="middle">/to-prd</text>
+  <text class="code" x="815" y="530" text-anchor="middle">→ /to-subtasks</text>
+
+
+  <!-- every lane lands in To Do -->
+  <path class="ln" d="M685,285 H925 V638 H304" marker-end="url(#a)"/>
+  <path class="ln" d="M905,515 H925"/>
+  <text class="muted" x="610" y="628" text-anchor="middle">every lane lands here</text>
+
+  <!-- a whole project goes back up to /create-epic -->
+  <path class="halo" d="M490,325 H715 V197"/>
+  <path class="halo out" d="M715,195 V120 H460 V100"/>
+  <path class="ln up" d="M490,325 H715 V120 H460 V101" marker-end="url(#b)"/>
+  <text class="upt" x="727" y="330">back up to /create-epic,</text>
+  <text class="upt" x="727" y="346">which grills it first</text>
+
+  <!-- To Do -->
+  <rect class="col" x="60" y="610" width="240" height="56" rx="8"/>
+  <text class="colname" x="180" y="636" text-anchor="middle">TO DO</text>
+  <text class="muted" x="180" y="654" text-anchor="middle">PRD + sub-tasks, each afk or hitl</text>
+
+  <!-- ③ Write code -->
+  <path class="ln" d="M180,666 V756" marker-end="url(#a)"/>
+  <text class="step" x="200" y="700">③ WRITE CODE</text>
+  <text class="code" x="322" y="700">/implement  KEY · next · 6 · ALL</text>
+  <text class="muted" x="200" y="720">A count or ALL builds only tickets an agent can finish alone (afk), into one PR.</text>
+
+  <!-- In Progress -->
+  <rect class="col" x="60" y="760" width="240" height="56" rx="8"/>
+  <text class="colname" x="180" y="786" text-anchor="middle">IN PROGRESS</text>
+  <text class="muted" x="180" y="804" text-anchor="middle">tests first, a commit per sub-task</text>
+  <path class="ln dash" d="M60,788 H36 V638 H56" marker-end="url(#a)"/>
+  <text class="muted" x="320" y="786">Stops at a step that needs you (hitl):</text>
+  <text class="muted" x="320" y="804">pushes what it has, back to To Do with a note.</text>
+
+  <!-- ④ Push -->
+  <path class="ln" d="M180,816 V906" marker-end="url(#a)"/>
+  <text class="step" x="200" y="852">④ PUSH</text>
+  <text class="code" x="274" y="852">/review</text>
+  <text class="muted" x="200" y="872">checks standards, the PRD and the glossary — then push the branch and open a PR</text>
+
+  <!-- In Review -->
+  <rect class="col" x="60" y="910" width="240" height="56" rx="8"/>
+  <text class="colname" x="180" y="936" text-anchor="middle">IN REVIEW</text>
+  <text class="muted" x="180" y="954" text-anchor="middle">you review the PR</text>
+
+  <path class="ln" d="M180,966 V1036" marker-end="url(#a)"/>
+  <text class="muted" x="200" y="1006">you merge — it never merges its own PR</text>
+
+  <!-- Done -->
+  <rect class="col" x="60" y="1040" width="240" height="56" rx="8"/>
+  <text class="colname" x="180" y="1074" text-anchor="middle">DONE</text>
+
+  <!-- Base -->
+  <rect class="base" x="40" y="1130" width="900" height="62" rx="10"/>
+  <text x="60" y="1156"><tspan font-weight="700">Under it all:</tspan> <tspan class="code">/tracker</tspan> finds where this project keeps its tickets and docs, and how to use it.</text>
+  <text class="muted" x="60" y="1176">Jira · Notion · GitHub Issues · any other tool. No other skill names one.</text>
+
+  <text class="muted" x="40" y="1224">Side doors, code with no ticket:</text>
+  <text class="code" x="232" y="1224">/diagnose · /tdd · /prototype · /review on any branch</text>
+
+  <!-- Key -->
+  <text class="step" x="40" y="1266">FOG AND SHARP, THE TWO GRILLING LANES</text>
+  <rect class="panel" x="40" y="1278" width="440" height="112" rx="10"/>
+  <text x="60" y="1304"><tspan font-weight="700">Fog</tspan><tspan class="muted"> → </tspan><tspan class="code">/grill-with-docs</tspan><tspan class="muted">, starting wide</tspan></text>
+  <text class="muted" x="60" y="1326">The ticket names a feeling, not a change: "onboarding</text>
+  <text class="muted" x="60" y="1343">feels rough." Nobody can say yet what done looks like.</text>
+  <text class="muted" x="60" y="1360">Claude offers two or three readings, says which it</text>
+  <text class="muted" x="60" y="1377">would back, and you react.</text>
+  <rect class="panel" x="500" y="1278" width="440" height="112" rx="10"/>
+  <text x="520" y="1304"><tspan font-weight="700">Sharp</tspan><tspan class="muted"> → </tspan><tspan class="code">/grill-with-docs</tspan><tspan class="muted">, the default lane</tspan></text>
+  <text class="muted" x="520" y="1326">You know what you want, but haven't said it exactly.</text>
+  <text class="muted" x="520" y="1343">Grilling pins down the words and the edge cases until</text>
+  <text class="muted" x="520" y="1360">no question is left that would change the PRD.</text>
+  </g>
+</svg>

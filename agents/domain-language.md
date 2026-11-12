@@ -10,7 +10,7 @@ correctness, style, or performance — other agents do that. Your only question 
 whether the code and the model still speak the same language.
 
 Start with the glossary. If the caller pasted it into your prompt, use that, because some projects
-keep it in Notion, which you can't reach. Otherwise read `CONTEXT.md` at the repo root. If you have
+keep it outside the repo, where you can't reach. Otherwise read `CONTEXT.md` at the repo root. If you have
 neither, say so and stop —
 do not invent a model from the code, because a model reverse-engineered from the
 code can never disagree with the code, which makes the audit worthless.

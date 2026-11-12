@@ -7,7 +7,7 @@ argument-hint: "new <SHORT> to set up a new project, or check <SHORT> / check AL
 # Notion Project
 
 [STANDARD.md](./STANDARD.md) says what a project holds. This skill makes it true. Load the Notion
-tools the way [NOTION.md](../plan-ticket/NOTION.md) says, and add `notion-get-teams`,
+tools the way [NOTION.md](../tracker/backends/NOTION.md) says, and add `notion-get-teams`,
 `notion-create-database`, `notion-update-data-source`, `notion-create-view` and `notion-update-view`.
 
 Teamspaces are named `<SHORT> - <Project>`, which is where short names live. Find one with
@@ -69,7 +69,7 @@ Report one line per project: already matching, or what you added and what needs 
 ## Changing the standard
 
 1. Edit [STANDARD.md](./STANDARD.md).
-2. If the skills depend on the change, update [NOTION.md](../plan-ticket/NOTION.md) too.
+2. If the skills depend on the change, update [NOTION.md](../tracker/backends/NOTION.md) too.
 3. Run `/notion-project check ALL`.
 
 A change that only `check` can add is safe to roll out at once. One that renames or removes something

@@ -1,35 +1,39 @@
 ---
 name: create-epic
-description: Shape a whole project into an epic, on Jira or Notion, and split it into the sibling tickets it's actually made of, ordered by what blocks what and dated. Use when work arrives project-sized — several demoable checkpoints, or you keep saying "and then also…" — whether it arrives cold as a rough idea or as a To Plan ticket that turned out to be five tickets.
+description: Shape a whole project into an epic, on whatever tracker the project uses, and split it into the sibling tickets it's actually made of, ordered by what blocks what and dated. Use when work arrives project-sized — several demoable checkpoints, or you keep saying "and then also…" — whether it arrives cold as a rough idea or as a To Plan ticket that turned out to be five tickets.
 argument-hint: "The project idea (a rough sentence is fine), or an existing epic's key or name to re-chart"
 ---
 
 # Create Epic
 
 **One idea in, several tickets out.** That is the job nothing else in this workflow does:
-`to-issues` splits a ticket *downward* into sub-tasks, `grill-with-docs` sharpens one thing.
+`to-subtasks` splits a ticket *downward* into sub-tasks, `grill-with-docs` sharpens one thing.
 This splits *sideways* — into sibling level-0 tickets, wired with what blocks what, and dated.
 
-Read [BOARD.md](../plan-ticket/BOARD.md) first. What binds you: the **Epic is a grouping and
+Read [BOARD.md](../tracker/BOARD.md) first. What binds you: the **Epic is a grouping and
 never appears on the board**. Every ticket you create is level-0 and lands in **`To Plan`**,
 unspecced by definition, where `/plan-ticket` picks it up one at a time. You do **not** create
-sub-tasks — that's `to-issues`, later, per ticket, after `to-prd`.
+sub-tasks — that's `to-subtasks`, later, per ticket, after `to-prd`.
 
-## Two ways in
+## Three ways in
 
 - **Cold** — `/create-epic <idea>`. A project has arrived with no ticket behind it. Start at
   Discover.
 - **Escalated** — `/plan-ticket` found a `To Plan` ticket that is really a project (see
-  [ROUTING.md](../plan-ticket/ROUTING.md)). The ticket is the seed. Skim Discover, since some
-  of it is already written down, and close that ticket with a comment linking the new epic.
+  [ROUTING.md](../plan-ticket/ROUTING.md)). The ticket is the seed. Still run Discover's grilling,
+  but start from what the ticket already settles and spend the questions on what it doesn't. Close
+  that ticket with a comment linking the new epic.
 - **Re-chart** — `/create-epic <EPIC>` on an epic that already exists. Skip to Re-chart.
 
-## Phase 1: Discover — find the shape
+## Phase 1: Discover — the epic's own grilling session
 
-Turn a rough idea into a crisp problem statement and a reason this project exists. Call the
-Skill tool twice, for **"grilling"** and **"domain-modeling"** — grilling runs the interview in
-rounds, domain-modeling keeps the glossary and the ADRs honest as terms settle. This phase is
-that interview, aimed at the four bullets below.
+Turn a rough idea into a crisp problem statement and a reason this project exists. **Every new
+epic gets a grilling session here; never skip it.** An epic is the costliest place to build on a
+guess, because every ticket under it inherits the guess.
+
+Call the Skill tool twice, for **"grilling"** and **"domain-modeling"** — the same pair
+`/grill-with-docs` runs. Grilling runs the interview in rounds, domain-modeling keeps the glossary
+and the ADRs honest as terms settle. This phase is that interview, aimed at the four bullets below.
 
 Read the room first: *is the vision clear, or are we still working out what this even is?*
 
@@ -92,7 +96,7 @@ do what you need, an open build-vs-buy or which-architecture call, an external c
 Write each Feature in the register in [FEATURE-STYLE.md](FEATURE-STYLE.md) — plain-language
 *what and why* that defines its own jargon, plus specific, measurable acceptance criteria. Keep
 it high-level, which means *not yet decomposed*, not *vague*. Resist writing the implementation
-breakdown; that's `to-issues`, later.
+breakdown; that's `to-subtasks`, later.
 
 **Bugs are not part of this tree.** If bugs surface while grilling, file them straight into
 `To Plan` and carry on. A bug may be parented to this epic later if it has to be fixed before
@@ -117,8 +121,8 @@ If there's no epic deadline, that's a valid answer — skip dates and say so. Bu
 
 ## Phase 5: Publish
 
-See [TRACKER.md](../plan-ticket/TRACKER.md) to find this project's tracker, and its backend file
-for how to create and link things. In order:
+Load the **tracker** skill to find this project's tracker, and its backend file for how to create
+and link things. In order:
 
 1. Confirm the project and its types with me.
 2. Create the **Epic**. Its body is the vision from Phases 1–2 plus the two sections
@@ -141,8 +145,7 @@ for how to create and link things. In order:
 3. Create each ticket under the Epic. A **Feature** uses the project's level-0 Feature type,
    with its body written per [FEATURE-STYLE.md](FEATURE-STYLE.md). An **investigation ticket** is
    also level-0, carrying the `[research]` / `[prototype]` / `[grill]` / `[task]` prefix in its
-   title and **no due date**. Mark it as decision work the way the backend file says: the
-   `investigation` label on Jira, `Research` type on Notion.
+   title and **no due date**. **Mark it as investigation** (the backend file says how).
 4. Wire the **blockers** from Phase 4.
 5. Set due dates — the epic's, and each Feature's.
 6. Record **epic-level ADRs** for the hard-to-reverse calls made along the way: the big bets,

@@ -1,6 +1,6 @@
 ---
 name: plan-ticket
-description: Take a ticket from the To Plan column all the way to the board — read how big and how formed it is, route it down the right lane (trivial fast path, research / prototype / grill / diagnose, or escalate a whole project to create-epic), then converge on a PRD and sub-tasks and land it in To Do. The front door of the ticket workflow, on Jira or Notion. Use with a ticket key (/plan-ticket PROJ-48), a count to plan the N smallest (/plan-ticket 10), or ALL for the whole column.
+description: Take a ticket from the To Plan column all the way to the board — read how big and how formed it is, route it down the right lane (trivial fast path, research / prototype / grill / diagnose, or escalate a whole project to create-epic), then converge on a PRD and sub-tasks and land it in To Do. The front door of the ticket workflow, on whatever tracker the project uses (Jira, Notion, GitHub Issues or another). Use with a ticket key (/plan-ticket PROJ-48), a count to plan the N smallest (/plan-ticket 10), or ALL for the whole column.
 argument-hint: "A ticket key (PROJ-48), a count for the N smallest (10), or ALL for the whole To Plan column"
 ---
 
@@ -9,7 +9,7 @@ argument-hint: "A ticket key (PROJ-48), a count for the N smallest (10), or ALL 
 The **front door**. Everything in `To Plan` comes through here and leaves specced, sliced,
 and sitting in the right column.
 
-Read [BOARD.md](./BOARD.md) (the contract you're upholding) and
+Read [BOARD.md](../tracker/BOARD.md) (the contract you're upholding) and
 [ROUTING.md](./ROUTING.md) (the judgment call you're making) before you start.
 
 **The premise:** `To Plan` is a genuine inbox, and things land in it at wildly different
@@ -20,13 +20,14 @@ skill is about **reading which one you're holding** before you start working it.
 
 ## Phase 0: Gate
 
-Follow [TRACKER.md](./TRACKER.md) to find where this project keeps its tickets and docs, then
-read the backend file it points you to and load the tools.
+Load the **tracker** skill. It finds where this project keeps its tickets and docs — from the
+config block, clues in the repo, or by asking — and points you to the backend file that says how
+to touch them. Load the tools it names.
 
-**No config block?** Discover it once, here, before planning anything. Map the types and statuses
-you find onto the three levels and five columns in [BOARD.md](./BOARD.md), then offer to write the
-block so the next run doesn't repeat the work. If the tracker isn't connected, say so and stop —
-there is nothing to plan against.
+If the tracker isn't connected, say so and stop — there is nothing to plan against.
+
+Read the project's working notes if it has them (see the tracker skill). Their **Before a ticket
+leaves To Plan** section adds to what a PRD here must answer.
 
 ---
 
@@ -43,8 +44,8 @@ Read the ticket: its title, body, type, column, labels, epic, blockers, comments
   something moved it there without doing the thinking.
 
 Then **explore the codebase**, if the project has one, before forming any opinion. Read the glossary and the ADRs,
-wherever this project keeps them (see [TRACKER.md](./TRACKER.md)). On a Notion project, also check
-Meetings and Notes for the ticket's subject. A ticket that
+wherever this project keeps them (see [the tracker skill](../tracker/SKILL.md)). If the docs tool holds meeting notes,
+search them for the ticket's subject too. A ticket that
 looks foggy in isolation is often perfectly clear once you see the code it lands in — and a
 question you could answer by reading the repo is a question you must never ask the user.
 
@@ -84,9 +85,9 @@ once, then do as they say.
 | Read | Run |
 | --- | --- |
 | **Trivial** | Smaller than a ticket — obvious fix, nothing to decide, one commit. Skip the lanes entirely: write the **two-line PRD** (`/to-prd` short form), add the `trivial` label, no sub-tasks, land it in `To Do`. See [ROUTING.md](./ROUTING.md). If it stops looking trivial while you write those two lines, say so and reroute. |
-| **An investigation ticket** | Labelled `investigation`, summary prefixed `[research]` / `[prototype]` / `[grill]` / `[task]`. Resolve it by its prefix: `[research]` → `/research`, `[prototype]` → `/prototype`, `[grill]` → `/grill-with-docs`, `[task]` → just do the small thing. The output is a **decision**, not code. Post the decision as a comment (what we decided and why, linking any research or prototype asset), close the ticket, and **stop — skip Phase 5 and 6 entirely.** See [BOARD.md](./BOARD.md). |
+| **An investigation ticket** | Labelled `investigation`, summary prefixed `[research]` / `[prototype]` / `[grill]` / `[task]`. Resolve it by its prefix: `[research]` → `/research`, `[prototype]` → `/prototype`, `[grill]` → `/grill-with-docs`, `[task]` → just do the small thing. The output is a **decision**, not code. Post the decision as a comment (what we decided and why, linking any research or prototype asset), close the ticket, and **stop — skip Phase 5 and 6 entirely.** See [BOARD.md](../tracker/BOARD.md). |
 | **A project, not a ticket** | `/create-epic`. The epic's Features land back in `To Plan` as fresh tickets. Close PROJ-48 with a comment linking the epic — it did its job. **Stop here**; the new tickets each come through `plan-ticket` on their own. |
-| **A pile** | Split into sibling tickets in `To Plan`, close the original, then plan each. |
+| **A pile** | Split it: file each sibling in `To Plan` the way `/create-ticket` does, close the original, then plan each. |
 | **Bug** | `/diagnose` — reproduce and find the cause. Then re-read the clarity dial; usually the cause makes the fix obvious → go straight to Phase 5. If it won't reproduce, park it in `To Plan` with what you found and say what you need. |
 | **Fog** | `/grill-with-docs`, opened wide — name the change before sharpening it. Say out loud that you're starting from nothing. |
 | **Unknowns (facts)** | `/research` → then `/grill-with-docs`. |
@@ -111,7 +112,7 @@ the sub-task.
 
 1. **`/to-prd`** — writes the PRD onto **this ticket's own body**. The ticket *is* the
    PRD; there's no separate doc.
-2. **`/to-issues`** — adds the **sub-tasks** to it. These don't get board columns; they live
+2. **`/to-subtasks`** — adds the **sub-tasks** to it. These don't get board columns; they live
    inside the card, which is what lets you open a To Do ticket in the morning and see it got 4 of
    7 done before it stalled.
 
