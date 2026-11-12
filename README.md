@@ -207,8 +207,8 @@ after an hour with no page open.
   under `skills/`.
 - **Add to repo** names a left-out skill in the allow list. **Copy into repo** copies
   a claude.ai or plugin skill into `skills/`, leaving the original with its owner.
-  Both only stage the change. `/sync-config` commits and pushes it, so nothing leaves
-  the machine without you looking first; the dashboard itself never commits or pushes.
+  Both only stage the change. `/sync-config` commits and pushes it — or opens a PR if you
+  ask for one — so nothing leaves the machine without you looking first; the dashboard itself never commits or pushes.
 - **Delete** moves the thing to `backups/dashboard-trash/`, on this machine only.
 
 It reads and writes only the folders above plus `settings.json`,
