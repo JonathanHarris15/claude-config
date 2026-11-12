@@ -36,12 +36,14 @@ const ICONS = {
   download: '<path d="M12 4v11M7 10.5l5 5 5-5M5 20h14"/>',
   workspace: '<path d="M4 7.5A2.5 2.5 0 0 1 6.5 5H10l2 2h5.5A2.5 2.5 0 0 1 20 9.5v7a2.5 2.5 0 0 1-2.5 2.5h-11A2.5 2.5 0 0 1 4 16.5z"/><path d="M8 13h8"/>',
   lock: '<rect x="5.5" y="10.5" width="13" height="9" rx="2"/><path d="M8.5 10.5V8a3.5 3.5 0 0 1 7 0v2.5"/>',
+  flow: '<rect x="3" y="4" width="7" height="5" rx="1.5"/><rect x="14" y="4" width="7" height="5" rx="1.5"/><rect x="8.5" y="15" width="7" height="5" rx="1.5"/><path d="M6.5 9v2.5h11V9M12 11.5V15"/>',
 }
 const icon = (name, label) =>
   `<svg class="i" viewBox="0 0 24 24" ${label ? `role="img" aria-label="${label}"` : 'aria-hidden="true"'}>${ICONS[name]}</svg>`
 
 const TABS = [
   ['sync', 'Sync'],
+  ['flow', 'Ticket flow'],
   ['skills', 'Skills', 'skills', 'skill'],
   ['commands', 'Commands', 'commands'],
   ['agents', 'Agents', 'agents', 'agent'],
@@ -55,6 +57,9 @@ const TABS = [
 /** The project this session runs in, named by the launcher. Absent, the tab hides. */
 const WS = new URLSearchParams(location.search).get('ws') ?? ''
 const tabsShown = () => TABS.filter(one => one[0] !== 'workspace' || WS)
+
+/** Tabs that are one page rather than a list and a reader, so the list pane goes. */
+const WIDE = ['sync', 'flow']
 
 /** How the Workspace tab groups what it found, in reading order. */
 const WS_KINDS = [
@@ -308,7 +313,7 @@ function renderList() {
   else if (S.tab === 'hooks') el.innerHTML = hooksList()
   else if (S.tab === 'settings') el.innerHTML = settingsList()
   else if (S.tab === 'workspace') el.innerHTML = workspaceList()
-  else if (S.tab !== 'sync') el.innerHTML = listHead(S.tab) + plainBody(S.tab)
+  else if (!WIDE.includes(S.tab)) el.innerHTML = listHead(S.tab) + plainBody(S.tab)
   el.scrollTop = keepScroll
 }
 
@@ -517,6 +522,65 @@ function renderSync() {
       <p class="note">Git holds only what the allow list names. The rest stays on this machine, on purpose.</p></div>
       ${synced.length ? tableOf(synced) : ''}
       ${kept.length ? `<details class="more"><summary>${icon('caret')}${plural(kept.length, 'thing')} stay on this machine</summary>${tableOf(kept)}</details>` : ''}
+    </div>
+  </div>`
+}
+
+// ---------- the ticket workflow picture
+
+/** The picture, read once per page. Empty string means the file is not there. */
+let flowSvg = null
+
+/** Skills and commands the picture names, as links to their own tab. */
+function flowNames() {
+  const words = flowSvg.replace(/<[^>]*>/g, ' ')
+  const said = new Set((words.match(/\/[a-z][a-z0-9-]{2,}/g) ?? []).map(one => one.slice(1)))
+  const hits = []
+  for (const [tab, list] of [['skills', S.data.items.skills], ['commands', S.data.items.commands]]) {
+    for (const one of list) {
+      if (said.has(one.name) && !hits.some(hit => hit.name === one.name)) hits.push({ ...one, tab })
+    }
+  }
+  return hits.sort((a, b) => a.name.localeCompare(b.name))
+}
+
+async function renderFlow() {
+  const el = q('#detail')
+  if (flowSvg === null) {
+    el.innerHTML = '<div class="loading">Reading the picture…</div>'
+    flowSvg = await fetch('/workflow.svg').then(res => (res.ok ? res.text() : '')).catch(() => '')
+  }
+  // The tab may have changed while that was in flight.
+  if (S.tab !== 'flow') return
+
+  if (!flowSvg) {
+    el.innerHTML = `<div class="page"><div class="card">
+      <h3>No picture to show</h3>
+      <p class="note">The dashboard looks for <code>docs/workflow.svg</code> in this config folder and found nothing. A sync brings it back.</p>
+    </div></div>`
+    return
+  }
+
+  const named = flowNames()
+  const links = named.length
+    ? `<div class="kind">Named in the picture</div>
+       <div class="tags">${named.map(one => `<button class="link" data-act="goto" data-tab="${one.tab}" data-id="${esc(one.id)}">${esc(one.name)}</button>`).join('')}</div>`
+    : ''
+
+  el.innerHTML = `<div class="page">
+    <div class="card flow-card">
+      <div class="card-head">
+        <div class="grow">
+          <h3>How a ticket moves</h3>
+          <p class="note">Four ways in, one way through: an idea becomes a ticket, a plan routes it, and a merge closes it. The skills it names are a click away.</p>
+        </div>
+        <a class="btn" href="/workflow.svg" target="_blank" rel="noopener noreferrer">${icon('file')}Full size</a>
+      </div>
+      <figure class="flow-figure">
+        <img src="/workflow.svg" alt="The ticket workflow: four ways in create tickets in To Plan; /plan-ticket routes each down a lane to To Do; /implement builds it; /review and a pull request move it to In Review; merging moves it to Done. The tracker skill sits under all of it.">
+      </figure>
+      ${links}
+      <p class="note dim">The picture lives at <code>docs/workflow.svg</code>, hand-written and synced with the rest of this folder.</p>
     </div>
   </div>`
 }
@@ -840,7 +904,7 @@ async function setModOn(name, on) {
 
 function layout() {
   const shell = q('#shell')
-  shell.classList.toggle('wide', S.tab === 'sync')
+  shell.classList.toggle('wide', WIDE.includes(S.tab))
   shell.classList.toggle('open', !!S.sel)
 }
 
@@ -858,6 +922,7 @@ async function showTab(tab, id) {
   layout()
   renderNav()
   if (tab === 'sync') return renderSync()
+  if (tab === 'flow') return renderFlow()
   renderList()
   if (id && tab === 'settings') return renderSettings()
   if (id) {
@@ -880,6 +945,7 @@ const ACT = {
   goto: ({ tab, id }) => showTab(tab, id),
   refresh: async () => {
     if (!(await canLeave())) return
+    flowSvg = null
     await load()
     await showTab(S.tab, S.sel)
     toast('Read the disk again.')
@@ -1218,7 +1284,7 @@ window.addEventListener('focus', attempt(async () => {
   // Redrawing an unchanged list would swallow the click that brought you back.
   if (!(await load())) return
   if (S.tab === 'sync') renderSync()
-  else renderList()
+  else if (!WIDE.includes(S.tab)) renderList()
 }))
 
 // A page left open keeps the server awake, and says so if it has gone.

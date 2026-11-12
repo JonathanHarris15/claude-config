@@ -15,7 +15,7 @@ My personal Claude Code configuration, synced across machines.
 | `usage/` | The skill-use logs: one append-only file per machine, so the logs never clash when they sync. Skill files are never touched. On a new machine, run `skill-usage.mjs backfill` once to count past uses from its session transcripts. |
 | `settings.json` | Global settings: effort level, theme, permission allowlist, hooks, and the `CLAUDE_CODE_PLUGIN_DIRS` that loads the mods. |
 | `CLAUDE.md` | Instructions prepended to every session, in every project, on every machine. |
-| `docs/` | Pictures for this README, such as the ticket workflow diagram. |
+| `docs/` | Pictures for this README and for the dashboard, such as the ticket workflow diagram. |
 
 ## The ticket workflow
 
@@ -103,7 +103,7 @@ Four ways to touch the work — create, plan, write code, push — and each has 
 ![The ticket workflow: four ways in create tickets in To Plan; /plan-ticket routes each down a lane to To Do; /implement builds it; /review and a PR move it to In Review; you merge it to Done. The tracker skill sits under all of it.](docs/workflow.svg)
 
 The picture is [`docs/workflow.svg`](docs/workflow.svg), hand-written SVG that follows light and dark
-mode. Edit it as text when the flow changes.
+mode. Edit it as text when the flow changes; the dashboard's **Ticket flow** tab shows the same file.
 
 ### How planning actually happens
 
@@ -195,6 +195,8 @@ node ~/.claude/dashboard/start.mjs --open
 It lives at `http://127.0.0.1:4915/`, answers only this machine, and stops itself
 after an hour with no page open.
 
+- **Ticket flow** shows the picture below, read straight from `docs/workflow.svg`,
+  with every skill it names as a link into the other tabs.
 - **Sync** shows how each thing reaches other machines: through git, waiting to be
   committed or pushed, through your claude.ai account, by plugin install, or not at
   all. Below that, everything else at the top of this folder.
