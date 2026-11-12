@@ -15,6 +15,7 @@ My personal Claude Code configuration, synced across machines.
 | `usage/` | The skill-use logs: one append-only file per machine, so the logs never clash when they sync. Skill files are never touched. On a new machine, run `skill-usage.mjs backfill` once to count past uses from its session transcripts. |
 | `settings.json` | Global settings: effort level, theme, permission allowlist, hooks, and the `CLAUDE_CODE_PLUGIN_DIRS` that loads the mods. |
 | `CLAUDE.md` | Instructions prepended to every session, in every project, on every machine. |
+| `docs/` | Pictures for this README, such as the ticket workflow diagram. |
 
 ## The ticket workflow
 
@@ -99,51 +100,10 @@ the teamspace names (`WARD - Wardrobe App`), so a project needs no repo to be pl
 
 Four ways to touch the work — create, plan, write code, push — and each has its own door:
 
-```
- ① CREATE TICKETS                                      Under it all: /tracker
-  /create-ticket    one idea, bug or follow-up          finds the tool and how to
-  /create-epic      a project → epic + its tickets      use it — Jira · Notion ·
-  /improve-codebase-architecture   refactors it found   GitHub · anything else
-  by hand           client reports, scratch notes
-        │
-        ▼
-  ┌───────────┐
-  │  TO PLAN  │  the inbox — nothing here is specced
-  └─────┬─────┘
-        │ ② PLAN    /plan-ticket  KEY · 10 (smallest first) · ALL
-        │           reads size and clarity, then picks a lane:
-        │             trivial ......... 2-line PRD, skip the rest ─────────┐
-        │             project ......... /create-epic → new tickets ↺ To Plan
-        │             investigation ... research / prototype / grill
-        │                               → decision comment → closed
-        │             bug ............. /diagnose ──┐                      │
-        │             need facts ...... /research ──┤                      │
-        │             need feel ....... /prototype ─┼→ /grill-with-docs    │
-        │             fog or sharp .................┘         │            │
-        │                                      /to-prd → /to-issues        │
-        ▼                                                     │            │
-  ┌───────────┐ ◀─────────────────────────────────────────────┴────────────┘
-  │   TO DO   │  PRD + sub-tasks, each marked afk or hitl
-  └─────┬─────┘
-        │ ③ WRITE CODE   /implement  KEY · next · 6 · ALL
-        │                (a count or ALL = afk-only batch, one PR)
-        ▼
-  ┌─────────────┐  tests first at real seams (/tdd), commit per sub-task
-  │ IN PROGRESS │  stops at a hitl step → back to To Do with a note
-  └─────┬───────┘
-        │ ④ PUSH   /review (standards · spec · domain) → push branch, open PR
-        ▼
-  ┌───────────┐
-  │ IN REVIEW │  you review — it never merges its own PR
-  └─────┬─────┘
-        │  you merge
-        ▼
-  ┌───────────┐
-  │   DONE    │
-  └───────────┘
+![The ticket workflow: four ways in create tickets in To Plan; /plan-ticket routes each down a lane to To Do; /implement builds it; /review and a PR move it to In Review; you merge it to Done. The tracker skill sits under all of it.](docs/workflow.svg)
 
- Side doors, code with no ticket: /diagnose · /tdd · /prototype · /review on any branch
-```
+The picture is [`docs/workflow.svg`](docs/workflow.svg), hand-written SVG that follows light and dark
+mode. Edit it as text when the flow changes.
 
 ### How planning actually happens
 
