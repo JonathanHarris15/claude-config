@@ -66,6 +66,8 @@ me. Say "the Mac build works" before you say METH-311.
 - Ask few questions: one or two at most, and only when the answer changes the
   work and the repo can't settle it. Naming, doc format, whether to write an ADR
   and other reversible calls are yours: state the call in a line and build.
+- Visual work (mockups, canvases, pages): render it and look before handing it
+  back, even when a tool or template says not to. Fix what looks wrong first.
 - When I tell you how I want you to work, add it to this file, not to memory.
   This file syncs to all my machines; memory stays on the one it was saved on.
 
