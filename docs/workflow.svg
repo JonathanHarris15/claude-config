@@ -27,12 +27,20 @@
     .ln { fill:none; stroke:var(--line); stroke-width:1.5; }
     .dash { stroke-dasharray:5 4; }
     .head { fill:var(--line); }
+    .up { stroke:var(--in-s); stroke-width:2; }
+    .uph { fill:var(--in-s); }
+    .upt { fill:var(--in-s); font-size:12px; font-weight:600; }
+    .halo { fill:none; stroke:var(--panel); stroke-width:7; }
+    .halo.out { stroke:var(--bg); }
     .badge { fill:var(--in-s); }
     .badgetx { fill:var(--bg); font-size:10.5px; font-weight:700; }
   </style>
   <defs>
     <marker id="a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
       <path class="head" d="M0,0 L10,5 L0,10 z"/>
+    </marker>
+    <marker id="b" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path class="uph" d="M0,0 L10,5 L0,10 z"/>
     </marker>
   </defs>
 
@@ -68,7 +76,8 @@
   <rect class="panel" x="340" y="196" width="600" height="374" rx="10"/>
   <text class="step" x="360" y="222">② PLAN</text>
   <text class="code" x="432" y="222">/plan-ticket  KEY · 10 · ALL</text>
-  <text class="muted" x="360" y="242">Reads how big and how clear the ticket is, then picks a lane. A number plans the smallest first.</text>
+  <text class="muted" x="360" y="242">Reads how big and how clear the ticket is, then picks</text>
+  <text class="muted" x="360" y="258">a lane. A number plans the smallest first.</text>
 
   <!-- lane labels -->
   <g>
@@ -82,10 +91,8 @@
   </g>
 
   <!-- lane middles -->
-  <path class="ln" d="M490,285 H513 M490,325 H513 M490,365 H513 M490,415 H513 M490,455 H513 M490,495 H513"/>
+  <path class="ln" d="M490,285 H513 M490,365 H513 M490,415 H513 M490,455 H513 M490,495 H513"/>
   <rect class="pill" x="515" y="271" width="170" height="28" rx="6"/><text x="600" y="290" text-anchor="middle">two-line PRD</text>
-  <rect class="pill" x="515" y="311" width="170" height="28" rx="6"/><text class="code" x="522" y="330">/create-epic</text>
-  <rect class="badge" x="620" y="316" width="60" height="18" rx="9"/><text class="badgetx" x="650" y="329" text-anchor="middle">+ grilling</text>
   <rect class="pill" x="515" y="351" width="170" height="28" rx="6"/><text x="600" y="370" text-anchor="middle" font-size="12">research · prototype · grill</text>
   <text class="muted" x="700" y="370">→ decision, ticket closed</text>
   <rect class="pill" x="515" y="401" width="170" height="28" rx="6"/><text class="code" x="600" y="420" text-anchor="middle">/diagnose</text>
@@ -102,14 +109,18 @@
   <text class="code" x="815" y="512" text-anchor="middle">/to-prd</text>
   <text class="code" x="815" y="530" text-anchor="middle">→ /to-subtasks</text>
 
-  <!-- project loops back to To Plan -->
-  <path class="ln dash" d="M360,325 H180 V260" marker-end="url(#a)"/>
-  <text class="muted" x="192" y="316">new tickets</text>
 
   <!-- every lane lands in To Do -->
   <path class="ln" d="M685,285 H925 V638 H304" marker-end="url(#a)"/>
   <path class="ln" d="M905,515 H925"/>
   <text class="muted" x="610" y="628" text-anchor="middle">every lane lands here</text>
+
+  <!-- a whole project goes back up to /create-epic -->
+  <path class="halo" d="M490,325 H715 V197"/>
+  <path class="halo out" d="M715,195 V140 H470 V131"/>
+  <path class="ln up" d="M490,325 H715 V140 H470 V131" marker-end="url(#b)"/>
+  <text class="upt" x="727" y="330">back up to /create-epic,</text>
+  <text class="upt" x="727" y="346">which grills it first</text>
 
   <!-- To Do -->
   <rect class="col" x="60" y="610" width="240" height="56" rx="8"/>
