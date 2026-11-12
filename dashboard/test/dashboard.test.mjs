@@ -233,3 +233,14 @@ test('the page never sees a secret file name as readable content', async () => {
   const body = JSON.stringify(await state())
   assert.ok(!body.includes('SECRET'))
 })
+
+test('the workflow picture is served from the docs folder, and nothing else is', async () => {
+  write('docs/workflow.svg', '<svg xmlns="http://www.w3.org/2000/svg"><title>flow</title></svg>')
+  const pic = await fetch(base + '/workflow.svg')
+  assert.equal(pic.status, 200)
+  assert.equal(pic.headers.get('content-type'), 'image/svg+xml; charset=utf-8')
+  assert.match(await pic.text(), /<title>flow<\/title>/)
+  write('docs/secret.svg', '<svg/>')
+  assert.equal((await fetch(base + '/secret.svg')).status, 404)
+  assert.equal((await fetch(base + '/docs/workflow.svg')).status, 404)
+})

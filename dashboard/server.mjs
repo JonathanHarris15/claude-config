@@ -28,7 +28,15 @@ const WRITABLE = ['skills/', 'agents/', 'workflows/', 'hooks/', 'mods/']
 const NEVER_WRITE = ['skills/synced/', 'skills/.trash/']
 const TOP_FILES = ['settings.json', 'settings.local.json', 'CLAUDE.md']
 
-const TYPES = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.css': 'text/css; charset=utf-8' }
+const TYPES = {
+  '.html': 'text/html; charset=utf-8',
+  '.js': 'text/javascript; charset=utf-8',
+  '.css': 'text/css; charset=utf-8',
+  '.svg': 'image/svg+xml; charset=utf-8',
+}
+
+/** Pictures the page shows that live with the docs rather than in public/. */
+const DOCS = { 'workflow.svg': 'docs/workflow.svg' }
 
 class Refused extends Error {
   constructor(status, message) {
@@ -351,6 +359,7 @@ export function createDashboard({ root, onActivity = () => {} }) {
       if (req.method !== 'GET') return json(405, { error: 'No.' })
       const name = url.pathname === '/' ? 'index.html' : url.pathname.slice(1)
       if (!/^[a-z.]+$/.test(name) || !TYPES[path.extname(name)]) return send(404, 'text/plain', 'Not found')
+      if (DOCS[name]) return send(200, TYPES[path.extname(name)], await readFile(path.join(root, DOCS[name])))
       return send(200, TYPES[path.extname(name)], await readFile(path.join(PUBLIC, name)))
     } catch (err) {
       if (err.code === 'ENOENT') return send(404, 'text/plain', 'Not found')
