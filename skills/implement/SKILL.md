@@ -24,7 +24,7 @@ Do not skip the moves and do not fake the build discipline. A merged PR with the
 
 0. **Check there is code to work in.** A project may have no repo yet (see [the tracker skill](../tracker/SKILL.md)). If so, stop and say there is nothing to build in.
 1. **Resolve the target.** A ticket key means that ticket. `next` (or nothing) means list the `To Do` column and take the oldest unblocked ticket with a reachable sub-task — confirm with me before claiming. **A count or `ALL` means batch mode — go to `<batch>` instead of working these phases directly.**
-2. **Read the ticket fully**: its PRD, acceptance criteria, comments, blockers, labels, sub-tasks, and its epic for context.
+2. **Read the ticket fully**: its PRD (on Notion, follow the card's `Full spec:` link, which may be its epic's), acceptance criteria, comments, blockers, labels, sub-tasks, and its epic for context.
 3. **Check it's actually takeable.** If it's blocked by an open issue, stop and say so. If it has **no PRD** (no `## Problem Statement` + `## Acceptance Criteria`) it should never have left `To Plan` — **stop**, say the board was lying to you, and recommend `/plan-ticket <KEY>`. Don't build on fog, and don't quietly spec it yourself; that's how an un-reviewed guess becomes a merged PR.
 4. **The ticket vs its sub-tasks.** The **ticket** is the unit that rides the board. Work its **sub-tasks** one at a time (Phases 1–4 and 6, then commit, per sub-task; Phase 5's review runs once, over the whole ticket, before you ship), ticking each one as it lands, so the card stays true. The ticket itself moves `In Progress` once, at the start, and `In Review` once, at the end. If it has no sub-tasks, implement it directly — but say so, because `to-subtasks` should have made some.
 

@@ -157,7 +157,7 @@ say what you need.
 Whatever lane a ticket took, it ends the same way:
 
 ```
-   → /to-prd      (PRD written onto the ticket's own body)
+   → /to-prd      (PRD written for the ticket: its body, or a linked spec page)
    → /to-subtasks   (sub-tasks added to it)
    → land it      (To Do — see BOARD.md)
 ```

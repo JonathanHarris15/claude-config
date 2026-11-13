@@ -110,8 +110,8 @@ ticket** never reaches this phase: its output is a decision comment, not a PRD. 
 ticket runs `to-prd` in its short form and stops there — no sub-tasks, because the ticket is
 the sub-task.
 
-1. **`/to-prd`** — writes the PRD onto **this ticket's own body**. The ticket *is* the
-   PRD; there's no separate doc.
+1. **`/to-prd`** — writes **this ticket's** PRD: in its body, or on a spec page the card links
+   to where the tracker keeps PRDs that way (Notion). One PRD per ticket, never a second copy.
 2. **`/to-subtasks`** — adds the **sub-tasks** to it. These don't get board columns; they live
    inside the card, which is what lets you open a To Do ticket in the morning and see it got 4 of
    7 done before it stalled.

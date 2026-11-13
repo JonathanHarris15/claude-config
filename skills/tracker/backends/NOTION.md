@@ -61,6 +61,7 @@ Every page you write goes in the Docs data source with `From` set to `Claude`. P
 | ADR | `Decision` | `0007 — Short title`. Also set `Date` to today |
 | Glossary | `Spec` | `Glossary`, or `Glossary — Desktop` when the project has several contexts |
 | Research write-up | `Research` | What it answers |
+| PRD | `Spec` | `<ticket or epic name> PRD`. See [The PRD](#the-prd-its-own-page-linked-from-the-card) |
 | Other spec or plan | `Spec` / `Plan` | What it is |
 
 **Finding them.** Read the Docs `Default view` and pick rows by `Kind` and `Name`, then fetch the pages
@@ -121,6 +122,35 @@ Fetch first. For a small change, use `notion-update-page` with `update_content`.
 PRD, use `replace_content`, folding in anything worth keeping. Never pass
 `allow_deleting_content` without asking.
 
+### The PRD: its own page, linked from the card
+
+In Notion a PRD doesn't go in the ticket body. It gets its own page in the Docs data source, and
+the card links to it. This keeps the card short enough to read on a phone, and lets the PRD take
+its own comments and review.
+
+1. **Create the spec page** with `notion-create-pages` in the Docs data source: `Name` is
+   `<ticket or epic name> PRD`, `Kind` is `Spec`, `From` is `Claude`, `Date` is today. Its first
+   line says what it specs and where it stands, mentioning the card:
+   `Spec for <mention-page url="…">Dress codes</mention-page> (WARD-22).` Below that, the
+   `to-prd` template.
+2. **Link it from the card.** The card's body keeps a short summary: one or two plain sentences
+   on what this is and who owns it. Right under the summary, on its own line:
+   `Full spec: <mention-page url="…">Dress codes PRD</mention-page>`. Then anything else the
+   body holds: the `Labels:` line stays at the top, and the sub-tasks stay on the card, below
+   the link.
+3. **Updating a PRD** means editing the spec page, not the card. Change the card only if the
+   summary is now wrong.
+
+**Reading a PRD:** fetch the card and follow its `Full spec:` link. A card with no such link
+may still hold an older PRD in its own body. Read it there, and leave it there unless you're
+rewriting it anyway.
+
+**A trivial ticket's two-line PRD stays in the card body.** A page for two lines is noise.
+
+**An epic can have a PRD too**, when one spec covers several tickets. Same page, same link,
+placed right under the epic's opening summary. Its tickets then only need a PRD of their own if
+the epic's spec doesn't already cover what they build.
+
 ### Labels and investigations
 
 The database has no labels, so they are the `Labels:` line at the top of the body, in the shared
@@ -146,7 +176,8 @@ To close a ticket, comment why, then set `Status` to `Done`. Notion has no separ
 ### Epics
 
 An epic is a row in the Epics data source, and its page content holds the sections `create-epic`
-asks for. Set `Due` for its end date, and move `Status` to `Active` when its first ticket starts
+asks for. It opens with a short summary, then a `Full spec:` line if the epic has a PRD (see
+[The PRD](#the-prd-its-own-page-linked-from-the-card)). Set `Due` for its end date, and move `Status` to `Active` when its first ticket starts
 and to `Done` when its last one finishes.
 
 To read an epic, fetch the row, then match the URLs in its `Tickets` property against the Tickets

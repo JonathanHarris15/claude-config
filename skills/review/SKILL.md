@@ -38,7 +38,7 @@ Confirm `git rev-parse <fixed-point>` resolves and the diff is non-empty **befor
 
 The spec is the originating ticket, in this order:
 
-1. A ticket key in the branch name or the commit messages (`PROJ-48`). Read the ticket and take its **body** — that is the PRD, and its `## Problem Statement` and `## Acceptance Criteria` are what the Spec axis measures against. [The tracker skill](../tracker/SKILL.md) says where the project's tickets live. Keys look like `PROJ-48` on most tools and `#48` on GitHub.
+1. A ticket key in the branch name or the commit messages (`PROJ-48`). Read the ticket and take its PRD — the body, or the spec page it links to on Notion — and its `## Problem Statement` and `## Acceptance Criteria` are what the Spec axis measures against. [The tracker skill](../tracker/SKILL.md) says where the project's tickets live. Keys look like `PROJ-48` on most tools and `#48` on GitHub.
 2. A path the user passed in.
 3. A spec file under `docs/` matching the branch or feature.
 4. Nothing found: ask. If the user says there is no spec, skip the Spec sub-agent and say so in the report.

@@ -1,10 +1,10 @@
 ---
 name: to-prd
-description: Turn the current conversation context into a PRD written directly onto its ticket — the ticket's own body — then hand off to to-subtasks to break it into sub-tasks. Normally invoked by plan-ticket once a ticket's fog has cleared (via research / prototype / grill-with-docs). The spec step that makes a ticket eligible to leave To Plan, on whatever tracker the project uses.
+description: Turn the current conversation context into a PRD for its ticket — in the ticket's body, or on a spec page the ticket links to when the tracker's backend says so (Notion does) — then hand off to to-subtasks to break it into sub-tasks. Normally invoked by plan-ticket once a ticket's fog has cleared (via research / prototype / grill-with-docs). The spec step that makes a ticket eligible to leave To Plan, on whatever tracker the project uses.
 argument-hint: "Optional: the ticket key this PRD specifies (e.g. PROJ-123)"
 ---
 
-Take the current conversation context and codebase understanding and produce a **PRD** (Product Requirements Document), written **onto the ticket it specifies** — the ticket's own body. A PRD is a *narrative* — the "what and why," not the "how."
+Take the current conversation context and codebase understanding and produce a **PRD** (Product Requirements Document), attached to **the ticket it specifies** — in the ticket's body on most trackers, or on its own spec page that the ticket links to where the backend file says so (Notion). A PRD is a *narrative* — the "what and why," not the "how."
 
 Do NOT interview the user — synthesise what you already know. (If you need to interrogate an unclear ticket first, that's `grill-with-docs`; to shape a whole project, that's `create-epic`.)
 
@@ -16,7 +16,7 @@ Tickets wait in the **`To Plan`** column carrying, at best, a loose brief. `/pla
 To Plan ticket → /plan-ticket → [research | prototype | grill | diagnose] → to-prd → to-subtasks → lands on the board
 ```
 
-So `to-prd` is the **sharpening** step: it takes the loose description the ticket had, plus everything the lane surfaced, and rewrites the **ticket's own body** into a full PRD. The PRD lives **on the ticket** — the ticket *is* the PRD, there is no separate page. The implementation steps that `to-subtasks` creates next are that ticket's **sub-tasks**.
+So `to-prd` is the **sharpening** step: it takes the loose description the ticket had, plus everything the lane surfaced, and turns it into a full PRD. Where the PRD lives is the tracker's call: most keep it in the ticket body, Notion keeps it on a spec page that the card links to with a `Full spec:` line. Either way there is one PRD per ticket, never a second condensed copy. The implementation steps that `to-subtasks` creates next are that ticket's **sub-tasks**.
 
 **"Ticket" means the level-0 card you're speccing** — typed `ticket`, `Story`, `Task` or `Bug` depending on the project. See [BOARD.md](../tracker/BOARD.md).
 
@@ -96,7 +96,7 @@ Anything else.
 
 ### 4. Hand off
 
-Tell the user the ticket key and confirm its body now holds the PRD. If `plan-ticket` called you, hand back to it. Called directly, run `to-subtasks` next, then tell the user `/plan-ticket <KEY>` lands it in `To Do` — `implement` won't take it until then.
+Tell the user the ticket key and confirm where the PRD now lives (its body, or the linked spec page). If `plan-ticket` called you, hand back to it. Called directly, run `to-subtasks` next, then tell the user `/plan-ticket <KEY>` lands it in `To Do` — `implement` won't take it until then.
 
 <tracker-mechanics>
 
@@ -108,8 +108,14 @@ specifies, or offer to file it first with `create-ticket` (or `create-epic` for 
 confirm it exists, reuse its title and vocabulary, and capture the current body so the rewrite
 preserves what should survive.
 
-**Write the PRD onto the ticket** — its body, set to the filled template. This *is* the PRD.
-There is no separate page and no separate condensed spec.
+**Write the PRD where the backend file says.** Most backends: the ticket's body, set to the
+filled template. Notion: a spec page in Docs, linked from the card under a short summary (see
+"The PRD" in [NOTION.md](../tracker/backends/NOTION.md)). Either way there is exactly one PRD,
+never a second condensed copy.
+
+**Speccing an epic.** If the user hands you an epic, not a ticket, the PRD covers the whole
+epic. On Notion it goes on its own spec page linked from the epic, the same way. On trackers
+that keep PRDs in bodies, write it into the epic's body below the sections `create-epic` wrote.
 
 **Readiness — don't move the ticket.** The PRD makes the ticket *specified*, not *ready*.
 Speccing is only half of it: the ticket still needs its sub-tasks (`to-subtasks`), and something
