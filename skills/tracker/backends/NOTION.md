@@ -148,8 +148,8 @@ rewriting it anyway.
 **A trivial ticket's two-line PRD stays in the card body.** A page for two lines is noise.
 
 **An epic can have a PRD too**, when one spec covers several tickets. Same page, same link,
-placed right under the epic's opening summary. Its tickets then only need a PRD of their own if
-the epic's spec doesn't already cover what they build.
+placed right under the epic's opening summary. Each ticket under it still gets its own PRD,
+but that one links to the epic's and only covers what's specific to the ticket.
 
 ### Labels and investigations
 

@@ -113,6 +113,12 @@ filled template. Notion: a spec page in Docs, linked from the card under a short
 "The PRD" in [NOTION.md](../tracker/backends/NOTION.md)). Either way there is exactly one PRD,
 never a second condensed copy.
 
+**When the epic already has a PRD,** the ticket still gets its own, but don't repeat the
+epic's. Link to it near the top ("Builds on the <epic> PRD"), then write only what's specific
+to this ticket: its slice of the problem, its user stories, its decisions, and its acceptance
+criteria. Every template heading stays; a section the epic already covers can be one line
+pointing there. Shorter is better as long as `to-subtasks` and `implement` can work from it.
+
 **Speccing an epic.** If the user hands you an epic, not a ticket, the PRD covers the whole
 epic. On Notion it goes on its own spec page linked from the epic, the same way. On trackers
 that keep PRDs in bodies, write it into the epic's body below the sections `create-epic` wrote.

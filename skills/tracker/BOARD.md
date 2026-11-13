@@ -62,8 +62,8 @@ slipped through anyway, move it back to `To Plan` yourself and say why.
 practice, look for a `## Problem Statement` heading *and* an `## Acceptance Criteria`
 heading. A wall of prose, however long and however lovingly written, is **not** a PRD.
 Most trackers keep the PRD in the ticket body. Notion keeps it on its own spec page that the
-card links to, and a ticket under an epic whose PRD covers it counts as having one. The backend
-file says where to look.
+card links to. The backend file says where to look. Every ticket needs its own PRD, even when
+its epic has one; it can lean on the epic's and stay short (see `to-prd`).
 
 ### Trivial tickets keep the rule, cheaply
 
