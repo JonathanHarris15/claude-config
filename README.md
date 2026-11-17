@@ -9,7 +9,7 @@ My personal Claude Code configuration, synced across machines.
 | `skills/` | Custom skills — a ticket workflow that works on any tracker (`create-ticket` / `create-epic` → `plan-ticket` → `grill-with-docs` → `to-prd` → `to-subtasks` → `implement` → `review`, all resting on `tracker`), plus the two pieces `grill-with-docs` composes (`grilling`, `domain-modeling`), and `tdd`, `diagnose`, `prototype`, `research`, `codebase-design`, `improve-codebase-architecture`, `wizard`, `writing-for-agents`, `retro`, `sync-config`, `wait-what`. |
 | `agents/` | Custom subagents. Markdown with frontmatter; the frontmatter sets the model, tools, and description. |
 | `workflows/` | Multi-agent orchestration scripts. Plain JS that fans out subagents with real control flow — loops, pipelines, adversarial verification. |
-| `mods/` | Mods — code that changes Claude's own interface. `config-map` opens the dashboard; `commit-tree` draws the repo's commit tree. |
+| `mods/` | Mods — plugins loaded on every machine. `config-map` opens the dashboard; `commit-tree` draws the repo's commit tree; `codegraph` starts Codegraph's MCP server. |
 | `dashboard/` | A local page for managing all of this, and for seeing how each thing syncs. It also shows how often each skill gets used. |
 | `hooks/` | Hook scripts. `skill-usage.mjs` logs every skill use, whether you type `/name` or Claude loads it. Run `node ~/.claude/hooks/skill-usage.mjs report` to see every skill with its use count and last date, least used first. |
 | `usage/` | The skill-use logs: one append-only file per machine, so the logs never clash when they sync. Skill files are never touched. On a new machine, run `skill-usage.mjs backfill` once to count past uses from its session transcripts. |
@@ -137,8 +137,9 @@ a failing test it didn't expect is a **stop**, not an obstacle.
 
 ## Mods
 
-A mod is a plugin that changes Claude's own interface rather than what it knows —
-a pane beside the chat, a row above the prompt, a hook on tool calls. Each one is
+A mod is a plugin loaded on every machine — mostly ones that change Claude's own
+interface (a pane beside the chat, a row above the prompt, a hook on tool calls),
+plus MCP servers that should travel with the config. Each one is
 a folder under `mods/`, and `settings.json` loads them with a single
 `CLAUDE_CODE_PLUGIN_DIRS` of `~/.claude/mods` — the folder that holds them, not
 each mod in turn. Every mod inside it loads, so adding one is just adding a
@@ -164,7 +165,16 @@ keys scroll it while the pane has focus, and it re-reads itself every fifteen
 seconds. `/commit-tree` opens it too. Same layout as above, tested with
 `claude plugin test mods/commit-tree`.
 
-Both mods draw on the band above the prompt, which is **one drawing shared by
+**`codegraph`** draws nothing: it is an MCP server carried as a mod, since a
+plugin's `.mcp.json` is the one way an MCP server syncs through this repo.
+`launch.mjs` finds the Codegraph app's bundled `mcp.js` — under `/Applications`
+on a Mac, under `%LOCALAPPDATA%\Programs` or `Program Files` on Windows — and
+runs it; set `CODEGRAPH_MCP` to that file's path if the app lives elsewhere. A
+machine without Codegraph shows the server as failed and nothing else. Its
+tools are named `mcp__plugin_codegraph_codegraph__*`. Don't also add it with
+`claude mcp add`, or it runs twice.
+
+The two buttons draw on the band above the prompt, which is **one drawing shared by
 every mod**: a mod that returns its own tree there replaces what the mods beneath
 it drew. So each one takes what `next(e)` gives it and lays its own row beside it,
 and the buttons sit in a row instead of hiding each other. A new mod that draws
@@ -242,7 +252,9 @@ git check-ignore -v .credentials.json history.jsonl projects/
 
 Note that `~/.claude.json` — one level *up*, outside this repo — holds your user
 ID, machine ID, prompt history, and MCP server configs (which often contain API
-keys). It's out of scope here and should stay that way.
+keys). It's out of scope here and should stay that way. An MCP server with no
+secrets that every machine should have goes in a mod's `.mcp.json` instead, as
+`codegraph` does.
 
 ## Setting up a second machine
 

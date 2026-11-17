@@ -22,7 +22,7 @@ const NOTES = {
   hooks: 'hook scripts',
   usage: 'how often each skill gets used, one log per machine',
   board: 'per-space working notes',
-  mods: 'mods: changes to Claude\'s own interface',
+  mods: 'mods: plugins loaded on every machine',
   plugins: 'installed plugins, fetched per machine',
   'dev-mods': 'mods a session is still writing',
   projects: 'session transcripts and memory',

@@ -1,0 +1,8 @@
+{
+  "name": "codegraph",
+  "version": "0.1.0",
+  "description": "Codegraph's MCP server, started from wherever the Codegraph app is installed",
+  "author": {
+    "name": "Jonathan Harris"
+  }
+}
