@@ -18,6 +18,8 @@ export type Ticket = {
   error?: string
   /** When it was fetched, in ms; a failed fetch is retried after a while. */
   fetchedAt?: number
+  /** A rate-limited fetch, still 'loading', goes again at this time, in ms. */
+  retryAt?: number
 }
 
 declare module 'claude-code' {

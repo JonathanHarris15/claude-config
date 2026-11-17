@@ -130,3 +130,35 @@ test('the ID filter uses the schema name, and a refusal reads as a sentence', as
   expect(err).not.toContain('APIResponseError')
   await ui.unmount()
 })
+
+test('a rate-limited lookup keeps loading and goes again, not an error', async ($, on) => {
+  const clock = mock.clock(on)
+  let limited = true
+  on('fs.read', (_, e) => (String(e.path).endsWith('CLAUDE.md') ? { value: CLAUDE_MD } : { deny: 'missing' }))
+  on('fs.stat', () => ({ deny: 'missing' }))
+  on('fs.list', () => ({ value: [] }))
+  on('env.get', () => ({ value: undefined }))
+  on('store.get', () => ({ value: undefined }))
+  on('store.set', () => ({ value: undefined }))
+  on('mcp.call', (_, e) => {
+    if (e.tool !== 'notion-query-data-sources') return { value: { content: [{ type: 'text', text: JSON.stringify(PAGE) }], isError: false } }
+    if (limited) {
+      const msg = '{"name":"APIResponseError","code":"rate_limited","status":429,"message":"Rate limited. Do not retry this request automatically."}'
+      return { value: { content: [{ type: 'text', text: msg }], isError: true } }
+    }
+    return { value: { content: [{ type: 'text', text: JSON.stringify({ results: [ROW] }) }], isError: false } }
+  })
+  on('session.start', (_, e) => ({ cwd: e.cwd }))
+  await $.session.start({ cwd: '/', surface: 'desktop', isInteractive: true })
+
+  const ui = await $.ui.mount({ ...reply('Next is WARD-48.'), surface: 'desktop' })
+  await clock.advance(1000)
+  expect(await ui.find({ type: 'Text', text: /Loading from Notion/ })).toBeDefined()
+  expect(await ui.find({ type: 'Text', text: /refused/ })).toBeUndefined()
+  limited = false
+  await clock.advance(2000)
+  expect(await ui.find({ type: 'Text', text: /groundwork/ })).toBeUndefined()
+  await clock.advance(4000)
+  expect((await ui.find({ type: 'Text', text: /groundwork/ }))?.text).toContain('groundwork')
+  await ui.unmount()
+})

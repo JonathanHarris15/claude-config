@@ -176,8 +176,11 @@ from any folder. It fetches through the session's own Notion and Jira
 connections, found by the tool they offer, not by name. The card floats over
 the text below the key, or above it near a reply's end; the app clips a
 floating card to its own message, so in a message too short for either it
-opens in place and pushes the text down. Keys inside a table become links,
-with their cards in a "Tickets:" row under the table. Tested with
+opens in place and pushes the text down. A card that opens downward is drawn
+last in its message, since on the desktop anything drawn after it (a list, a
+table) shows through. Keys inside a table become links, with their cards in a
+"Tickets:" row under the table. Lookups go two at a time; one Notion
+rate-limits waits and tries again rather than showing an error. Tested with
 `claude plugin test mods/ticket-peek`.
 
 **`codegraph`** draws nothing: it is an MCP server carried as a mod, since a

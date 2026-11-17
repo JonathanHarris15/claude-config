@@ -1,5 +1,5 @@
 import { atom, read, update } from 'claude-code'
-import type { EngineInterface, Register } from 'claude-code'
+import type { EngineInterface, Register, RenderElement } from 'claude-code'
 
 import type { Ticket, Tracker } from '../types'
 
@@ -16,13 +16,24 @@ import type { Ticket, Tracker } from '../types'
 
 // Bump the shape tag when Ticket's fields change: old cached values are dropped.
 const tickets = atom({ plugin: 'ticket-peek', key: 'tickets' } as const, {}, {
-  shape: 'tickets-2',
+  shape: 'tickets-3',
 })
 
 /** A failed fetch is tried again after this long; a found ticket is kept. */
 const RETRY_MS = 30_000
-const needsFetch = (t: Ticket | undefined) =>
-  !t || (t.state === 'error' && Date.now() - (t.fetchedAt ?? 0) > RETRY_MS)
+const needsFetch = (t: Ticket | undefined, now: number) =>
+  !t ||
+  (t.state === 'error' && now - (t.fetchedAt ?? 0) > RETRY_MS) ||
+  (t.state === 'loading' && now >= (t.retryAt ?? 0))
+
+// A reply can hold a dozen keys, each a few connector calls; sent at once they
+// trip Notion's rate limit. So a few go at a time, and a rate-limited one waits
+// and goes again (the card keeps saying "Loading") instead of failing.
+const MAX_IN_FLIGHT = 2
+const BACKOFF_MS = [5_000, 15_000, 45_000]
+const RATE_LIMITED = /rate.?limit|\b429\b|too many requests|do not retry this request/i
+const attempts = new Map<string, number>()
+const epicTitles = new Map<string, string>()
 
 const STORE_TRACKERS = 'trackers'
 const NOTION_SERVERS = ['claude.ai Notion', 'Notion', 'plugin:design:notion']
@@ -46,8 +57,9 @@ export const register: Register = on => {
     if (e.props.isSummary || !hasKey(text)) return next(e)
 
     const known = await read($, tickets)
+    const now = await $.clock.now()
     const ui = $.ui.resolve(e)
-    return drawMessage(ui, text, known, e.viewport?.columns ?? 100, fillFor(e.surface))
+    return drawMessage(ui, text, known, now, e.viewport?.columns ?? 100)
   })
 }
 
@@ -118,16 +130,38 @@ export function parseConfig(body: string): Tracker[] {
 // ───────────────────────── fetching ─────────────────────────
 
 async function drain($: Dollar) {
-  const keys = [...wanted].filter(k => !inFlight.has(k))
-  wanted.clear()
-  if (keys.length === 0) return
+  if (wanted.size === 0) return
   const known = await read($, tickets)
-  for (const key of keys) {
-    if (!needsFetch(known[key])) continue
+  const now = await $.clock.now()
+  for (const key of [...wanted]) {
+    if (inFlight.has(key) || !needsFetch(known[key], now)) {
+      // A rate-limited key stays queued until its wait is over.
+      if (known[key]?.state !== 'loading') wanted.delete(key)
+      continue
+    }
+    if (inFlight.size >= MAX_IN_FLIGHT) break
+    wanted.delete(key)
     inFlight.add(key)
     void fetchTicket($, key)
-      .catch((err: unknown): Ticket => ({ key, state: 'error', error: plainError(err) }))
-      .then(ticket => update($, tickets, all => ({ ...all, [key]: { ...ticket, fetchedAt: Date.now() } })))
+      .then((ticket): Ticket => {
+        attempts.delete(key)
+        return ticket
+      })
+      .catch((err: unknown): Ticket => {
+        const tries = attempts.get(key) ?? 0
+        if (RATE_LIMITED.test(String(err)) && tries < BACKOFF_MS.length) {
+          attempts.set(key, tries + 1)
+          return { key, state: 'loading', retryAt: now + (BACKOFF_MS[tries] ?? 0) }
+        }
+        attempts.delete(key)
+        return { key, state: 'error', error: plainError(err) }
+      })
+      .then(async ticket => {
+        const at = await $.clock.now()
+        await update($, tickets, all => ({ ...all, [key]: { ...ticket, fetchedAt: at } }))
+        // Queued again only once its wait is written, so no tick sees it bare.
+        if (ticket.state === 'loading') wanted.add(key)
+      })
       .finally(() => inFlight.delete(key))
   }
 }
@@ -242,8 +276,12 @@ async function fetchNotion($: Dollar, key: string, t: Extract<Tracker, { kind: '
   try {
     const epicUrl = (JSON.parse(row['Epic'] ?? '[]') as string[])[0]
     if (epicUrl) {
-      const epic = JSON.parse(await callAny($, 'notion', NOTION_SERVERS, 'notion-fetch', { id: epicUrl }))
-      if (epic.title) place = `In epic: ${epic.title}`
+      let title = epicTitles.get(epicUrl)
+      if (!title) {
+        title = String(JSON.parse(await callAny($, 'notion', NOTION_SERVERS, 'notion-fetch', { id: epicUrl })).title ?? '')
+        if (title) epicTitles.set(epicUrl, title)
+      }
+      if (title) place = `In epic: ${title}`
     }
   } catch {}
 
@@ -354,12 +392,14 @@ export function splitBlocks(text: string) {
   return blocks
 }
 
-// ── The card's fill ──
-// A floating card must hide the text it covers. The desktop and mobile apps
-// paint only design-system names, not terminal theme keys, so `inverseText`
-// came out see-through there; `surface-popover` is the app's own popup fill
-// and follows light and dark mode. The terminal knows its theme keys.
-const fillFor = (surface: string) => (surface === 'terminal' || surface === 'vscode' ? 'inverseText' : 'surface-popover')
+// ── Hiding what a card covers ──
+// A floating card is painted over what comes before it in the tree, and under
+// what comes after: on the desktop a later Markdown block (a list, a table)
+// shows through it. So a card that opens downward is not drawn beside its
+// line but at the end of a box holding everything after that line: it sits
+// right under the line and is painted last. `inverseText` is the page's own
+// ground on every surface, so the card reads as solid.
+const CARD_FILL = 'inverseText'
 
 // ── Where a card opens ──
 // The desktop clips a floating card to its own message. So a card floats over
@@ -384,7 +424,7 @@ function blockRows(block: { kind: string; lines: string[]; gapBefore: boolean },
   return body + (block.gapBefore ? 1 : 0) + (block.kind === 'table' ? 1 : 0)
 }
 
-function drawMessage(ui: Ui, text: string, known: Record<string, Ticket>, cols: number, fill: string) {
+function drawMessage(ui: Ui, text: string, known: Record<string, Ticket>, now: number, cols: number) {
   const { Box, Markdown } = ui
   const blocks = splitBlocks(text)
   const heights = blocks.map(b => blockRows(b, cols))
@@ -397,17 +437,19 @@ function drawMessage(ui: Ui, text: string, known: Record<string, Ticket>, cols: 
   const salt = hash(text)
   let n = 0
   const chipFor = (label: string, key: string): Chip => {
-    if (needsFetch(known[key])) wanted.add(key)
+    if (needsFetch(known[key], now)) wanted.add(key)
     return { label, key, scope: `tp:${salt}:${n++}` }
   }
 
-  const rows = blocks.map((block, i) => {
+  type Drawn = { node: RenderElement; below: RenderElement[] }
+  const plain = (node: RenderElement): Drawn => ({ node, below: [] })
+  const rows: Drawn[] = blocks.map((block, i): Drawn => {
     const mt = block.gapBefore ? 1 : 0
     const rowsHere = heights[i] ?? 1
     const above = before + mt
     before += rowsHere
     const below = total - before
-    if (block.kind === 'md') return <Box marginTop={mt}><Markdown text={block.lines.join('\n')} /></Box>
+    if (block.kind === 'md') return plain(<Box marginTop={mt}><Markdown text={block.lines.join('\n')} /></Box>)
     if (block.kind === 'table') {
       const chips: Chip[] = []
       const seen = new Set<string>()
@@ -425,21 +467,34 @@ function drawMessage(ui: Ui, text: string, known: Record<string, Ticket>, cols: 
           }),
         )
         .join('\n')
-      if (chips.length === 0) return <Box marginTop={mt}><Markdown text={md} /></Box>
-      return (
-        <Box marginTop={mt} flexDirection="column">
-          <Markdown text={md} />
-          {drawLine(ui, [{ text: 'Tickets: ', dim: true }, ...chips.flatMap((c, i) => (i ? [{ text: '  ' }, c] : [c]))], chips, known, placer(above + rowsHere - mt - 1, below), fill)}
-        </Box>
-      )
+      if (chips.length === 0) return plain(<Box marginTop={mt}><Markdown text={md} /></Box>)
+      const row = drawLine(ui, [{ text: 'Tickets: ', dim: true }, ...chips.flatMap((c, i) => (i ? [{ text: '  ' }, c] : [c]))], chips, known, placer(above + rowsHere - mt - 1, below))
+      return {
+        node: (
+          <Box marginTop={mt} flexDirection="column">
+            <Markdown text={md} />
+            {row.node}
+          </Box>
+        ),
+        below: row.below,
+      }
     }
     const line = block.lines[0] ?? ''
     const parts = parseLine(line, chipFor)
     const chips = parts.filter((p): p is Chip & Seg => 'scope' in p)
-    return <Box marginTop={mt}>{drawLine(ui, parts, chips, known, placer(above - mt, below + rowsHere - mt - 1), fill)}</Box>
+    const drawn = drawLine(ui, parts, chips, known, placer(above - mt, below + rowsHere - mt - 1))
+    return { node: <Box marginTop={mt}>{drawn.node}</Box>, below: drawn.below }
   })
 
-  return <Box flexDirection="column">{rows}</Box>
+  // Folded from the end: each block, then a box of everything after it whose
+  // last children are that block's downward cards, so they paint over it all.
+  let tail: RenderElement | null = null
+  for (let i = rows.length - 1; i >= 0; i--) {
+    const { node, below } = rows[i]!
+    const after = tail || below.length ? <Box flexDirection="column">{tail}{below}</Box> : null
+    tail = <Box flexDirection="column">{node}{after}</Box>
+  }
+  return tail ?? <Box />
 }
 
 type Seg = { text?: string; bold?: boolean; italic?: boolean; mono?: boolean; dim?: boolean; href?: string; heading?: boolean }
@@ -500,7 +555,8 @@ function linkFor(key: string, known: Record<string, Ticket>) {
   return tr?.home
 }
 
-function drawLine(ui: Ui, parts: Part[], chips: Chip[], known: Record<string, Ticket>, place: (c: Chip) => Place, fill: string) {
+/** A line of segments and chips; its downward cards come back apart, for the caller to paint last. */
+function drawLine(ui: Ui, parts: Part[], chips: Chip[], known: Record<string, Ticket>, place: (c: Chip) => Place) {
   const { Box, Text, Link } = ui
   const segs = parts.map(p => {
     const style = { bold: p.bold, italic: p.italic, mono: p.mono, dimColor: p.dim, size: p.heading ? ('heading' as const) : undefined }
@@ -515,20 +571,21 @@ function drawLine(ui: Ui, parts: Part[], chips: Chip[], known: Record<string, Ti
     if (p.href) return <Text {...style}><Link href={p.href}>{p.text ?? ''}</Link></Text>
     return <Text {...style}>{p.text ?? ''}</Text>
   })
-  const at = (where: Place) => chips.filter(c => place(c) === where).map(c => drawCard(ui, c, known[c.key], where, fill))
+  const at = (where: Place) => chips.filter(c => place(c) === where).map(c => drawCard(ui, c, known[c.key], where))
   const above = at('above')
-  const below = at('below')
-  return (
-    <Box flexDirection="column">
-      {above.length ? <Box height={0}>{above}</Box> : null}
-      <Text>{segs}</Text>
-      {below.length ? <Box height={0}>{below}</Box> : null}
-      {at('flow')}
-    </Box>
-  )
+  return {
+    node: (
+      <Box flexDirection="column">
+        {above.length ? <Box height={0}>{above}</Box> : null}
+        <Text>{segs}</Text>
+        {at('flow')}
+      </Box>
+    ),
+    below: at('below'),
+  }
 }
 
-function drawCard(ui: Ui, chip: Chip, t: Ticket | undefined, where: Place, fill: string) {
+function drawCard(ui: Ui, chip: Chip, t: Ticket | undefined, where: Place) {
   const { Box, Text } = ui
   const tool = trackers[chip.key.split('-')[0] ?? '']?.kind === 'jira' ? 'Jira' : 'Notion'
   const meta = [t?.status, t?.type, t?.priority && `${t.priority} priority`].filter(Boolean).join(' · ')
@@ -537,8 +594,8 @@ function drawCard(ui: Ui, chip: Chip, t: Ticket | undefined, where: Place, fill:
       {...(where === 'flow'
         ? { marginLeft: 2 }
         : where === 'below'
-          ? { position: 'absolute' as const, top: 0, left: 2, backgroundColor: fill }
-          : { position: 'absolute' as const, bottom: 0, left: 2, backgroundColor: fill })}
+          ? { position: 'absolute' as const, top: 0, left: 2, backgroundColor: CARD_FILL }
+          : { position: 'absolute' as const, bottom: 0, left: 2, backgroundColor: CARD_FILL })}
       width={64}
       display="none"
       hover={{ scope: chip.scope, display: 'flex' }}
@@ -567,3 +624,4 @@ function hash(s: string) {
   for (let i = 0; i < s.length; i++) acc = ((acc << 5) + acc + s.charCodeAt(i)) | 0
   return (acc >>> 0).toString(36)
 }
+
