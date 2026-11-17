@@ -27,3 +27,7 @@
 {"skill":"sync-config","by":"claude","at":"2026-11-17T19:47:29.809Z","session":"a22a5db0-3a61-455d-acba-46ee836eb838"}
 {"skill":"implement","by":"claude","at":"2026-11-17T20:14:08.103Z","session":"498aca77-ac1c-41d0-8499-8f5c6f3a035d"}
 {"skill":"review","by":"claude","at":"2026-11-17T20:32:36.976Z","session":"498aca77-ac1c-41d0-8499-8f5c6f3a035d"}
+{"skill":"tracker","by":"claude","at":"2026-11-17T21:53:10.181Z","session":"a385a01a-b367-410a-8972-07394fde91da"}
+{"skill":"plan-ticket","by":"claude","at":"2026-11-17T22:01:31.356Z","session":"a385a01a-b367-410a-8972-07394fde91da"}
+{"skill":"to-prd","by":"claude","at":"2026-11-17T22:06:22.469Z","session":"a385a01a-b367-410a-8972-07394fde91da"}
+{"skill":"to-subtasks","by":"claude","at":"2026-11-17T22:08:22.008Z","session":"a385a01a-b367-410a-8972-07394fde91da"}
