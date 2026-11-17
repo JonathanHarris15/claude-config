@@ -419,8 +419,21 @@ export function cardRows(key: string, t: Ticket | undefined) {
   return 2 + rowsOf(`${key} · ${t?.title ?? ''}`, CARD_COLS) + 1 + r(status) + r(t?.place) + r(t?.brief) + 1
 }
 
+/**
+ * A markdown line as a reader sees it: a link is its label (a long URL behind
+ * a short label once made a card think it had room below and get clipped),
+ * and emphasis marks, tags and heading or quote marks take no room.
+ */
+export function shown(line: string) {
+  return line
+    .replace(/!?\[([^\]]*)\]\([^)]*\)/g, '$1')
+    .replace(/<[^>]+>/g, '')
+    .replace(/\*\*|__|~~|`/g, '')
+    .replace(/^\s*(#{1,6}|>)\s+/, '')
+}
+
 function blockRows(block: { kind: string; lines: string[]; gapBefore: boolean }, cols: number) {
-  const body = block.lines.reduce((n, l) => n + (l.trim() === '' || block.kind === 'table' ? 1 : rowsOf(l, cols)), 0)
+  const body = block.lines.reduce((n, l) => n + (l.trim() === '' || block.kind === 'table' ? 1 : rowsOf(shown(l), cols)), 0)
   return body + (block.gapBefore ? 1 : 0) + (block.kind === 'table' ? 1 : 0)
 }
 

@@ -162,3 +162,34 @@ test('a rate-limited lookup keeps loading and goes again, not an error', async (
   expect((await ui.find({ type: 'Text', text: /groundwork/ }))?.text).toContain('groundwork')
   await ui.unmount()
 })
+
+test('a long link near the end counts as its label, so the card opens upward', async ($, on) => {
+  mock.clock(on)
+  on('fs.read', (_, e) => (String(e.path).endsWith('CLAUDE.md') ? { value: CLAUDE_MD } : { deny: 'missing' }))
+  on('fs.stat', () => ({ deny: 'missing' }))
+  on('env.get', () => ({ value: undefined }))
+  on('store.get', () => ({ value: undefined }))
+  on('store.set', () => ({ value: undefined }))
+  on('session.start', (_, e) => ({ cwd: e.cwd }))
+  await $.session.start({ cwd: '/', surface: 'desktop', isInteractive: true })
+
+  const filler = Array.from({ length: 12 }, (_, i) => `Line ${i} of the reply above the key.`).join('\n\n')
+  const longLink = `[Try it free](https://example.com/upsell?${'x'.repeat(700)})`
+  const text = `${filler}\n\n- The epic still links WARD-48, a deleted ticket.\n- A search limit is used up. ${longLink}.`
+  const ui = await $.ui.mount({ ...reply(text), surface: 'desktop', viewport: { columns: 100, rows: 40 } } as any)
+
+  type Node = { type?: string; props?: Record<string, unknown>; children?: unknown }
+  const cards: Record<string, unknown>[] = []
+  const walk = (n: unknown) => {
+    if (Array.isArray(n)) return n.forEach(walk)
+    if (!n || typeof n !== 'object') return
+    const node = n as Node
+    if (node.props?.position === 'absolute') cards.push(node.props)
+    walk(node.children ?? node.props?.children)
+  }
+  walk(await ui.drawn())
+  expect(cards.length).toBe(1)
+  expect(cards[0]?.bottom).toBe(0)
+  expect(cards[0]?.top).toBeUndefined()
+  await ui.unmount()
+})
