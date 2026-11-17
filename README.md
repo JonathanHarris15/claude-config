@@ -9,7 +9,7 @@ My personal Claude Code configuration, synced across machines.
 | `skills/` | Custom skills — a ticket workflow that works on any tracker (`create-ticket` / `create-epic` → `plan-ticket` → `grill-with-docs` → `to-prd` → `to-subtasks` → `implement` → `review`, all resting on `tracker`), plus the two pieces `grill-with-docs` composes (`grilling`, `domain-modeling`), and `tdd`, `diagnose`, `prototype`, `research`, `codebase-design`, `improve-codebase-architecture`, `wizard`, `writing-for-agents`, `retro`, `sync-config`, `wait-what`. |
 | `agents/` | Custom subagents. Markdown with frontmatter; the frontmatter sets the model, tools, and description. |
 | `workflows/` | Multi-agent orchestration scripts. Plain JS that fans out subagents with real control flow — loops, pipelines, adversarial verification. |
-| `mods/` | Mods — plugins loaded on every machine. `config-map` opens the dashboard; `commit-tree` draws the repo's commit tree; `codegraph` starts Codegraph's MCP server. |
+| `mods/` | Mods — plugins loaded on every machine. `config-map` opens the dashboard; `commit-tree` draws the repo's commit tree; `ticket-peek` turns ticket keys in Claude's replies into links with a hover card; `codegraph` starts Codegraph's MCP server. |
 | `dashboard/` | A local page for managing all of this, and for seeing how each thing syncs. It also shows how often each skill gets used. |
 | `hooks/` | Hook scripts. `skill-usage.mjs` logs every skill use, whether you type `/name` or Claude loads it. Run `node ~/.claude/hooks/skill-usage.mjs report` to see every skill with its use count and last date, least used first. |
 | `usage/` | The skill-use logs: one append-only file per machine, so the logs never clash when they sync. Skill files are never touched. On a new machine, run `skill-usage.mjs backfill` once to count past uses from its session transcripts. |
@@ -164,6 +164,21 @@ row labelled with its hash, date, branch and tag names, and subject. The arrow
 keys scroll it while the pane has focus, and it re-reads itself every fifteen
 seconds. `/commit-tree` opens it too. Same layout as above, tested with
 `claude plugin test mods/commit-tree`.
+
+**`ticket-peek`** changes how Claude's replies draw: a ticket key (`WARD-48`,
+`METH-58`, or the sub-task form `METH-56(325)`) becomes a link to the ticket,
+and hovering it shows a card with the title, status, type, priority, where it
+sits (its epic, or the card a sub-task is inside) and the first paragraph of
+the ticket. It learns which prefixes are tickets from each project's
+`tracker-config` or `jira-config` block in its `CLAUDE.md` — the session's
+folder, its sibling folders and `~/dev/*` — and remembers them, so it works
+from any folder. It fetches through the session's own Notion and Jira
+connections, found by the tool they offer, not by name. The card floats over
+the text below the key, or above it near a reply's end; the app clips a
+floating card to its own message, so in a message too short for either it
+opens in place and pushes the text down. Keys inside a table become links,
+with their cards in a "Tickets:" row under the table. Tested with
+`claude plugin test mods/ticket-peek`.
 
 **`codegraph`** draws nothing: it is an MCP server carried as a mod, since a
 plugin's `.mcp.json` is the one way an MCP server syncs through this repo.

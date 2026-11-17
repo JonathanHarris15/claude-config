@@ -15,3 +15,12 @@
 {"skill":"to-subtasks","by":"claude","at":"2026-11-17T15:42:03.706Z","session":"e08748ab-53f7-4d79-b165-baf6807d2ffa"}
 {"skill":"implement","by":"claude","at":"2026-11-17T15:48:12.233Z","session":"e08748ab-53f7-4d79-b165-baf6807d2ffa"}
 {"skill":"sync-config","by":"claude","at":"2026-11-17T15:50:00.790Z","session":"6035e936-705d-4164-893a-9b35e7460421"}
+{"skill":"review","by":"claude","at":"2026-11-17T15:59:36.290Z","session":"e08748ab-53f7-4d79-b165-baf6807d2ffa"}
+{"skill":"plan-ticket","by":"you","at":"2026-11-17T16:35:28.784Z","session":"e08748ab-53f7-4d79-b165-baf6807d2ffa"}
+{"skill":"plan-ticket","by":"you","at":"2026-11-17T16:35:40.819Z","session":"e08748ab-53f7-4d79-b165-baf6807d2ffa"}
+{"skill":"implement","by":"claude","at":"2026-11-17T16:42:53.027Z","session":"e08748ab-53f7-4d79-b165-baf6807d2ffa"}
+{"skill":"review","by":"claude","at":"2026-11-17T16:49:40.180Z","session":"e08748ab-53f7-4d79-b165-baf6807d2ffa"}
+{"skill":"plugin-authoring","by":"claude","at":"2026-11-17T19:17:22.265Z","session":"a22a5db0-3a61-455d-acba-46ee836eb838"}
+{"skill":"anthropic-skills:computer-use","by":"claude","at":"2026-11-17T19:25:15.935Z","session":"a22a5db0-3a61-455d-acba-46ee836eb838"}
+{"skill":"tracker","by":"claude","at":"2026-11-17T19:26:14.997Z","session":"498aca77-ac1c-41d0-8499-8f5c6f3a035d"}
+{"skill":"plan-ticket","by":"claude","at":"2026-11-17T19:26:47.456Z","session":"498aca77-ac1c-41d0-8499-8f5c6f3a035d"}
