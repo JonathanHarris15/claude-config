@@ -42,5 +42,8 @@ specific rules belong in that project's own `CLAUDE.md`, not here.
 - Visual work (mockups, canvases, pages): render it and look before handing it
   back, even when a tool or template says not to. Fix what looks wrong first.
 - You must care deeply about the long term health of the codebase.
+- Once a branch is merged, delete it on the remote and locally, in the same turn,
+  and bring local `main` up to date. A worktree that has it checked out switches
+  back to its own branch first.
 - When I tell you how I want you to work, add it to this file, not to memory.
   This file syncs to all my machines; memory stays on the one it was saved on.
