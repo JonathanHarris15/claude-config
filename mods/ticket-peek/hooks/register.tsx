@@ -47,7 +47,7 @@ export const register: Register = on => {
 
     const known = await read($, tickets)
     const ui = $.ui.resolve(e)
-    return drawMessage(ui, text, known, e.viewport?.columns ?? 100)
+    return drawMessage(ui, text, known, e.viewport?.columns ?? 100, fillFor(e.surface))
   })
 }
 
@@ -126,10 +126,23 @@ async function drain($: Dollar) {
     if (!needsFetch(known[key])) continue
     inFlight.add(key)
     void fetchTicket($, key)
-      .catch((err: unknown): Ticket => ({ key, state: 'error', error: String(err).replace(/^Error: /, '').slice(0, 200) }))
+      .catch((err: unknown): Ticket => ({ key, state: 'error', error: plainError(err) }))
       .then(ticket => update($, tickets, all => ({ ...all, [key]: { ...ticket, fetchedAt: Date.now() } })))
       .finally(() => inFlight.delete(key))
   }
+}
+
+/**
+ * A connector's error as one short sentence. They often arrive as a JSON
+ * blob (`{"name":"APIResponseError",…,"message":"…"}`), cut off before the
+ * part a person can read, so the message is pulled out of it.
+ */
+export function plainError(err: unknown): string {
+  const raw = String(err instanceof Error ? err.message : err).replace(/^Error: /, '')
+  const quoted = raw.match(/"message"\s*:\s*"((?:[^"\\]|\\.)*)"/g)?.pop()
+  const message = quoted ? quoted.replace(/^"message"\s*:\s*"/, '').replace(/"$/, '').replace(/\\(.)/g, '$1') : raw
+  const short = message.replace(/^Failed to execute query: /, '').split(/(?<=\.)\s/)[0] ?? message
+  return short.length > 160 ? `${short.slice(0, 157).trimEnd()}…` : short
 }
 
 async function fetchTicket($: Dollar, key: string): Promise<Ticket> {
@@ -169,33 +182,53 @@ async function callAny($: Dollar, kind: string, names: string[], tool: string, a
       const res = await $.mcp.call(server, tool, args as Record<string, unknown>)
       const text = res.content.map((c: { type: string; text?: string }) => c.text ?? '').join('')
       if (res.isError) {
-        failures.push(text.slice(0, 160))
+        failures.push(text)
         continue
       }
       serverFor[kind] = server
       return text
     } catch (err) {
       const msg = String(err)
-      if (!/no connected MCP tool/.test(msg)) failures.push(msg.replace(/^.*\$\.mcp\.call: /, '').slice(0, 160))
+      if (!/no connected MCP tool/.test(msg)) failures.push(msg.replace(/^.*\$\.mcp\.call: /, ''))
     }
   }
   throw new Error(failures[0] ?? `no connected server offers ${tool}`)
 }
 
+// Notion's schema names a property called "ID" `userDefined:ID` (the bare name
+// is kept for its own system id), and its filters want the schema's name.
+// Older connectors took the bare name, so it stays as the fallback.
+const ID_PROPERTIES = ['userDefined:ID', 'ID']
+let idProperty: string | undefined
+
+async function queryById($: Dollar, dataSource: string, n: number) {
+  const order = idProperty ? [idProperty] : ID_PROPERTIES
+  let failure: unknown
+  for (const property of order) {
+    try {
+      const raw = await callAny($, 'notion', NOTION_SERVERS, 'notion-query-data-sources', {
+        data: {
+          mode: 'rows',
+          data_source_url: dataSource,
+          filter: {
+            type: 'group',
+            operator: 'and',
+            filters: [{ type: 'property', property, propertyType: 'auto_increment_id', operator: 'number_equals', value: { type: 'exact', value: n } }],
+          },
+          limit: 1,
+        },
+      })
+      idProperty = property
+      return raw
+    } catch (err) {
+      failure ??= err
+    }
+  }
+  throw failure
+}
+
 async function fetchNotion($: Dollar, key: string, t: Extract<Tracker, { kind: 'notion' }>): Promise<Ticket> {
-  const n = Number(key.split('-')[1])
-  const raw = await callAny($, 'notion', NOTION_SERVERS, 'notion-query-data-sources', {
-    data: {
-      mode: 'rows',
-      data_source_url: t.dataSource,
-      filter: {
-        type: 'group',
-        operator: 'and',
-        filters: [{ type: 'property', property: 'ID', propertyType: 'auto_increment_id', operator: 'number_equals', value: { type: 'exact', value: n } }],
-      },
-      limit: 1,
-    },
-  })
+  const raw = await queryById($, t.dataSource, Number(key.split('-')[1]))
   const row = (JSON.parse(raw).results ?? [])[0] as Record<string, string> | undefined
   if (!row) return { key, state: 'missing', url: t.home }
 
@@ -321,6 +354,13 @@ export function splitBlocks(text: string) {
   return blocks
 }
 
+// ── The card's fill ──
+// A floating card must hide the text it covers. The desktop and mobile apps
+// paint only design-system names, not terminal theme keys, so `inverseText`
+// came out see-through there; `surface-popover` is the app's own popup fill
+// and follows light and dark mode. The terminal knows its theme keys.
+const fillFor = (surface: string) => (surface === 'terminal' || surface === 'vscode' ? 'inverseText' : 'surface-popover')
+
 // ── Where a card opens ──
 // The desktop clips a floating card to its own message. So a card floats over
 // the text below its key when the message has room there, else over the text
@@ -335,7 +375,7 @@ const rowsOf = (s: string, cols: number) => Math.max(1, Math.ceil(s.length / Mat
 
 export function cardRows(key: string, t: Ticket | undefined) {
   const r = (s?: string) => (s ? rowsOf(s, CARD_COLS) : 0)
-  const status = !t || t.state === 'ok' ? '' : t.state === 'error' ? `Could not reach Notion: ${t.error}` : 'Not found'
+  const status = !t || t.state === 'ok' ? '' : t.state === 'error' ? `Notion refused the lookup: ${t.error}` : 'Not found'
   return 2 + rowsOf(`${key} · ${t?.title ?? ''}`, CARD_COLS) + 1 + r(status) + r(t?.place) + r(t?.brief) + 1
 }
 
@@ -344,7 +384,7 @@ function blockRows(block: { kind: string; lines: string[]; gapBefore: boolean },
   return body + (block.gapBefore ? 1 : 0) + (block.kind === 'table' ? 1 : 0)
 }
 
-function drawMessage(ui: Ui, text: string, known: Record<string, Ticket>, cols: number) {
+function drawMessage(ui: Ui, text: string, known: Record<string, Ticket>, cols: number, fill: string) {
   const { Box, Markdown } = ui
   const blocks = splitBlocks(text)
   const heights = blocks.map(b => blockRows(b, cols))
@@ -385,17 +425,18 @@ function drawMessage(ui: Ui, text: string, known: Record<string, Ticket>, cols: 
           }),
         )
         .join('\n')
+      if (chips.length === 0) return <Box marginTop={mt}><Markdown text={md} /></Box>
       return (
         <Box marginTop={mt} flexDirection="column">
           <Markdown text={md} />
-          {drawLine(ui, [{ text: 'Tickets: ', dim: true }, ...chips.flatMap((c, i) => (i ? [{ text: '  ' }, c] : [c]))], chips, known, placer(above + rowsHere - mt - 1, below))}
+          {drawLine(ui, [{ text: 'Tickets: ', dim: true }, ...chips.flatMap((c, i) => (i ? [{ text: '  ' }, c] : [c]))], chips, known, placer(above + rowsHere - mt - 1, below), fill)}
         </Box>
       )
     }
     const line = block.lines[0] ?? ''
     const parts = parseLine(line, chipFor)
     const chips = parts.filter((p): p is Chip & Seg => 'scope' in p)
-    return <Box marginTop={mt}>{drawLine(ui, parts, chips, known, placer(above - mt, below + rowsHere - mt - 1))}</Box>
+    return <Box marginTop={mt}>{drawLine(ui, parts, chips, known, placer(above - mt, below + rowsHere - mt - 1), fill)}</Box>
   })
 
   return <Box flexDirection="column">{rows}</Box>
@@ -459,7 +500,7 @@ function linkFor(key: string, known: Record<string, Ticket>) {
   return tr?.home
 }
 
-function drawLine(ui: Ui, parts: Part[], chips: Chip[], known: Record<string, Ticket>, place: (c: Chip) => Place) {
+function drawLine(ui: Ui, parts: Part[], chips: Chip[], known: Record<string, Ticket>, place: (c: Chip) => Place, fill: string) {
   const { Box, Text, Link } = ui
   const segs = parts.map(p => {
     const style = { bold: p.bold, italic: p.italic, mono: p.mono, dimColor: p.dim, size: p.heading ? ('heading' as const) : undefined }
@@ -474,7 +515,7 @@ function drawLine(ui: Ui, parts: Part[], chips: Chip[], known: Record<string, Ti
     if (p.href) return <Text {...style}><Link href={p.href}>{p.text ?? ''}</Link></Text>
     return <Text {...style}>{p.text ?? ''}</Text>
   })
-  const at = (where: Place) => chips.filter(c => place(c) === where).map(c => drawCard(ui, c, known[c.key], where))
+  const at = (where: Place) => chips.filter(c => place(c) === where).map(c => drawCard(ui, c, known[c.key], where, fill))
   const above = at('above')
   const below = at('below')
   return (
@@ -487,7 +528,7 @@ function drawLine(ui: Ui, parts: Part[], chips: Chip[], known: Record<string, Ti
   )
 }
 
-function drawCard(ui: Ui, chip: Chip, t: Ticket | undefined, where: Place) {
+function drawCard(ui: Ui, chip: Chip, t: Ticket | undefined, where: Place, fill: string) {
   const { Box, Text } = ui
   const tool = trackers[chip.key.split('-')[0] ?? '']?.kind === 'jira' ? 'Jira' : 'Notion'
   const meta = [t?.status, t?.type, t?.priority && `${t.priority} priority`].filter(Boolean).join(' · ')
@@ -496,8 +537,8 @@ function drawCard(ui: Ui, chip: Chip, t: Ticket | undefined, where: Place) {
       {...(where === 'flow'
         ? { marginLeft: 2 }
         : where === 'below'
-          ? { position: 'absolute' as const, top: 0, left: 2, backgroundColor: 'inverseText' }
-          : { position: 'absolute' as const, bottom: 0, left: 2, backgroundColor: 'inverseText' })}
+          ? { position: 'absolute' as const, top: 0, left: 2, backgroundColor: fill }
+          : { position: 'absolute' as const, bottom: 0, left: 2, backgroundColor: fill })}
       width={64}
       display="none"
       hover={{ scope: chip.scope, display: 'flex' }}
@@ -512,7 +553,7 @@ function drawCard(ui: Ui, chip: Chip, t: Ticket | undefined, where: Place) {
       </Text>
       {!t || t.state === 'loading' ? <Text dimColor>Loading from {tool}…</Text> : null}
       {t?.state === 'missing' ? <Text dimColor>Not found in {tool}.</Text> : null}
-      {t?.state === 'error' ? <Text color="error">Could not reach {tool}: {t.error}</Text> : null}
+      {t?.state === 'error' ? <Text color="error">{tool} refused the lookup: {t.error}</Text> : null}
       {meta ? <Text dimColor>{meta}</Text> : null}
       {t?.place ? <Text dimColor>{t.place}</Text> : null}
       {t?.brief ? <Text>{t.brief}</Text> : null}

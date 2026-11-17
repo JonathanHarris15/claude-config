@@ -82,3 +82,51 @@ test('a reply with no known key draws as the engine draws it', async ($, on) => 
   expect((await ui.find({ type: 'Text' }))?.text).toBe('engine')
   await ui.unmount()
 })
+
+test('a table with no ticket keys gets no empty chip row', async ($, on) => {
+  mock.clock(on)
+  on('fs.read', (_, e) => (String(e.path).endsWith('CLAUDE.md') ? { value: CLAUDE_MD } : { deny: 'missing' }))
+  on('fs.stat', () => ({ deny: 'missing' }))
+  on('env.get', () => ({ value: undefined }))
+  on('store.get', () => ({ value: undefined }))
+  on('store.set', () => ({ value: undefined }))
+  on('session.start', (_, e) => ({ cwd: e.cwd }))
+  await $.session.start({ cwd: '/', surface: 'desktop', isInteractive: true })
+
+  const ui = await $.ui.mount({ ...reply('WARD-13 is finished:\n\n| Check | State |\n| --- | --- |\n| Code | merged |'), surface: 'desktop' })
+  expect(await ui.find({ type: 'Text', text: /Tickets:/ })).toBeUndefined()
+  await ui.unmount()
+})
+
+test('the ID filter uses the schema name, and a refusal reads as a sentence', async ($, on) => {
+  const clock = mock.clock(on)
+  const tried: string[] = []
+  on('fs.read', (_, e) => (String(e.path).endsWith('CLAUDE.md') ? { value: CLAUDE_MD } : { deny: 'missing' }))
+  on('fs.stat', () => ({ deny: 'missing' }))
+  on('fs.list', () => ({ value: [] }))
+  on('env.get', () => ({ value: undefined }))
+  on('store.get', () => ({ value: undefined }))
+  on('store.set', () => ({ value: undefined }))
+  on('mcp.call', (_, e) => {
+    if (e.tool !== 'notion-query-data-sources') return { value: { content: [{ type: 'text', text: JSON.stringify(PAGE) }], isError: false } }
+    const property = (e.args as any).data.filter.filters[0].property as string
+    tried.push(property)
+    const n = (e.args as any).data.filter.filters[0].value.value as number
+    if (n === 99) {
+      const msg = `{"name":"APIResponseError","code":"validation_error","status":400,"body":"{}","message":"Failed to execute query: Cannot apply the filter on ${property}. Use property names and types from the data source schema."}`
+      return { value: { content: [{ type: 'text', text: msg }], isError: true } }
+    }
+    return { value: { content: [{ type: 'text', text: JSON.stringify({ results: [ROW] }) }], isError: false } }
+  })
+  on('session.start', (_, e) => ({ cwd: e.cwd }))
+  await $.session.start({ cwd: '/', surface: 'desktop', isInteractive: true })
+
+  const ui = await $.ui.mount({ ...reply('See WARD-48 and WARD-99.'), surface: 'desktop' })
+  await clock.advance(1000)
+  expect(tried[0]).toBe('userDefined:ID')
+  expect((await ui.find({ type: 'Text', text: /groundwork/ }))?.text).toContain('groundwork')
+  const err = (await ui.find({ type: 'Text', text: /refused the lookup/ }))?.text ?? ''
+  expect(err).toContain('Cannot apply the filter on')
+  expect(err).not.toContain('APIResponseError')
+  await ui.unmount()
+})
