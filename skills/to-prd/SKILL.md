@@ -16,7 +16,7 @@ Tickets wait in the **`To Plan`** column carrying, at best, a loose brief. `/pla
 To Plan ticket → /plan-ticket → [research | prototype | grill | diagnose] → to-prd → to-subtasks → lands on the board
 ```
 
-So `to-prd` is the **sharpening** step: it takes the loose description the ticket had, plus everything the lane surfaced, and turns it into a full PRD. Where the PRD lives is the tracker's call: most keep it in the ticket body, Notion keeps it on a spec page that the card links to with a `Full spec:` line. Either way there is one PRD per ticket, never a second condensed copy. The implementation steps that `to-subtasks` creates next are that ticket's **sub-tasks**.
+So `to-prd` is the **sharpening** step: it takes the loose description the ticket had, plus everything the lane surfaced, and turns it into a full PRD. Where the PRD lives is the tracker's call: most keep it in the ticket body, Notion keeps it on a spec page that the card links to through its `PRD` property. Either way there is one PRD per ticket, never a second condensed copy. The implementation steps that `to-subtasks` creates next are that ticket's **sub-tasks**.
 
 **"Ticket" means the level-0 card you're speccing** — typed `ticket`, `Story`, `Task` or `Bug` depending on the project. See [BOARD.md](../tracker/BOARD.md).
 

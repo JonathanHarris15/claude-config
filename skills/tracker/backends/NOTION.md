@@ -61,7 +61,8 @@ Every page you write goes in the Docs data source with `From` set to `Claude`. P
 | ADR | `Decision` | `0007 — Short title`. Also set `Date` to today |
 | Glossary | `Spec` | `Glossary`, or `Glossary — Desktop` when the project has several contexts |
 | Research write-up | `Research` | What it answers |
-| PRD | `Spec` | `<ticket or epic name> PRD`. See [The PRD](#the-prd-its-own-page-linked-from-the-card) |
+| Ticket PRD | `Spec` | `<key> PRD (<brief>)`, such as `WARD-22 PRD (Dress codes)`. See [The PRD](#the-prd-its-own-page-linked-from-the-card) |
+| Epic PRD | `Spec` | `<epic key> PRD (<brief>)`, such as `WARD-E-3 PRD (Mobile app UI)`. See [Epics](#epics) |
 | Other spec or plan | `Spec` / `Plan` | What it is |
 
 **Finding them.** Read the Docs `Default view` and pick rows by `Kind` and `Name`, then fetch the pages
@@ -94,6 +95,7 @@ A ticket is a row in the Tickets data source, and its page content is the body.
 | `Priority`, `Due` | As set. Write a due date as `date:Due:start` |
 | `Assignee` | Who holds it |
 | `PR` | The pull request's URL |
+| `PRD` | The ticket's spec page in Docs, if it has one. See [The PRD](#the-prd-its-own-page-linked-from-the-card) |
 | `ID` | The key. A view returns `12`, and a fetched page returns `GRD-12` |
 
 Set `Epic` and `Blocked by` to an array of page URLs.
@@ -129,27 +131,34 @@ the card links to it. This keeps the card short enough to read on a phone, and l
 its own comments and review.
 
 1. **Create the spec page** with `notion-create-pages` in the Docs data source: `Name` is
-   `<ticket or epic name> PRD`, `Kind` is `Spec`, `From` is `Claude`, `Date` is today. Its first
-   line says what it specs and where it stands, mentioning the card:
-   `Spec for <mention-page url="…">Dress codes</mention-page> (WARD-22).` Below that, the
-   `to-prd` template.
-2. **Link it from the card.** The card's body keeps a short summary: one or two plain sentences
-   on what this is and who owns it. Right under the summary, on its own line:
-   `Full spec: <mention-page url="…">Dress codes PRD</mention-page>`. Then anything else the
-   body holds: the `Labels:` line stays at the top, and the sub-tasks stay on the card, below
-   the link.
+   `<key> PRD (<brief>)`, `Kind` is `Spec`, `From` is `Claude`, `Date` is today. The key comes
+   first so the Specs folder shows at a glance which card each PRD belongs to. The brief is the
+   card's name, cut to about five words if it's longer: `WARD-25 PRD (Frontend repo and Expo
+   app)`. Below that, the `to-prd` template.
+2. **Link it from the card** by setting the card's `PRD` property to the spec page's URL. That
+   puts the PRD at the top of the card, under the title, and on the board, and gives the spec
+   page a link back (`Ticket`, or `Epic` for an epic's PRD). Don't also write a link into the
+   body. The body keeps a short summary (one or two plain sentences on what this is and who
+   owns it), the `Labels:` line at the top, and the sub-tasks.
 3. **Updating a PRD** means editing the spec page, not the card. Change the card only if the
-   summary is now wrong.
+   summary is now wrong. If the card is renamed, rename the PRD's brief to match.
 
-**Reading a PRD:** fetch the card and follow its `Full spec:` link. A card with no such link
-may still hold an older PRD in its own body. Read it there, and leave it there unless you're
-rewriting it anyway.
+**Reading a PRD:** fetch the card and follow its `PRD` property. A card with an empty `PRD` may
+still have an old `Full spec:` line in its body: follow that, then set `PRD` to the page and
+take the line out. A card with neither may hold an older PRD in its own body. Read it there,
+and leave it there unless you're rewriting it anyway.
+
+**A spec page named any other way** (no key, or the old `<name> PRD`) is out of date. Rename it
+to `<key> PRD (<brief>)` when you touch it.
 
 **A trivial ticket's two-line PRD stays in the card body.** A page for two lines is noise.
 
-**An epic can have a PRD too**, when one spec covers several tickets. Same page, same link,
-placed right under the epic's opening summary. Each ticket under it still gets its own PRD,
-but that one links to the epic's and only covers what's specific to the ticket.
+**An epic can have a PRD too**, when one spec covers several tickets. Same page, linked the same
+way, through the epic's `PRD` property. Each ticket under it still gets its own PRD, but that one
+links to the epic's and only covers what's specific to the ticket.
+
+**A project with no `PRD` property** on Tickets or Epics predates this: offer
+`/notion-project check <SHORT>`, and until then put the `Full spec:` line under the summary.
 
 ### Labels and investigations
 
@@ -176,13 +185,22 @@ To close a ticket, comment why, then set `Status` to `Done`. Notion has no separ
 ### Epics
 
 An epic is a row in the Epics data source, and its page content holds the sections `create-epic`
-asks for. It opens with a short summary, then a `Full spec:` line if the epic has a PRD (see
+asks for. It opens with a short summary; if it has a PRD, its `PRD` property links it (see
 [The PRD](#the-prd-its-own-page-linked-from-the-card)). Set `Due` for its end date, and move `Status` to `Active` when its first ticket starts
 and to `Done` when its last one finishes.
 
+**Epic keys.** Each epic has an `ID` with its own prefix, `<SHORT>-E`, so its key looks like
+`GRD-E-2`, apart from ticket keys. A view returns `2`; a fetched page returns `GRD-E-2`. A key like
+`GRD-E-2` the user gives you is an epic: find the Epics row whose `ID` is that number. Refer to an
+epic by key and name, as in "GRD-E-2 (Backend and data)". Its PRD page is named
+`<epic key> PRD (<brief>)`. An epic whose `PRD` page carries another epic's key is a mislabelled
+page: rename the page to match.
+
+A project whose Epics data source has no `ID` predates this: offer `/notion-project check <SHORT>`,
+and until then refer to its epics by name.
+
 To read an epic, fetch the row, then match the URLs in its `Tickets` property against the Tickets
-`Default view`. Refer to an epic
-by name: epics have no key.
+`Default view`.
 
 ### Sub-tasks
 

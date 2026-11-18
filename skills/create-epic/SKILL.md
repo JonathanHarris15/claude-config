@@ -127,7 +127,7 @@ and link things. In order:
 1. Confirm the project and its types with me.
 2. Create the **Epic**. Its body opens with a short summary: two or three plain sentences on
    what this epic builds, where it lives, and who owns it. If the epic gets a PRD later
-   (`to-prd` on the epic), its `Full spec:` link goes right under that summary. Then the
+   (`to-prd` on the epic), the backend file says how the epic links to it. Then the
    vision from Phases 1–2 plus the two sections the tracker can't hold anywhere else —
    **Fog** and **Out of scope**:
 
