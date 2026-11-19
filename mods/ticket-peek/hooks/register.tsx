@@ -3,7 +3,8 @@ import type { EngineInterface, Register, RenderElement } from 'claude-code'
 
 import type { Ticket, Tracker } from '../types'
 
-// Ticket keys in Claude's replies become links with a hover card.
+// Ticket keys in Claude's replies become links; hovering one shows its ticket
+// card in this mod's row of the band above the prompt.
 //
 // Which prefixes are tickets, and where they live, comes from each project's
 // CLAUDE.md config block (`tracker-config` or `jira-config`), the same blocks
@@ -15,9 +16,12 @@ import type { Ticket, Tracker } from '../types'
 // connections and writes the results, which redraws the replies.
 
 // Bump the shape tag when Ticket's fields change: old cached values are dropped.
+const PLUGIN = 'ticket-peek'
 const tickets = atom({ plugin: 'ticket-peek', key: 'tickets' } as const, {}, {
   shape: 'tickets-3',
 })
+/** The keys whose cards the band holds, as replies last drew them. */
+const bandKeys = atom({ plugin: 'ticket-peek', key: 'bandKeys' } as const, [] as string[])
 
 /** A failed fetch is tried again after this long; a found ticket is kept. */
 const RETRY_MS = 30_000
@@ -31,7 +35,9 @@ const needsFetch = (t: Ticket | undefined, now: number) =>
 // and goes again (the card keeps saying "Loading") instead of failing.
 const MAX_IN_FLIGHT = 2
 const BACKOFF_MS = [5_000, 15_000, 45_000]
-const RATE_LIMITED = /rate.?limit|\b429\b|too many requests|do not retry this request/i
+// A short burst limit, worth waiting out; not the hourly allowance, which says
+// "do not retry" too but only refills within the hour.
+const RATE_LIMITED = /rate.?limit|\b429\b|too many requests/i
 const attempts = new Map<string, number>()
 const epicTitles = new Map<string, string>()
 
@@ -58,8 +64,25 @@ export const register: Register = on => {
 
     const known = await read($, tickets)
     const now = await $.clock.now()
+    return drawMessage($.ui.resolve(e), text, known, now)
+  })
+
+  // This mod's row of the band: every recent key's card, all hidden until hovered.
+  on('ui.render', { component: 'AbovePrompt' }, async ($, e, next) => {
+    if (e.plugin !== PLUGIN || e.props.hasSurvey) return next(e)
+    const keys = await read($, bandKeys)
+    if (keys.length === 0) return next(e)
+    const known = await read($, tickets)
     const ui = $.ui.resolve(e)
-    return drawMessage(ui, text, known, now, e.viewport?.columns ?? 100)
+    const { Box } = ui
+    return <Box flexDirection="column">{keys.map(k => drawCard(ui, k, known[k]))}</Box>
+  })
+
+  // Under the other mods' rows, so a card that opens never covers their buttons.
+  on('ui.render', { component: 'AbovePromptList' }, ($, e, next) => {
+    const rows = e.props.rows
+    if (!rows.some(r => r.plugin === PLUGIN)) return next(e)
+    return next({ ...e, props: { ...e.props, rows: [...rows.filter(r => r.plugin !== PLUGIN), ...rows.filter(r => r.plugin === PLUGIN)] } })
   })
 }
 
@@ -130,6 +153,12 @@ export function parseConfig(body: string): Tracker[] {
 // ───────────────────────── fetching ─────────────────────────
 
 async function drain($: Dollar) {
+  // Drawing can't write state, so the keys it saw reach the band from here.
+  const inBand = await read($, bandKeys)
+  if (inBand.join() !== seenKeys.join()) {
+    const next = seenKeys
+    await update($, bandKeys, () => next)
+  }
   if (wanted.size === 0) return
   const known = await read($, tickets)
   const now = await $.clock.now()
@@ -229,7 +258,8 @@ async function callAny($: Dollar, kind: string, names: string[], tool: string, a
   throw new Error(failures[0] ?? `no connected server offers ${tool}`)
 }
 
-// Notion's schema names a property called "ID" `userDefined:ID` (the bare name
+// The fallback query, for a table with no saved view. Notion's schema names a
+// property called "ID" `userDefined:ID` (the bare name
 // is kept for its own system id), and its filters want the schema's name.
 // Older connectors took the bare name, so it stays as the fallback.
 const ID_PROPERTIES = ['userDefined:ID', 'ID']
@@ -261,9 +291,80 @@ async function queryById($: Dollar, dataSource: string, n: number) {
   throw failure
 }
 
+// ── The whole ticket table, read once ──
+// Notion's free plan caps rows and SQL queries per workspace per hour, and
+// Claude's own Notion work draws on the same allowance: a query per key used
+// it up. Reading a saved view of the table is not capped, and one read
+// returns every ticket, so the table is read whole, kept a few minutes, and
+// looked up by ID. Only a table with no view to read falls back to a query.
+
+type Row = Record<string, string>
+type Table = { at: number; byId: Map<number, Row> }
+const TABLE_TTL_MS = 5 * 60_000
+const TABLE_REFRESH_FOR_MISSING_MS = 30_000
+const tables = new Map<string, Table>()
+const loadingTables = new Map<string, Promise<Table | undefined>>()
+const viewFor = new Map<string, string | null>()
+
+/** The first saved view of the database behind a data source, or null. */
+async function findView($: Dollar, dataSource: string): Promise<string | null> {
+  if (viewFor.has(dataSource)) return viewFor.get(dataSource) ?? null
+  let view: string | null = null
+  try {
+    const source = JSON.parse(await callAny($, 'notion', NOTION_SERVERS, 'notion-fetch', { id: dataSource }))
+    const database = String(source.url ?? '').replace(/\?.*$/, '')
+    if (database) {
+      const db = String(JSON.parse(await callAny($, 'notion', NOTION_SERVERS, 'notion-fetch', { id: database })).text ?? '')
+      view = db.match(/view:\/\/[0-9a-f-]+/)?.[0] ?? null
+    }
+  } catch {}
+  viewFor.set(dataSource, view)
+  return view
+}
+
+async function readTable($: Dollar, dataSource: string, view: string, now: number): Promise<Table> {
+  const byId = new Map<number, Row>()
+  let cursor: string | undefined
+  for (let page = 0; page < 20; page++) {
+    const raw = await callAny($, 'notion', NOTION_SERVERS, 'notion-query-data-sources', {
+      data: { mode: 'view', view_url: view, page_size: 100, ...(cursor ? { start_cursor: cursor } : {}) },
+    })
+    const body = JSON.parse(raw)
+    for (const row of (body.results ?? []) as Row[]) {
+      const id = Number(row['userDefined:ID'] ?? row['ID'])
+      if (Number.isFinite(id)) byId.set(id, row)
+    }
+    if (!body.has_more || !body.next_cursor) break
+    cursor = body.next_cursor
+  }
+  const table = { at: now, byId }
+  tables.set(dataSource, table)
+  return table
+}
+
+/** The table, read through its view when it has one; undefined when it has none. */
+async function tableFor($: Dollar, dataSource: string, n: number): Promise<Table | undefined> {
+  const now = await $.clock.now()
+  const kept = tables.get(dataSource)
+  const fresh = kept && now - kept.at < TABLE_TTL_MS
+  // A key the kept table lacks may be a ticket made since: read again, at most every 30s.
+  if (kept && fresh && (kept.byId.has(n) || now - kept.at < TABLE_REFRESH_FOR_MISSING_MS)) return kept
+  const pending = loadingTables.get(dataSource)
+  if (pending) return pending
+  const load = (async () => {
+    const view = await findView($, dataSource)
+    return view ? readTable($, dataSource, view, now) : undefined
+  })().finally(() => loadingTables.delete(dataSource))
+  loadingTables.set(dataSource, load)
+  return load
+}
+
 async function fetchNotion($: Dollar, key: string, t: Extract<Tracker, { kind: 'notion' }>): Promise<Ticket> {
-  const raw = await queryById($, t.dataSource, Number(key.split('-')[1]))
-  const row = (JSON.parse(raw).results ?? [])[0] as Record<string, string> | undefined
+  const n = Number(key.split('-')[1])
+  const table = await tableFor($, t.dataSource, n)
+  const row = table
+    ? table.byId.get(n)
+    : ((JSON.parse(await queryById($, t.dataSource, n)).results ?? [])[0] as Row | undefined)
   if (!row) return { key, state: 'missing', url: t.home }
 
   let brief: string | undefined
@@ -289,7 +390,7 @@ async function fetchNotion($: Dollar, key: string, t: Extract<Tracker, { kind: '
     key,
     state: 'ok',
     url: row.url,
-    title: row['Name'],
+    title: row['Name']?.replace(/\\([[\]()*_`])/g, '$1'),
     status: row['Status'],
     type: row['Type'],
     priority: row['Priority'],
@@ -392,77 +493,38 @@ export function splitBlocks(text: string) {
   return blocks
 }
 
-// ── Hiding what a card covers ──
-// A floating card is painted over what comes before it in the tree, and under
-// what comes after: on the desktop a later Markdown block (a list, a table)
-// shows through it. So a card that opens downward is not drawn beside its
-// line but at the end of a box holding everything after that line: it sits
-// right under the line and is painted last. `inverseText` is the page's own
-// ground on every surface, so the card reads as solid.
-const CARD_FILL = 'inverseText'
+// ── The card's seat: the band above the prompt ──
+// A card floating in the transcript fought the desktop's drawing: blocks drawn
+// after it showed through, its message's edge clipped it, and a short message
+// had no room so it pushed the text apart. So every card sits, hidden, in this
+// mod's own row of the band above the prompt, and hovering a key anywhere
+// reveals that key's card there: a key and its card share the hover group
+// `tp:<KEY>`. The row goes last in the band, under the other mods' buttons, so
+// a card never covers them, and the band's size limit, which keeps rows from
+// the top, drops this row before theirs.
 
-// ── Where a card opens ──
-// The desktop clips a floating card to its own message. So a card floats over
-// the text below its key when the message has room there, else over the text
-// above it, and only in a message too short for either does it open in the
-// flow, pushing the lines below down. Room is estimated from line lengths:
-// rough, so a margin of a row is kept.
+/** Cards kept in the band: the most recently drawn keys. */
+const BAND_CARDS = 16
+const scopeOf = (key: string) => `tp:${key}`
 
-type Place = 'below' | 'above' | 'flow'
-const CARD_COLS = 60
-
-const rowsOf = (s: string, cols: number) => Math.max(1, Math.ceil(s.length / Math.max(20, cols)))
-
-export function cardRows(key: string, t: Ticket | undefined) {
-  const r = (s?: string) => (s ? rowsOf(s, CARD_COLS) : 0)
-  const status = !t || t.state === 'ok' ? '' : t.state === 'error' ? `Notion refused the lookup: ${t.error}` : 'Not found'
-  return 2 + rowsOf(`${key} · ${t?.title ?? ''}`, CARD_COLS) + 1 + r(status) + r(t?.place) + r(t?.brief) + 1
+/** Keys in the order replies drew them, most recent last. */
+let seenKeys: string[] = []
+function noteSeen(key: string) {
+  if (seenKeys[seenKeys.length - 1] === key) return
+  seenKeys = [...seenKeys.filter(k => k !== key), key].slice(-BAND_CARDS)
 }
 
-/**
- * A markdown line as a reader sees it: a link is its label (a long URL behind
- * a short label once made a card think it had room below and get clipped),
- * and emphasis marks, tags and heading or quote marks take no room.
- */
-export function shown(line: string) {
-  return line
-    .replace(/!?\[([^\]]*)\]\([^)]*\)/g, '$1')
-    .replace(/<[^>]+>/g, '')
-    .replace(/\*\*|__|~~|`/g, '')
-    .replace(/^\s*(#{1,6}|>)\s+/, '')
-}
-
-function blockRows(block: { kind: string; lines: string[]; gapBefore: boolean }, cols: number) {
-  const body = block.lines.reduce((n, l) => n + (l.trim() === '' || block.kind === 'table' ? 1 : rowsOf(shown(l), cols)), 0)
-  return body + (block.gapBefore ? 1 : 0) + (block.kind === 'table' ? 1 : 0)
-}
-
-function drawMessage(ui: Ui, text: string, known: Record<string, Ticket>, now: number, cols: number) {
+function drawMessage(ui: Ui, text: string, known: Record<string, Ticket>, now: number) {
   const { Box, Markdown } = ui
-  const blocks = splitBlocks(text)
-  const heights = blocks.map(b => blockRows(b, cols))
-  const total = heights.reduce((a, b) => a + b, 0)
-  let before = 0
-  const placer = (above: number, below: number) => (chip: Chip): Place => {
-    const need = cardRows(chip.key, known[chip.key]) + 1
-    return below >= need ? 'below' : above >= need ? 'above' : 'flow'
-  }
-  const salt = hash(text)
-  let n = 0
   const chipFor = (label: string, key: string): Chip => {
     if (needsFetch(known[key], now)) wanted.add(key)
-    return { label, key, scope: `tp:${salt}:${n++}` }
+    noteSeen(key)
+    return { label, key, scope: scopeOf(key) }
   }
 
-  type Drawn = { node: RenderElement; below: RenderElement[] }
-  const plain = (node: RenderElement): Drawn => ({ node, below: [] })
-  const rows: Drawn[] = blocks.map((block, i): Drawn => {
+  const rows = splitBlocks(text).map(block => {
     const mt = block.gapBefore ? 1 : 0
-    const rowsHere = heights[i] ?? 1
-    const above = before + mt
-    before += rowsHere
-    const below = total - before
-    if (block.kind === 'md') return plain(<Box marginTop={mt}><Markdown text={block.lines.join('\n')} /></Box>)
+    if (block.kind === 'md') return <Box marginTop={mt}><Markdown text={block.lines.join('\n')} /></Box>
     if (block.kind === 'table') {
       const chips: Chip[] = []
       const seen = new Set<string>()
@@ -480,34 +542,19 @@ function drawMessage(ui: Ui, text: string, known: Record<string, Ticket>, now: n
           }),
         )
         .join('\n')
-      if (chips.length === 0) return plain(<Box marginTop={mt}><Markdown text={md} /></Box>)
-      const row = drawLine(ui, [{ text: 'Tickets: ', dim: true }, ...chips.flatMap((c, i) => (i ? [{ text: '  ' }, c] : [c]))], chips, known, placer(above + rowsHere - mt - 1, below))
-      return {
-        node: (
-          <Box marginTop={mt} flexDirection="column">
-            <Markdown text={md} />
-            {row.node}
-          </Box>
-        ),
-        below: row.below,
-      }
+      if (chips.length === 0) return <Box marginTop={mt}><Markdown text={md} /></Box>
+      // A table's keys are plain links inside its Markdown; this row gives
+      // them something to hover.
+      return (
+        <Box marginTop={mt} flexDirection="column">
+          <Markdown text={md} />
+          {drawLine(ui, [{ text: 'Tickets: ', dim: true }, ...chips.flatMap((c, i) => (i ? [{ text: '  ' }, c] : [c]))], known)}
+        </Box>
+      )
     }
-    const line = block.lines[0] ?? ''
-    const parts = parseLine(line, chipFor)
-    const chips = parts.filter((p): p is Chip & Seg => 'scope' in p)
-    const drawn = drawLine(ui, parts, chips, known, placer(above - mt, below + rowsHere - mt - 1))
-    return { node: <Box marginTop={mt}>{drawn.node}</Box>, below: drawn.below }
+    return <Box marginTop={mt}>{drawLine(ui, parseLine(block.lines[0] ?? '', chipFor), known)}</Box>
   })
-
-  // Folded from the end: each block, then a box of everything after it whose
-  // last children are that block's downward cards, so they paint over it all.
-  let tail: RenderElement | null = null
-  for (let i = rows.length - 1; i >= 0; i--) {
-    const { node, below } = rows[i]!
-    const after = tail || below.length ? <Box flexDirection="column">{tail}{below}</Box> : null
-    tail = <Box flexDirection="column">{node}{after}</Box>
-  }
-  return tail ?? <Box />
+  return <Box flexDirection="column">{rows}</Box>
 }
 
 type Seg = { text?: string; bold?: boolean; italic?: boolean; mono?: boolean; dim?: boolean; href?: string; heading?: boolean }
@@ -568,9 +615,9 @@ function linkFor(key: string, known: Record<string, Ticket>) {
   return tr?.home
 }
 
-/** A line of segments and chips; its downward cards come back apart, for the caller to paint last. */
-function drawLine(ui: Ui, parts: Part[], chips: Chip[], known: Record<string, Ticket>, place: (c: Chip) => Place) {
-  const { Box, Text, Link } = ui
+/** A line of segments, its keys drawn as links that light their card in the band. */
+function drawLine(ui: Ui, parts: Part[], known: Record<string, Ticket>) {
+  const { Text, Link } = ui
   const segs = parts.map(p => {
     const style = { bold: p.bold, italic: p.italic, mono: p.mono, dimColor: p.dim, size: p.heading ? ('heading' as const) : undefined }
     if ('scope' in p) {
@@ -584,57 +631,34 @@ function drawLine(ui: Ui, parts: Part[], chips: Chip[], known: Record<string, Ti
     if (p.href) return <Text {...style}><Link href={p.href}>{p.text ?? ''}</Link></Text>
     return <Text {...style}>{p.text ?? ''}</Text>
   })
-  const at = (where: Place) => chips.filter(c => place(c) === where).map(c => drawCard(ui, c, known[c.key], where))
-  const above = at('above')
-  return {
-    node: (
-      <Box flexDirection="column">
-        {above.length ? <Box height={0}>{above}</Box> : null}
-        <Text>{segs}</Text>
-        {at('flow')}
-      </Box>
-    ),
-    below: at('below'),
-  }
+  return <Text>{segs}</Text>
 }
 
-function drawCard(ui: Ui, chip: Chip, t: Ticket | undefined, where: Place) {
+/** One key's card for the band: hidden until a key in its hover group is. */
+function drawCard(ui: Ui, key: string, t: Ticket | undefined) {
   const { Box, Text } = ui
-  const tool = trackers[chip.key.split('-')[0] ?? '']?.kind === 'jira' ? 'Jira' : 'Notion'
-  const meta = [t?.status, t?.type, t?.priority && `${t.priority} priority`].filter(Boolean).join(' · ')
+  const tool = trackers[key.split('-')[0] ?? '']?.kind === 'jira' ? 'Jira' : 'Notion'
+  const meta = [t?.status, t?.type, t?.priority && `${t.priority} priority`, t?.place].filter(Boolean).join(' · ')
+  const status =
+    !t || t.state === 'loading' ? `Loading from ${tool}…`
+    : t.state === 'missing' ? `Not found in ${tool}.`
+    : t.state === 'error' ? `${tool} refused the lookup: ${t.error}`
+    : meta
   return (
     <Box
-      {...(where === 'flow'
-        ? { marginLeft: 2 }
-        : where === 'below'
-          ? { position: 'absolute' as const, top: 0, left: 2, backgroundColor: CARD_FILL }
-          : { position: 'absolute' as const, bottom: 0, left: 2, backgroundColor: CARD_FILL })}
-      width={64}
       display="none"
-      hover={{ scope: chip.scope, display: 'flex' }}
+      hover={{ scope: scopeOf(key), display: 'flex' }}
       flexDirection="column"
       borderStyle="round"
       borderColor="suggestion"
       paddingX={1}
     >
       <Text bold>
-        {chip.key}
+        {key}
         {t?.title ? ` · ${t.title}` : ''}
       </Text>
-      {!t || t.state === 'loading' ? <Text dimColor>Loading from {tool}…</Text> : null}
-      {t?.state === 'missing' ? <Text dimColor>Not found in {tool}.</Text> : null}
-      {t?.state === 'error' ? <Text color="error">{tool} refused the lookup: {t.error}</Text> : null}
-      {meta ? <Text dimColor>{meta}</Text> : null}
-      {t?.place ? <Text dimColor>{t.place}</Text> : null}
+      {status ? <Text dimColor={t?.state !== 'error'} color={t?.state === 'error' ? 'error' : undefined}>{status}</Text> : null}
       {t?.brief ? <Text>{t.brief}</Text> : null}
-      <Text dimColor size="caption">Click the key to open it in {tool}</Text>
     </Box>
   )
 }
-
-function hash(s: string) {
-  let acc = 5381
-  for (let i = 0; i < s.length; i++) acc = ((acc << 5) + acc + s.charCodeAt(i)) | 0
-  return (acc >>> 0).toString(36)
-}
-

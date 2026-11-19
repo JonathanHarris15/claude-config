@@ -24,6 +24,10 @@ export type Ticket = {
 
 declare module 'claude-code' {
   interface PluginState {
-    'ticket-peek': { tickets: Shaped<Record<string, Ticket>> }
+    'ticket-peek': {
+      tickets: Shaped<Record<string, Ticket>>
+      /** The keys whose cards sit, hidden, in the band above the prompt. */
+      bandKeys: string[]
+    }
   }
 }

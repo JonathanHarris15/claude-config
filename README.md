@@ -167,21 +167,22 @@ seconds. `/commit-tree` opens it too. Same layout as above, tested with
 
 **`ticket-peek`** changes how Claude's replies draw: a ticket key (`WARD-48`,
 `METH-58`, or the sub-task form `METH-56(325)`) becomes a link to the ticket,
-and hovering it shows a card with the title, status, type, priority, where it
-sits (its epic, or the card a sub-task is inside) and the first paragraph of
-the ticket. It learns which prefixes are tickets from each project's
-`tracker-config` or `jira-config` block in its `CLAUDE.md` — the session's
-folder, its sibling folders and `~/dev/*` — and remembers them, so it works
-from any folder. It fetches through the session's own Notion and Jira
-connections, found by the tool they offer, not by name. The card floats over
-the text below the key, or above it near a reply's end; the app clips a
-floating card to its own message, so in a message too short for either it
-opens in place and pushes the text down. A card that opens downward is drawn
-last in its message, since on the desktop anything drawn after it (a list, a
-table) shows through. Keys inside a table become links, with their cards in a
-"Tickets:" row under the table. Lookups go two at a time; one Notion
-rate-limits waits and tries again rather than showing an error. Tested with
-`claude plugin test mods/ticket-peek`.
+and hovering it shows that ticket's card in the band above the prompt: title,
+status, type, priority, where it sits (its epic, or the card a sub-task is
+inside) and the first paragraph of the ticket. The card sits in the band, not
+beside the key, because a card floating in the transcript showed text through
+it, got clipped at its message's edge, or pushed the text apart. Its row goes
+under the other mods' rows, so it never covers their buttons. It learns which
+prefixes are tickets from each project's `tracker-config` or `jira-config`
+block in its `CLAUDE.md` (the session's folder, its sibling folders and
+`~/dev/*`) and remembers them, so it works from any folder. It fetches through
+the session's own Notion and Jira connections, found by the tool they offer,
+not by name. A Notion ticket table is read whole through a saved view, which
+Notion's free plan doesn't count against its hourly query allowance (one
+query per key used that allowance up, Claude's own Notion work included), and
+kept for five minutes. Lookups go two at a time; a rate-limited one waits and
+tries again. Keys inside a table become links, with hoverable keys in a
+"Tickets:" row under the table. Tested with `claude plugin test mods/ticket-peek`.
 
 **`codegraph`** draws nothing: it is an MCP server carried as a mod, since a
 plugin's `.mcp.json` is the one way an MCP server syncs through this repo.

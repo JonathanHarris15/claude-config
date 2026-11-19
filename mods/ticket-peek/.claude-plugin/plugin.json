@@ -1,7 +1,7 @@
 {
   "name": "ticket-peek",
   "version": "0.1.0",
-  "description": "Ticket keys in Claude's replies become links with a hover card: title, status and a short brief",
+  "description": "Ticket keys in Claude's replies become links; hovering one shows its title, status and brief above the prompt",
   "author": {
     "name": "Jonathan Harris"
   },
